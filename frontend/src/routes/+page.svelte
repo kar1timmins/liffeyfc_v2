@@ -1,12 +1,14 @@
 
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { river } from '$lib/river';
   function handleStartNow(e: Event) {
     e.preventDefault();
     goto('/pitch');
   }
 </script>
 
+<div in:river out:river>
 <section class="relative h-screen w-full overflow-hidden flex items-center justify-center bg-black text-white">
   <video autoplay muted loop class="absolute w-full h-full object-cover object-center opacity-40">
     <source src="/videos/encoded_2_1.webm" type="video/webm" />
@@ -28,3 +30,4 @@
     </button>
   </div>
 </section>
+</div>

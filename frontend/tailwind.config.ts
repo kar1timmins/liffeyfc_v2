@@ -1,6 +1,9 @@
 import type { Config } from 'tailwindcss';
+import daisyui from 'daisyui';
+import forms from '@tailwindcss/forms';
+import typography from '@tailwindcss/typography';
 
-const config: Config = {
+const config = {
   content: ['./src/**/*.{html,js,svelte,ts}'],
   theme: {
     extend: {
@@ -15,21 +18,18 @@ const config: Config = {
       },
     },
   },
+
   plugins: [
-    require('daisyui')({
-      themes: [
-        {
-          startup: {
-            primary: '#4f46e5',
-            secondary: '#0ea5e9',
-            accent: '#facc15',
-            neutral: '#1e293b',
-            'base-100': '#ffffff',
-          },
-        },
-      ],
-    }),
+    forms,
+    typography,
+    daisyui,
   ],
-};
+  daisyui: {
+    themes: [
+      'light',
+      'dark',
+    ],
+  },
+} satisfies Config & { daisyui: unknown };
 
 export default config;
