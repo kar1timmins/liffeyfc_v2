@@ -16,7 +16,7 @@
   </video>
   <div class="relative z-10 text-center px-4 flex flex-col items-center">
     <h1 class="text-5xl md:text-7xl font-bold animate-fade">
-      Pitch Your Startup
+      Practice What You Pitch
     </h1>
     <p class="mt-4 text-lg md:text-xl max-w-xl mx-auto">
       Capture attention, showcase your vision, and connect with investors.
