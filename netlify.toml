@@ -1,0 +1,12 @@
+## Root netlify.toml provides Netlify build instructions.
+## Adapter-specific settings (publish path) are in frontend/netlify.toml so the adapter can find them.
+## Keep both files until you switch the site Base directory in the Netlify UI to 'frontend' and delete this one.
+
+[build]
+  base = "frontend"
+  command = "npm ci && npm run build"
+  # Don't set publish here; adapter + frontend/netlify.toml handle it (.netlify/publish)
+
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_FLAGS = "--include=dev"
