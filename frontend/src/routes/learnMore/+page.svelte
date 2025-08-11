@@ -62,7 +62,7 @@
     </p>
 
     <div class="mb-10">
-      <h2 class="text-2xl font-semibold text-slate-800 mb-3 text-center">Event cadence <span class="ml-2 badge badge-outline">{year}</span></h2>
+      <h2 class="text-2xl font-semibold text-slate-800 mb-3 text-center">Event Details <span class="ml-2 badge badge-outline">{year}</span></h2>
       <p class="text-slate-700 text-center">
         We host events on a quarterly basis (once per quarter: Q1, Q2, Q3, and Q4).<br>
         Register your interest below and we’ll keep you informed about the next date and how to get involved.
