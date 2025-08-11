@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { river } from '$lib/river';
+  import { goto } from '$app/navigation';
 
   const images = [
     '/img/event_june/image_1.jpg',
@@ -56,7 +57,6 @@
     current = i;
     resetInterval();
   }
-  import { goto } from '$app/navigation';
   function navTo(path: string) { goto(path); }
 
   // --- Sequential video fade-in logic for Event Highlights background ---
@@ -115,7 +115,7 @@
 
 
 {#if showStats}
-  <div class="min-h-screen flex items-center justify-center relative overflow-hidden">
+  <div in:river out:river class="min-h-screen flex items-center justify-center relative overflow-hidden">
     <!-- Sequential Video Background -->
     <div class="absolute inset-0 w-full h-full flex items-stretch justify-stretch pointer-events-none select-none z-0">
       {#each videoNames as name, i}

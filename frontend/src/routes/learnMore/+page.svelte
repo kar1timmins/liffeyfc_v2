@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { river } from '$lib/river';
   let submitted = false;
   let step = 0;
 
@@ -52,6 +53,7 @@
   }
 </script>
 
+<div in:river out:river>
 <section class="min-h-screen flex flex-col items-center justify-center bg-base-200/80 px-4 py-16">
   <div class="max-w-3xl w-full bg-white/90 rounded-3xl shadow-2xl p-8 md:p-10 border border-accent/30">
       <h1 class="text-3xl md:text-4xl font-bold text-primary mb-3 text-center">Learn More</h1>
@@ -156,3 +158,4 @@
     </div>
   </div>
 </section>
+</div>
