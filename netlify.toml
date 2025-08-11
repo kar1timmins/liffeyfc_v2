@@ -1,0 +1,12 @@
+[build]
+  base = "frontend"
+  # Use npm ci for reproducible installs in CI
+  command = "npm ci && npm run build"
+  publish = ".netlify/publish"
+
+[build.environment]
+  NODE_VERSION = "20"
+[build]
+  base = "frontend"
+  command = "npm ci && npm run build"
+  publish = ".netlify/publish"
