@@ -4,5 +4,8 @@
   NPM_FLAGS = "--include=dev"
 [build]
   base = "frontend"
-  command = "npm install && npm run build"
-  publish = ".netlify/publish"
+  # Use npm ci to install exactly from lockfile (required for reproducible build & netlify adapter)
+  # Avoid passing --omit=optional because Rollup's native binary is an optional dependency; omitting it breaks the build.
+  command = "npm ci && npm run build"
+  # The Netlify adapter outputs the static client assets here
+  publish = ".svelte-kit/output/client"
