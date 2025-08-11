@@ -1,5 +1,7 @@
 [build.environment]
   NODE_VERSION = "20"
+  # Ensure devDependencies install in Netlify CI (adapter needed at build time)
+  NPM_FLAGS = "--include=dev"
 [build]
   base = "frontend"
   command = "npm ci && npm run build"
