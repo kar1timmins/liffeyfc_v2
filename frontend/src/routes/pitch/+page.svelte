@@ -37,14 +37,6 @@
     clearIntervalTimer();
     startInterval();
   }
-  function next() {
-    current = (current + 1) % images.length;
-    resetInterval();
-  }
-  function prev() {
-    current = (current - 1 + images.length) % images.length;
-    resetInterval();
-  }
 
   onMount(() => {
     startInterval();
@@ -91,18 +83,12 @@
        aria-label="Pitch image carousel"
        on:mouseenter={clearIntervalTimer}
        on:mouseleave={startInterval}>
-        <div class="relative w-full h-full bg-white/80 dark:bg-slate-900/80 rounded-3xl shadow-2xl overflow-hidden flex items-center justify-center border border-accent/20 backdrop-blur-md">
-          <button aria-label="Previous" class="absolute left-4 top-1/2 -translate-y-1/2 btn btn-circle btn-md z-10 bg-white/90 hover:bg-accent/80 shadow-lg border border-accent/30" on:click={prev}>
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
-          </button>
+  <div class="relative w-full h-full bg-white/80 dark:bg-slate-900/80 rounded-3xl shadow-2xl overflow-hidden flex items-center justify-center border border-accent/20 backdrop-blur-md">
           {#each images as img, i}
             {#if i === current}
               <img src={img} class="w-full h-full object-cover transition-all duration-700 rounded-3xl shadow-xl" alt="Pitch Slide {i + 1}" />
             {/if}
           {/each}
-          <button aria-label="Next" class="absolute right-4 top-1/2 -translate-y-1/2 btn btn-circle btn-md z-10 bg-white/90 hover:bg-accent/80 shadow-lg border border-accent/30" on:click={next}>
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-          </button>
           <div class="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-3 z-10">
             {#each images as _, i}
               <button
