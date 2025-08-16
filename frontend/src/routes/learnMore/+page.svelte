@@ -768,6 +768,8 @@
 								<div class="flex justify-center">
 									<a
 										href="https://lu.ma/event/evt-Hs6RP2j7Bkc8jGQ"
+										target="_blank"
+										rel="noopener noreferrer"
 										class="luma-checkout--button btn btn-accent btn-lg focus:ring-accent/50 flex transform items-center gap-3 rounded-full px-8 py-4 text-base font-bold shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-accent/20 focus:outline-none focus:ring-4 md:px-10 md:text-lg"
 									>
 										<span class="bg-white/30 rounded-full p-2">

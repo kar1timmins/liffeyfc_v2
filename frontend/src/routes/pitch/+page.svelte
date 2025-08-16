@@ -121,11 +121,11 @@
         role="region"
         aria-label="Pitch image mosaic"
       >
-  <div class="absolute inset-0 glass-subtle rounded-3xl overflow-hidden p-2 md:p-3">
+  <div class="absolute inset-0 overflow-hidden p-2 md:p-3">
           <!-- Mobile: simple 2-col grid, no spans -->
           <div class="md:hidden grid grid-cols-2 gap-2 w-full h-full">
             {#each images as src, i}
-              <button class="relative w-full h-full rounded-lg overflow-hidden bg-base-200/60 focus:outline-none focus:ring-2 focus:ring-accent/50" on:click={() => openLightbox(i)} aria-label={`Open image ${i+1}`}>
+              <button class="relative w-full h-full rounded-lg overflow-hidden bg-base-200/60 focus:outline-none" on:click={() => openLightbox(i)} aria-label={`Open image ${i+1}`}>
                 <img {src} alt={`Pitch tile ${i + 1}`} class="absolute inset-0 w-full h-full object-cover" in:fade={{ duration: 420, delay: Math.min(i * 50, 500), easing: crossEase }} loading="lazy" />
               </button>
             {/each}
@@ -133,7 +133,7 @@
           <!-- Desktop/tablet: collage with spans -->
           <div class="hidden md:grid grid-cols-4 grid-rows-3 gap-3 w-full h-full">
             {#each images as src, i}
-              <button class="relative w-full h-full rounded-lg overflow-hidden bg-base-200/60 {gridLayoutClasses[i]} focus:outline-none focus:ring-2 focus:ring-accent/50" on:click={() => openLightbox(i)} aria-label={`Open image ${i+1}`}>
+              <button class="relative w-full h-full rounded-lg overflow-hidden bg-base-200/60 {gridLayoutClasses[i]} focus:outline-none" on:click={() => openLightbox(i)} aria-label={`Open image ${i+1}`}>
                 <img {src} alt={`Pitch tile ${i + 1}`} class="absolute inset-0 w-full h-full object-cover" in:fade={{ duration: 520, delay: Math.min(i * 60, 600), easing: crossEase }} loading="lazy" />
               </button>
             {/each}
