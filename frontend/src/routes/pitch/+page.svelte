@@ -155,7 +155,7 @@
 
 {#if lightboxOpen}
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-md"
     role="dialog"
     aria-modal="true"
     aria-label="Image viewer"
@@ -163,7 +163,7 @@
     on:click={(e) => { if (e.currentTarget === e.target) closeLightbox(); }}
     on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); closeLightbox(); } }}
   >
-  <div class="relative max-w-5xl w-[94vw] md:w-[92vw] h-[68dvh] md:h-[80vh] bg-base-100 rounded-2xl shadow-2xl border border-base-300 dark:border-base-700 overflow-hidden flex items-center justify-center p-2 md:p-4"
+  <div class="relative max-w-5xl w-[94vw] md:w-[92vw] h-[68dvh] md:h-[80vh] glass-subtle rounded-3xl shadow-2xl overflow-hidden flex items-center justify-center p-2 md:p-4 backdrop-blur-xl"
       on:touchstart={(e) => { if (e.touches?.length) { touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY; } }}
       on:touchend={(e) => { const t = e.changedTouches?.[0]; if (!t) return; const dx = t.clientX - touchStartX; const dy = t.clientY - touchStartY; if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) { dx < 0 ? nextImage() : prevImage(); } }}
     >

@@ -98,8 +98,103 @@ body::before {
 	inset: 0;
 	pointer-events: none;
 	background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
-	background-size: 3px 3px;
-	mix-blend-mode: soft-light;
-	opacity: 0.4;
+	background-size: 20px 20px;
 	z-index: -1;
+}
+
+/* Neon button effect - subtle multi-color */
+.btn-neon {
+  text-shadow: 
+    0 0 3px #00f5ff,
+    0 0 6px #ff00ff,
+    0 0 9px #00ff00,
+    0 0 12px currentColor;
+  box-shadow: 
+    0 0 3px #00f5ff,
+    0 0 6px #ff00ff,
+    0 0 9px #00ff00,
+    0 0 12px currentColor,
+    inset 0 0 8px rgba(255, 255, 255, 0.05);
+  animation: neon-pulse 3s ease-in-out infinite alternate;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  transition: all 0.3s ease;
+}
+
+.btn-neon:hover {
+  text-shadow: 
+    0 0 6px #00f5ff,
+    0 0 12px #ff00ff,
+    0 0 18px #00ff00,
+    0 0 24px currentColor;
+  box-shadow: 
+    0 0 6px #00f5ff,
+    0 0 12px #ff00ff,
+    0 0 18px #00ff00,
+    0 0 24px currentColor,
+    0 0 36px rgba(255, 255, 255, 0.1),
+    inset 0 0 15px rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.1);
+  animation: neon-pulse-intense 2s ease-in-out infinite alternate;
+}
+
+@keyframes neon-pulse {
+  from {
+    text-shadow: 
+      0 0 2px #00f5ff,
+      0 0 4px #ff00ff,
+      0 0 6px #00ff00,
+      0 0 8px currentColor;
+    box-shadow: 
+      0 0 2px #00f5ff,
+      0 0 4px #ff00ff,
+      0 0 6px #00ff00,
+      0 0 8px currentColor,
+      inset 0 0 8px rgba(255, 255, 255, 0.05);
+  }
+  to {
+    text-shadow: 
+      0 0 4px #00f5ff,
+      0 0 8px #ff00ff,
+      0 0 12px #00ff00,
+      0 0 16px currentColor;
+    box-shadow: 
+      0 0 4px #00f5ff,
+      0 0 8px #ff00ff,
+      0 0 12px #00ff00,
+      0 0 16px currentColor,
+      inset 0 0 12px rgba(255, 255, 255, 0.08);
+  }
+}
+
+@keyframes neon-pulse-intense {
+  from {
+    text-shadow: 
+      0 0 4px #00f5ff,
+      0 0 8px #ff00ff,
+      0 0 12px #00ff00,
+      0 0 16px currentColor;
+    box-shadow: 
+      0 0 4px #00f5ff,
+      0 0 8px #ff00ff,
+      0 0 12px #00ff00,
+      0 0 16px currentColor,
+      0 0 24px rgba(255, 255, 255, 0.08),
+      inset 0 0 12px rgba(255, 255, 255, 0.08);
+  }
+  to {
+    text-shadow: 
+      0 0 8px #00f5ff,
+      0 0 16px #ff00ff,
+      0 0 24px #00ff00,
+      0 0 32px currentColor;
+    box-shadow: 
+      0 0 8px #00f5ff,
+      0 0 16px #ff00ff,
+      0 0 24px #00ff00,
+      0 0 32px currentColor,
+      0 0 48px rgba(255, 255, 255, 0.15),
+      inset 0 0 20px rgba(255, 255, 255, 0.12);
+  }
 }

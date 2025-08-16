@@ -28,7 +28,7 @@
     </p>
     <button
       type="button"
-      class="btn btn-primary mt-8 px-8 py-3 rounded-full text-lg font-semibold shadow-lg flex items-center gap-2 transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-primary/50 animate-pulse mx-auto"
+      class="btn btn-primary btn-neon mt-8 px-8 py-3 rounded-full text-lg font-semibold flex items-center gap-2 transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-primary/50 mx-auto"
       on:click={handleStartNow}
     >
       Start Now
