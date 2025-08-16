@@ -78,6 +78,57 @@
 	$: nameClean = name.trim();
 	$: emailClean = email.trim();
 	$: emailValid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailClean);
+
+	// Dynamic floating circles
+	interface Circle {
+		id: number;
+		x: number;
+		y: number;
+		size: number;
+		animationDelay: number;
+		dx: number;
+		dy: number;
+	}
+
+	let circles: Circle[] = [];
+	let animationFrame: number;
+
+	function generateRandomCircles() {
+		circles = Array.from({ length: 6 }, (_, i) => ({
+			id: i,
+			x: Math.random() * 80 + 10, // 10-90% to avoid edges
+			y: Math.random() * 80 + 10,
+			size: Math.random() * 20 + 10, // 10-30px sizes
+			animationDelay: Math.random() * 4,
+			dx: (Math.random() - 0.5) * 0.02, // Slow movement speed
+			dy: (Math.random() - 0.5) * 0.02
+		}));
+	}
+
+	function animateCircles() {
+		circles = circles.map(circle => {
+			let newX = circle.x + circle.dx;
+			let newY = circle.y + circle.dy;
+
+			// Bounce off edges
+			if (newX <= 5 || newX >= 95) {
+				circle.dx *= -1;
+				newX = Math.max(5, Math.min(95, newX));
+			}
+			if (newY <= 5 || newY >= 95) {
+				circle.dy *= -1;
+				newY = Math.max(5, Math.min(95, newY));
+			}
+
+			return {
+				...circle,
+				x: newX,
+				y: newY
+			};
+		});
+
+		animationFrame = requestAnimationFrame(animateCircles);
+	}
 	$: step2NameOk = nameClean.length >= 2;
 	$: step2EmailOk = emailValid;
 
@@ -246,8 +297,18 @@
 			PUBLIC_DEBUG_LOGS: publicEnv.PUBLIC_DEBUG_LOGS,
 			enabled: DBG_ENABLED
 		});
+		// Initialize floating circles
+		generateRandomCircles();
+		animateCircles();
 		// Render will be scheduled reactively when step === 4
 		mountedLM = true;
+
+		// Cleanup animation on destroy
+		return () => {
+			if (animationFrame) {
+				cancelAnimationFrame(animationFrame);
+			}
+		};
 	});
 
 	// Re-attempt render when reaching step 4
@@ -399,12 +460,19 @@
 	>
 		<!-- Floating background elements for depth -->
 		<div class="absolute inset-0 pointer-events-none opacity-40">
-			<div class="absolute top-16 right-20 w-28 h-28 rounded-full glass-subtle animate-pulse" style="animation-delay: 0.5s;"></div>
-			<div class="absolute bottom-32 left-8 w-20 h-20 rounded-full glass-subtle animate-pulse" style="animation-delay: 1.8s;"></div>
-			<div class="absolute top-2/3 right-1/3 w-14 h-14 rounded-full glass-subtle animate-pulse" style="animation-delay: 3.2s;"></div>
-			<div class="absolute top-1/4 left-2/3 w-18 h-18 rounded-full glass-subtle animate-pulse" style="animation-delay: 2.6s;"></div>
-			<div class="absolute bottom-1/4 right-12 w-12 h-12 rounded-full glass-subtle animate-pulse" style="animation-delay: 4.1s;"></div>
-			<div class="absolute top-1/3 left-12 w-10 h-10 rounded-full glass-subtle animate-pulse" style="animation-delay: 1.3s;"></div>
+			{#each circles as circle (circle.id)}
+				<div 
+					class="absolute rounded-full glass-subtle animate-pulse transition-all duration-1000 ease-out" 
+					style="
+						left: {circle.x}%; 
+						top: {circle.y}%; 
+						width: {circle.size}px; 
+						height: {circle.size}px;
+						animation-delay: {circle.animationDelay}s;
+						transform: translate(-50%, -50%);
+					"
+				></div>
+			{/each}
 		</div>
 
 		<div class="w-full max-w-4xl relative z-10">

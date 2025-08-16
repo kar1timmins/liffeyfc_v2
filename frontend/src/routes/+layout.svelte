@@ -44,7 +44,7 @@
 
 <main class="min-h-screen overflow-hidden">
   {#if showShell}
-    <div out:routeOpacity on:outroend={onShellOutro}>
+    <div in:routeOpacity={{ delay: 100, duration: 600 }} out:routeOpacity on:outroend={onShellOutro}>
       <slot />
     </div>
   {/if}
