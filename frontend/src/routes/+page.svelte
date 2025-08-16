@@ -19,7 +19,7 @@
     <source src="/videos/encoded_2.mp4" type="video/mp4" />
   </video>
   <div class="relative z-10 text-center px-4 flex flex-col items-center">
-    <div class="glass-subtle rounded-3xl px-6 py-6 md:px-10 md:py-8 backdrop-blur-md">
+    <div class="glass-homepage rounded-3xl px-6 py-6 md:px-10 md:py-8 backdrop-blur-md">
     <h1 class="text-5xl md:text-7xl font-bold animate-fade">
       Practice What You Pitch
     </h1>

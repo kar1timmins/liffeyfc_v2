@@ -91,6 +91,34 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.02);
 }
 
+/* Homepage card - more transparent in light mode */
+.glass-homepage {
+  background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.12) 0%,
+      rgba(255, 255, 255, 0.08) 30%,
+      rgba(255, 255, 255, 0.06) 100%
+    );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    0 4px 16px rgba(2, 6, 23, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+[data-theme="dark"] .glass-homepage {
+  background: linear-gradient(
+      180deg,
+      rgba(17, 25, 40, 0.50) 0%,
+      rgba(17, 25, 40, 0.40) 30%,
+      rgba(17, 25, 40, 0.30) 100%
+    );
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  box-shadow: 
+    0 4px 16px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
 /* Optional: tiny texture overlay */
 body::before {
 	content: '';
