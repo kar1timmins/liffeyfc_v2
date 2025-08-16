@@ -391,37 +391,46 @@
 
 {#if showLM}
 	<section
-		class="bg-base-200/80 flex min-h-screen items-center justify-center px-3 py-10 md:px-4 md:py-16"
+		class="flex min-h-screen items-center justify-center px-3 py-10 md:px-4 md:py-16 relative overflow-hidden"
 		out:routeOpacity
 		on:outroend={() => {
 			if (navTarget) goto(navTarget);
 		}}
 	>
-		<div class="w-full max-w-3xl">
-			<div class="mb-6 text-center md:mb-8">
-				<h1 class="text-primary text-3xl font-bold md:text-5xl">Learn More</h1>
-				<p class="text-base-content/80 mt-2 text-base md:text-lg">
-					Connect with founders, investors, and the community.
+		<!-- Floating background elements for depth -->
+		<div class="absolute inset-0 pointer-events-none opacity-40">
+			<div class="absolute top-16 right-20 w-28 h-28 rounded-full glass-subtle animate-pulse" style="animation-delay: 0.5s;"></div>
+			<div class="absolute bottom-32 left-8 w-20 h-20 rounded-full glass-subtle animate-pulse" style="animation-delay: 1.8s;"></div>
+			<div class="absolute top-2/3 right-1/3 w-14 h-14 rounded-full glass-subtle animate-pulse" style="animation-delay: 3.2s;"></div>
+			<div class="absolute top-1/4 left-2/3 w-18 h-18 rounded-full glass-subtle animate-pulse" style="animation-delay: 2.6s;"></div>
+			<div class="absolute bottom-1/4 right-12 w-12 h-12 rounded-full glass-subtle animate-pulse" style="animation-delay: 4.1s;"></div>
+			<div class="absolute top-1/3 left-12 w-10 h-10 rounded-full glass-subtle animate-pulse" style="animation-delay: 1.3s;"></div>
+		</div>
+
+		<div class="w-full max-w-4xl relative z-10">
+			<div class="mb-8 text-center md:mb-12">
+				<div class="glass-subtle rounded-3xl px-6 py-4 md:px-8 md:py-6 inline-block mb-4">
+					<h1 class="text-primary text-3xl font-bold md:text-5xl bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Learn More</h1>
+				</div>
+				<p class="text-base-content/90 mt-4 text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
+					Connect with founders, investors, and the community in our quarterly events.
 				</p>
 			</div>
 
-			<div
-				class="glass glass-border glass-elevated overflow-hidden rounded-3xl shadow-2xl"
+			<div class="glass glass-subtle overflow-hidden rounded-3xl backdrop-blur-xl"
 			>
-				<div class="p-5 md:p-8">
-					<div role="tablist" class="tabs tabs-boxed bg-base-200/60 grid grid-cols-2">
+				<div class="p-6 md:p-10 backdrop-blur-sm">
+					<div role="tablist" class="tabs tabs-boxed bg-transparent border-0 backdrop-blur-md rounded-3xl p-1">
 						<button
 							role="tab"
-							class="tab h-10 text-sm md:h-12 md:text-base"
-							class:tab-active={view === 'interest'}
+							class="tab h-12 text-sm md:text-base font-medium transition-all duration-300 rounded-2xl {view === 'interest' ? 'glass-subtle text-primary shadow-md' : 'text-base-content/70 hover:text-base-content hover:bg-white/5'}"
 							on:click={() => (view = 'interest')}
 						>
 							Register Interest
 						</button>
 						<button
 							role="tab"
-							class="tab h-10 text-sm md:h-12 md:text-base"
-							class:tab-active={view === 'register'}
+							class="tab h-12 text-sm md:text-base font-medium transition-all duration-300 rounded-2xl {view === 'register' ? 'glass-subtle text-primary shadow-md' : 'text-base-content/70 hover:text-base-content hover:bg-white/5'}"
 							on:click={() => (view = 'register')}
 						>
 							Event Registration
@@ -429,75 +438,84 @@
 					</div>
 				</div>
 
-				<div class="p-5 pt-0 md:p-8">
-					<div class="relative grid min-h-[440px] md:min-h-[520px]">
+				<div class="p-6 pt-2 md:p-10 md:pt-4">
+					<div class="relative overflow-hidden">
+						<div class="grid grid-cols-1 grid-rows-1">
 						{#if view === 'interest'}
 							<div
-								class="col-start-1 row-start-1"
+								class="col-start-1 row-start-1 glass-subtle rounded-3xl p-6 md:p-8 backdrop-blur-md"
 								out:outView={{ key: 'lm-view' }}
 								in:inView={{ key: 'lm-view' }}
 							>
-								<h2 class="text-base-content mb-4 text-center text-xl font-semibold md:text-2xl">
-									Register your interest
-								</h2>
+								<div class="text-center mb-6">
+									<div class="inline-flex items-center gap-2 glass-subtle rounded-full px-4 py-2 mb-4">
+										<span class="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
+										<span class="text-sm font-medium text-base-content/80">Step {step + 1} of 5</span>
+									</div>
+									<h2 class="text-base-content text-xl font-bold md:text-2xl bg-gradient-to-r from-base-content to-base-content/80 bg-clip-text">
+										Register your interest
+									</h2>
+								</div>
 								{#if submitted === 'success'}
-									<div class="alert alert-success mb-6 shadow">
-										<CheckCircle2 class="h-6 w-6" />
+									<div class="alert alert-success mb-6 shadow-lg glass-subtle backdrop-blur-md rounded-2xl border-0">
+										<CheckCircle2 class="h-6 w-6 text-success" />
 										<div>
-											<h3 class="font-bold">Thank you!</h3>
-											<div class="text-sm">
+											<h3 class="font-bold text-success-content">Thank you!</h3>
+											<div class="text-sm text-success-content/80">
 												Your submission has been received. We'll be in touch soon.
 											</div>
 										</div>
 									</div>
 								{:else if submitted === 'error'}
-									<div class="alert alert-error mb-6 shadow">
-										<AlertTriangle class="h-6 w-6" />
-										<span>Error! Task failed successfully. Please try again.</span>
+									<div class="alert alert-error mb-6 shadow-lg glass-subtle backdrop-blur-md rounded-2xl border-0">
+										<AlertTriangle class="h-6 w-6 text-error" />
+										<span class="text-error-content">Error! Task failed successfully. Please try again.</span>
 									</div>
 								{:else}
-									<form on:submit|preventDefault={submitForm}>
-										<div class="-mx-3 overflow-x-auto px-3 md:mx-0 md:px-0">
-											<ul
-												class="steps text-base-content mb-6 w-max whitespace-nowrap text-xs md:w-full md:text-sm"
-											>
-												<li class="step {step >= 0 ? 'step-primary' : ''}">Start</li>
-												<li class="step {step >= 1 ? 'step-primary' : ''}">Interest</li>
-												<li class="step {step >= 2 ? 'step-primary' : ''}">Details</li>
-												<li class="step {step >= 3 ? 'step-primary' : ''}">Message</li>
-												<li class="step {step >= 4 ? 'step-primary' : ''}">Consent</li>
-											</ul>
+									<form on:submit|preventDefault={submitForm} class="space-y-6">
+										<div class="glass-subtle rounded-2xl p-4 backdrop-blur-sm">
+											<div class="overflow-x-auto -mx-2 px-2">
+												<ul class="steps w-max md:w-full mb-2 text-base-content text-xs md:text-sm whitespace-nowrap">
+													<li class="step {step >= 0 ? 'step-primary' : 'step-base-300'}">Start</li>
+													<li class="step {step >= 1 ? 'step-primary' : 'step-base-300'}">Interest</li>
+													<li class="step {step >= 2 ? 'step-primary' : 'step-base-300'}">Details</li>
+													<li class="step {step >= 3 ? 'step-primary' : 'step-base-300'}">Message</li>
+													<li class="step {step >= 4 ? 'step-primary' : 'step-base-300'}">Consent</li>
+												</ul>
+											</div>
 										</div>
 
-										<div class="relative min-h-[320px] md:min-h-[240px]">
+										<div class="glass-subtle rounded-2xl p-6 backdrop-blur-sm min-h-[280px] flex items-center justify-center">
 											{#key step}
-												<div class="absolute inset-0" out:outStep in:inStep>
+												<div class="absolute inset-6 flex items-center justify-center" out:outStep in:inStep>
 													{#if step === 0}
-														<div class="text-center">
-															<h3 class="text-base-content mb-3 text-lg font-semibold md:text-xl">
-																Have you pitched before?
-															</h3>
-															<div class="join join-horizontal md:join">
-																<button
-																	type="button"
-																	class="btn join-item {pitchedBefore === 'Yes'
-																		? 'btn-primary'
-																		: 'btn-outline btn-base-300'}"
-																	on:click={() => {
-																		pitchedBefore = 'Yes';
-																		next();
-																	}}>Yes</button
-																>
-																<button
-																	type="button"
-																	class="btn join-item {pitchedBefore === 'No'
-																		? 'btn-primary'
-																		: 'btn-outline btn-base-300'}"
-																	on:click={() => {
-																		pitchedBefore = 'No';
-																		next();
-																	}}>No</button
-																>
+														<div class="text-center w-full">
+															<div class="glass-subtle rounded-3xl p-6 mb-4 inline-block">
+																<h3 class="text-base-content mb-4 text-lg font-semibold md:text-xl">
+																	Have you pitched before?
+																</h3>
+																<div class="join join-vertical md:join">
+																	<button
+																		type="button"
+																		class="btn join-item transition-all duration-300 border-0 {pitchedBefore === 'Yes'
+																			? 'btn-primary shadow-lg scale-105'
+																			: 'glass-subtle hover:scale-102'}"
+																		on:click={() => {
+																			pitchedBefore = 'Yes';
+																			next();
+																		}}>Yes</button
+																	>
+																	<button
+																		type="button"
+																		class="btn join-item transition-all duration-300 border-0 {pitchedBefore === 'No'
+																			? 'btn-primary shadow-lg scale-105'
+																			: 'glass-subtle hover:scale-102'}"
+																		on:click={() => {
+																			pitchedBefore = 'No';
+																			next();
+																		}}>No</button
+																	>
+																</div>
 															</div>
 														</div>
 													{:else if step === 1}
@@ -684,15 +702,15 @@
 							</div>
 						{:else if view === 'register'}
 							<div
-								class="col-start-1 row-start-1"
+								class="col-start-1 row-start-1 glass-subtle rounded-3xl p-6 md:p-8 backdrop-blur-md"
 								out:outView={{ key: 'lm-view' }}
 								in:inView={{ key: 'lm-view' }}
 							>
 								{#if submitted === 'success'}
-									<div class="alert alert-success mb-6 shadow">
+									<div class="alert alert-success mb-6 shadow-lg glass-subtle backdrop-blur-md rounded-2xl border-0">
 										<svg
 											xmlns="http://www.w3.org/2000/svg"
-											class="h-6 w-6 shrink-0 stroke-current"
+											class="h-6 w-6 shrink-0 stroke-current text-success"
 											fill="none"
 											viewBox="0 0 24 24"
 											><path
@@ -703,41 +721,45 @@
 											/></svg
 										>
 										<div>
-											<h3 class="font-bold">Thank you!</h3>
-											<div class="text-sm">
+											<h3 class="font-bold text-success-content">Thank you!</h3>
+											<div class="text-sm text-success-content/80">
 												Your interest has been submitted. You can now register for the event below.
 											</div>
 										</div>
 									</div>
 								{/if}
-								<h3 class="text-base-content mb-4 text-center text-xl font-bold md:text-2xl">
-									Event Registration
-								</h3>
-
-								<div
-									class="glass glass-border glass-elevated mb-6 rounded-xl p-5 shadow-md md:p-6"
-								>
-									<div class="mb-4 flex items-center justify-center">
-										<h3 class="text-lg font-semibold md:text-xl">
-											Next Event: Q{eventQuarter}
-											{eventYear}
+								<div class="text-center mb-6">
+									<div class="glass-subtle rounded-full px-6 py-3 inline-block mb-4">
+										<h3 class="text-base-content text-xl font-bold md:text-2xl bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+											Event Registration
 										</h3>
 									</div>
-									<div class="text-base-content grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
-										<div class="flex items-center gap-2">
-											<CalendarDays class="text-accent h-5 w-5" />
+								</div>
+
+								<div class="glass-subtle mb-8 rounded-2xl p-6 md:p-8 backdrop-blur-md">
+									<div class="flex items-center justify-center mb-6">
+										<div class="glass-subtle rounded-full px-4 py-2 inline-flex items-center gap-2">
+											<span class="w-3 h-3 bg-accent rounded-full animate-pulse"></span>
+											<h3 class="text-lg font-bold md:text-xl text-accent">
+												Next Event: Q{eventQuarter} {eventYear}
+											</h3>
+										</div>
+									</div>
+									<div class="grid grid-cols-1 gap-4 text-sm text-base-content md:grid-cols-2">
+										<div class="glass-subtle rounded-xl p-4 flex items-center gap-3 backdrop-blur-sm">
+											<CalendarDays class="text-accent h-6 w-6 flex-shrink-0" />
 											<div><span class="font-semibold">Date:</span> 9th September</div>
 										</div>
-										<div class="flex items-center gap-2">
-											<Clock class="text-accent h-5 w-5" />
+										<div class="glass-subtle rounded-xl p-4 flex items-center gap-3 backdrop-blur-sm">
+											<Clock class="text-accent h-6 w-6 flex-shrink-0" />
 											<div><span class="font-semibold">Time:</span> Evening Session</div>
 										</div>
-										<div class="flex items-center gap-2">
-											<MapPin class="text-accent h-5 w-5" />
+										<div class="glass-subtle rounded-xl p-4 flex items-center gap-3 backdrop-blur-sm">
+											<MapPin class="text-accent h-6 w-6 flex-shrink-0" />
 											<div><span class="font-semibold">Location:</span> Dublin, Ireland</div>
 										</div>
-										<div class="flex items-center gap-2">
-											<BadgeDollarSign class="text-accent h-5 w-5" />
+										<div class="glass-subtle rounded-xl p-4 flex items-center gap-3 backdrop-blur-sm">
+											<BadgeDollarSign class="text-accent h-6 w-6 flex-shrink-0" />
 											<div><span class="font-semibold">Cost:</span> Free Event</div>
 										</div>
 									</div>
@@ -746,22 +768,32 @@
 								<div class="flex justify-center">
 									<a
 										href="https://lu.ma/event/evt-Hs6RP2j7Bkc8jGQ"
-										class="luma-checkout--button btn btn-accent btn-lg focus:ring-accent/50 flex transform items-center gap-2 rounded-full px-6 py-3 text-base font-semibold shadow-xl transition-transform hover:scale-105 focus:outline-none focus:ring-4 md:px-8 md:text-lg"
+										class="luma-checkout--button btn btn-accent btn-lg focus:ring-accent/50 flex transform items-center gap-3 rounded-full px-8 py-4 text-base font-bold shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-accent/20 focus:outline-none focus:ring-4 md:px-10 md:text-lg"
 									>
+										<span class="bg-white/30 rounded-full p-2">
+											<ExternalLink class="h-5 w-5" />
+										</span>
 										Register via Luma
-										<ExternalLink class="h-5 w-5" />
 									</a>
 								</div>
 							</div>
 						{/if}
+						</div>
 					</div>
 				</div>
 			</div>
 
-			<div class="mt-6 flex justify-center md:mt-8">
-				<a href="/pitch" class="btn btn-ghost flex items-center gap-2" on:click={backToPitch}
-					><ArrowLeftRight size={18} /> Back to Pitch</a
-				>
+			<div class="flex justify-center mt-8 md:mt-12">
+				<div class="glass-subtle rounded-full p-2 backdrop-blur-md">
+					<a 
+						href="/pitch" 
+						class="btn btn-ghost glass-subtle flex items-center gap-2 rounded-full px-6 py-3 hover:scale-105 transition-all duration-300 backdrop-blur-sm" 
+						on:click={backToPitch}
+					>
+						<ArrowLeftRight size={18} />
+						Back to Pitch
+					</a>
+				</div>
 			</div>
 		</div>
 	</section>

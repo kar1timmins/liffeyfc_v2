@@ -52,13 +52,13 @@
   <!-- Floating Action Button (FAB) Navigation -->
   <div class="fixed bottom-8 right-8 z-[9999] flex flex-col items-end gap-2">
     {#if fabOpen}
-      <div class="flex flex-col items-center mb-2 p-3 rounded-2xl glass glass-border glass-elevated animate-fade-in">
-  <button class="btn btn-primary w-40 mb-2 flex items-center gap-2" on:click={() => navTo('/')}><Home size={18}/> Home</button>
-  <button class="btn btn-accent w-40 mb-2 flex items-center gap-2" on:click={() => navTo('/pitch')}><Mic size={18}/> Pitch</button>
-  <button class="btn btn-info w-40 mb-2 flex items-center gap-2" on:click={() => navTo('/learnMore')}><Info size={18}/> Learn More</button>
+      <div class="flex flex-col items-center mb-2 p-3 rounded-2xl glass-subtle animate-fade-in">
+  <button class="btn glass-subtle w-40 mb-2 flex items-center gap-2 border-0 hover:scale-105 transition-all duration-300" on:click={() => navTo('/')}><Home size={18}/> Home</button>
+  <button class="btn glass-subtle w-40 mb-2 flex items-center gap-2 border-0 hover:scale-105 transition-all duration-300" on:click={() => navTo('/pitch')}><Mic size={18}/> Pitch</button>
+  <button class="btn glass-subtle w-40 mb-2 flex items-center gap-2 border-0 hover:scale-105 transition-all duration-300" on:click={() => navTo('/learnMore')}><Info size={18}/> Learn More</button>
         <div class="w-full flex flex-col items-center mt-2">
           <button
-            class="btn btn-circle btn-outline btn-primary"
+            class="btn btn-circle glass-subtle border-0 hover:scale-110 transition-all duration-300"
             aria-label="Toggle light/dark theme"
             on:click={() => setTheme(selectedTheme === 'light' ? 'dark' : 'light')}
           >
@@ -72,7 +72,7 @@
       </div>
     {/if}
     <button
-      class="btn btn-circle btn-xl bg-primary text-primary-content shadow-lg hover:scale-110 transition-all duration-300 flex items-center justify-center text-3xl ring-4 ring-accent/70 border-none"
+      class="btn btn-circle btn-xl glass-subtle text-base-content shadow-lg hover:scale-110 transition-all duration-300 flex items-center justify-center text-3xl ring-2 ring-base-content/20 border-0 backdrop-blur-xl"
       style="width:4.5rem;height:4.5rem;border-radius:50%;"
       aria-label="Open navigation menu"
       on:click={() => fabOpen = !fabOpen}

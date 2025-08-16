@@ -121,7 +121,7 @@
         role="region"
         aria-label="Pitch image mosaic"
       >
-  <div class="absolute inset-0 glass glass-border glass-elevated rounded-3xl overflow-hidden p-2 md:p-3">
+  <div class="absolute inset-0 glass-subtle rounded-3xl overflow-hidden p-2 md:p-3">
           <!-- Mobile: simple 2-col grid, no spans -->
           <div class="md:hidden grid grid-cols-2 gap-2 w-full h-full">
             {#each images as src, i}
@@ -143,7 +143,7 @@
 
       <div class="mt-6 flex justify-center">
         <button
-          class="btn btn-accent px-8 py-3 rounded-full text-lg font-semibold shadow-xl flex items-center gap-2 transition-transform transform hover:scale-105 hover:bg-primary focus:outline-none focus:ring-4 focus:ring-primary/50 animate-bounce"
+          class="btn btn-accent px-8 py-3 rounded-full text-lg font-semibold shadow-lg flex items-center gap-2 transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-accent/50 animate-pulse"
           on:click={revealStats}
         >
           Get Investor Ready
@@ -167,13 +167,13 @@
       on:touchstart={(e) => { if (e.touches?.length) { touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY; } }}
       on:touchend={(e) => { const t = e.changedTouches?.[0]; if (!t) return; const dx = t.clientX - touchStartX; const dy = t.clientY - touchStartY; if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) { dx < 0 ? nextImage() : prevImage(); } }}
     >
-      <button class="absolute btn btn-sm md:btn-md btn-ghost bg-base-100/80" style="top:max(env(safe-area-inset-top),0.75rem);right:max(env(safe-area-inset-right),0.75rem)" aria-label="Close" on:click={closeLightbox}>
+      <button class="absolute btn btn-sm md:btn-md glass-subtle border-0" style="top:max(env(safe-area-inset-top),0.75rem);right:max(env(safe-area-inset-right),0.75rem)" aria-label="Close" on:click={closeLightbox}>
         <CloseIcon class="h-5 w-5" />
       </button>
-      <button class="absolute left-2 md:left-3 top-1/2 -translate-y-1/2 btn btn-circle bg-base-100/80 border border-base-300 dark:border-base-700 shadow-md" aria-label="Previous" on:click|stopPropagation={prevImage}>
+      <button class="absolute left-2 md:left-3 top-1/2 -translate-y-1/2 btn btn-circle glass-subtle border-0 shadow-md" aria-label="Previous" on:click|stopPropagation={prevImage}>
         <ChevronLeft class="h-7 w-7" />
       </button>
-      <button class="absolute right-2 md:right-3 top-1/2 -translate-y-1/2 btn btn-circle bg-base-100/80 border border-base-300 dark:border-base-700 shadow-md" aria-label="Next" on:click|stopPropagation={nextImage}>
+      <button class="absolute right-2 md:right-3 top-1/2 -translate-y-1/2 btn btn-circle glass-subtle border-0 shadow-md" aria-label="Next" on:click|stopPropagation={nextImage}>
         <ChevronRight class="h-7 w-7" />
       </button>
       <img src={images[lightboxIndex]} alt={`Image ${lightboxIndex + 1}`} class="max-w-full max-h-full w-auto h-auto object-contain select-none" draggable="false" />
@@ -198,7 +198,7 @@
         </video>
       {/each}
     </div>
-  <section id="event-stats" class="py-10 md:py-16 px-4 max-w-3xl w-full glass glass-border glass-elevated rounded-3xl flex flex-col items-center relative z-10 text-base-content">
+  <section id="event-stats" class="py-10 md:py-16 px-4 max-w-3xl w-full glass-subtle rounded-3xl flex flex-col items-center relative z-10 text-base-content">
       <h3 class="text-xl md:text-3xl font-bold mb-6 md:mb-8 text-center">Event Highlights</h3>
       <div class="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-8 w-full">
         <div class="flex flex-col items-center">
@@ -216,7 +216,7 @@
       </div>
       <div class="flex justify-center mt-6 md:mt-8">
         <button
-          class="btn btn-accent px-8 py-3 rounded-full text-lg font-semibold shadow-lg flex items-center gap-2 transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-accent/50"
+          class="btn btn-primary px-8 py-3 rounded-full text-lg font-semibold shadow-lg flex items-center gap-2 transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-primary/50 animate-pulse"
             on:mouseenter={prefetchLearnMore}
             on:touchstart={prefetchLearnMore}
             on:click={() => fadeOutThenGo('/learnMore')}

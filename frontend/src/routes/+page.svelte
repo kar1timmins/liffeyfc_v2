@@ -19,7 +19,7 @@
     <source src="/videos/encoded_2.mp4" type="video/mp4" />
   </video>
   <div class="relative z-10 text-center px-4 flex flex-col items-center">
-    <div class="glass glass-border glass-elevated rounded-3xl px-6 py-6 md:px-10 md:py-8 backdrop-blur-md">
+    <div class="glass-subtle rounded-3xl px-6 py-6 md:px-10 md:py-8 backdrop-blur-md">
     <h1 class="text-5xl md:text-7xl font-bold animate-fade">
       Practice What You Pitch
     </h1>
@@ -28,7 +28,7 @@
     </p>
     <button
       type="button"
-      class="btn btn-primary mt-8 px-8 py-3 rounded-full text-lg font-semibold shadow-xl flex items-center gap-2 transition-transform transform hover:scale-105 hover:bg-accent focus:outline-none focus:ring-4 focus:ring-accent/50 animate-bounce mx-auto"
+      class="btn btn-primary mt-8 px-8 py-3 rounded-full text-lg font-semibold shadow-lg flex items-center gap-2 transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-primary/50 animate-pulse mx-auto"
       on:click={handleStartNow}
     >
       Start Now
