@@ -485,20 +485,20 @@
 				</p>
 			</div>
 
-			<div class="glass glass-subtle overflow-hidden rounded-3xl backdrop-blur-xl"
+			<div class="glass glass-learn-more overflow-hidden rounded-3xl backdrop-blur-xl"
 			>
 				<div class="p-6 md:p-10 backdrop-blur-sm">
 					<div role="tablist" class="tabs tabs-boxed bg-transparent border-0 backdrop-blur-md rounded-3xl p-1">
 						<button
 							role="tab"
-							class="tab h-12 text-sm md:text-base font-medium transition-all duration-300 rounded-2xl {view === 'interest' ? 'glass-subtle text-primary shadow-md' : 'text-base-content/70 hover:text-base-content hover:bg-white/5'}"
+							class="tab h-12 text-sm md:text-base font-medium transition-all duration-300 rounded-2xl btn-neon-subtle {view === 'interest' ? 'glass-subtle text-primary shadow-md' : 'text-base-content/70 hover:text-base-content hover:bg-white/5'}"
 							on:click={() => (view = 'interest')}
 						>
 							Register Interest
 						</button>
 						<button
 							role="tab"
-							class="tab h-12 text-sm md:text-base font-medium transition-all duration-300 rounded-2xl {view === 'register' ? 'glass-subtle text-primary shadow-md' : 'text-base-content/70 hover:text-base-content hover:bg-white/5'}"
+							class="tab h-12 text-sm md:text-base font-medium transition-all duration-300 rounded-2xl btn-neon-subtle {view === 'register' ? 'glass-subtle text-primary shadow-md' : 'text-base-content/70 hover:text-base-content hover:bg-white/5'}"
 							on:click={() => (view = 'register')}
 						>
 							Event Registration
@@ -511,7 +511,7 @@
 						<div class="grid grid-cols-1 grid-rows-1">
 						{#if view === 'interest'}
 							<div
-								class="col-start-1 row-start-1 glass-subtle rounded-3xl p-6 md:p-8 backdrop-blur-md"
+								class="col-start-1 row-start-1 glass-learn-more rounded-3xl p-6 md:p-8 backdrop-blur-md"
 								out:outView={{ key: 'lm-view' }}
 								in:inView={{ key: 'lm-view' }}
 							>
@@ -565,7 +565,7 @@
 																<div class="join join-vertical md:join">
 																	<button
 																		type="button"
-																		class="btn join-item transition-all duration-300 border-0 {pitchedBefore === 'Yes'
+																		class="btn join-item btn-neon-subtle transition-all duration-300 border-0 {pitchedBefore === 'Yes'
 																			? 'btn-primary shadow-lg scale-105'
 																			: 'glass-subtle hover:scale-102'}"
 																		on:click={() => {
@@ -575,7 +575,7 @@
 																	>
 																	<button
 																		type="button"
-																		class="btn join-item transition-all duration-300 border-0 {pitchedBefore === 'No'
+																		class="btn join-item btn-neon-subtle transition-all duration-300 border-0 {pitchedBefore === 'No'
 																			? 'btn-primary shadow-lg scale-105'
 																			: 'glass-subtle hover:scale-102'}"
 																		on:click={() => {
@@ -597,7 +597,7 @@
 																{#each interests as opt}
 																	<button
 																		type="button"
-																		class="btn {interest === opt
+																		class="btn btn-neon-subtle {interest === opt
 																			? 'btn-primary'
 																			: 'btn-outline btn-base-300'}"
 																		on:click={() => {
@@ -735,14 +735,14 @@
 										<div class="mt-6 flex flex-col items-center justify-between gap-3 md:flex-row">
 											<button
 												type="button"
-												class="btn btn-outline btn-base-300 w-full md:w-auto"
+												class="btn btn-outline btn-base-300 btn-neon-subtle w-full md:w-auto"
 												on:click={prev}
 												disabled={step === 0}>Back</button
 											>
 											{#if step < 4}
 												<button
 													type="button"
-													class="btn {canNext()
+													class="btn btn-neon-subtle {canNext()
 														? 'btn-primary'
 														: 'btn-outline btn-base-300'} w-full md:w-auto"
 													on:click={handleNext}
@@ -753,7 +753,7 @@
 											{:else}
 												<button
 													type="submit"
-													class="btn btn-primary w-full md:w-auto"
+													class="btn btn-primary btn-neon-accent w-full md:w-auto"
 													disabled={!consent || submitted === 'submitting'}
 												>
 													{#if submitted === 'submitting'}
@@ -770,7 +770,7 @@
 							</div>
 						{:else if view === 'register'}
 							<div
-								class="col-start-1 row-start-1 glass-subtle rounded-3xl p-6 md:p-8 backdrop-blur-md"
+								class="col-start-1 row-start-1 glass-learn-more rounded-3xl p-6 md:p-8 backdrop-blur-md"
 								out:outView={{ key: 'lm-view' }}
 								in:inView={{ key: 'lm-view' }}
 							>
@@ -838,9 +838,9 @@
 										href="https://lu.ma/event/evt-Hs6RP2j7Bkc8jGQ"
 										target="_blank"
 										rel="noopener noreferrer"
-										class="luma-checkout--button btn btn-accent btn-lg focus:ring-accent/50 flex transform items-center gap-3 rounded-full px-8 py-4 text-base font-bold shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-accent/20 focus:outline-none focus:ring-4 md:px-10 md:text-lg"
+										class="luma-checkout--button luma-cta btn glass-subtle btn-neon-adaptive btn-lg focus:ring-accent/50 flex transform items-center gap-3 rounded-full px-8 py-4 text-base shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-accent/20 focus:outline-none focus:ring-4 md:px-10 md:text-lg"
 									>
-										<span class="bg-white/30 rounded-full p-2">
+										<span>
 											<ExternalLink class="h-5 w-5" />
 										</span>
 										Register via Luma
@@ -857,7 +857,7 @@
 				<div class="glass-subtle rounded-full p-2 backdrop-blur-md">
 					<a 
 						href="/pitch" 
-						class="btn btn-ghost glass-subtle flex items-center gap-2 rounded-full px-6 py-3 hover:scale-105 transition-all duration-300 backdrop-blur-sm" 
+						class="btn btn-ghost glass-subtle btn-neon-cool flex items-center gap-2 rounded-full px-6 py-3 hover:scale-105 transition-all duration-300 backdrop-blur-sm" 
 						on:click={backToPitch}
 					>
 						<ArrowLeftRight size={18} />

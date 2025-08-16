@@ -143,7 +143,7 @@
 
       <div class="mt-6 flex justify-center">
         <button
-          class="btn btn-accent px-8 py-3 rounded-full text-lg font-semibold shadow-lg flex items-center gap-2 transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-accent/50 animate-pulse"
+          class="btn glass-subtle btn-neon-accent px-8 py-3 rounded-full text-lg font-semibold shadow-lg flex items-center gap-2 transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-accent/50"
           on:click={revealStats}
         >
           Get Investor Ready
@@ -216,7 +216,7 @@
       </div>
       <div class="flex justify-center mt-6 md:mt-8">
         <button
-          class="btn btn-primary px-8 py-3 rounded-full text-lg font-semibold shadow-lg flex items-center gap-2 transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-primary/50 animate-pulse"
+          class="btn glass-subtle btn-neon-cool px-8 py-3 rounded-full text-lg font-semibold shadow-lg flex items-center gap-2 transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-primary/50"
             on:mouseenter={prefetchLearnMore}
             on:touchstart={prefetchLearnMore}
             on:click={() => fadeOutThenGo('/learnMore')}

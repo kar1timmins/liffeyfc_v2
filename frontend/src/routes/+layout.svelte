@@ -53,9 +53,9 @@
   <div class="fixed bottom-8 right-8 z-[9999] flex flex-col items-end gap-2">
     {#if fabOpen}
       <div class="flex flex-col items-center mb-2 p-3 rounded-2xl glass-subtle animate-fade-in">
-  <button class="btn glass-subtle w-40 mb-2 flex items-center gap-2 border-0 hover:scale-105 transition-all duration-300" on:click={() => navTo('/')}><Home size={18}/> Home</button>
-  <button class="btn glass-subtle w-40 mb-2 flex items-center gap-2 border-0 hover:scale-105 transition-all duration-300" on:click={() => navTo('/pitch')}><Mic size={18}/> Pitch</button>
-  <button class="btn glass-subtle w-40 mb-2 flex items-center gap-2 border-0 hover:scale-105 transition-all duration-300" on:click={() => navTo('/learnMore')}><Info size={18}/> Learn More</button>
+  <button class="btn glass-subtle btn-neon-cool w-40 mb-2 flex items-center gap-2 border-0 hover:scale-105 transition-all duration-300" on:click={() => navTo('/')}><Home size={18}/> Home</button>
+  <button class="btn glass-subtle btn-neon-cool w-40 mb-2 flex items-center gap-2 border-0 hover:scale-105 transition-all duration-300" on:click={() => navTo('/pitch')}><Mic size={18}/> Pitch</button>
+  <button class="btn glass-subtle btn-neon-cool w-40 mb-2 flex items-center gap-2 border-0 hover:scale-105 transition-all duration-300" on:click={() => navTo('/learnMore')}><Info size={18}/> Learn More</button>
         <div class="w-full flex flex-col items-center mt-2">
           <button
             class="btn btn-circle glass-subtle border-0 hover:scale-110 transition-all duration-300"
