@@ -1,0 +1,13 @@
+node_modules
+pnpm-lock.yaml
+yarn.lock
+.git
+.gitignore
+Dockerfile*
+*.log
+**/.svelte-kit
+**/.vercel
+**/.netlify
+**/.cache
+**/build
+**/dist

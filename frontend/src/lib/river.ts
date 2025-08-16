@@ -1,12 +1,3 @@
-
-// Custom river effect: a wavy mask reveal
-export function river(node: Element, { delay = 0, duration = 600 } = {}) {
-  return {
-    delay,
-    duration,
-    css: (t: number) => `
-      opacity: ${t};
-      transition: opacity ${duration}ms cubic-bezier(0.4,0,0.2,1);
-    `
-  };
-}
+// Deprecated: use routeOpacity from '$lib/transitions' instead.
+// This file is kept temporarily for compatibility and forwards to routeOpacity.
+export { routeOpacity as river } from './transitions';

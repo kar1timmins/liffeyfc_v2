@@ -47,6 +47,7 @@
 		]
 	},
 	"dependencies": {
-		"daisyui": "^5.0.50"
+		"daisyui": "^5.0.50",
+		"lucide-svelte": "^0.462.0"
 	}
 }

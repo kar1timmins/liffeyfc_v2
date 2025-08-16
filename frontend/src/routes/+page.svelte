@@ -1,20 +1,25 @@
 
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { river } from '$lib/river';
+  import { routeOpacity } from '$lib/transitions';
+  let show = true;
   function handleStartNow(e: Event) {
     e.preventDefault();
+    show = false; // trigger outro
+  }
+  function onOutroEnd() {
     goto('/pitch');
   }
-</script>
+  </script>
 
-<div in:river out:river>
-<section class="relative h-screen w-full overflow-hidden flex items-center justify-center bg-black text-white">
+{#if show}
+<section class="relative h-screen w-full overflow-hidden flex items-center justify-center bg-black text-white" out:routeOpacity on:outroend={onOutroEnd}>
   <video autoplay muted loop class="absolute w-full h-full object-cover object-center opacity-40">
     <source src="/videos/encoded_2_1.webm" type="video/webm" />
     <source src="/videos/encoded_2.mp4" type="video/mp4" />
   </video>
   <div class="relative z-10 text-center px-4 flex flex-col items-center">
+    <div class="glass glass-border glass-elevated rounded-3xl px-6 py-6 md:px-10 md:py-8 backdrop-blur-md">
     <h1 class="text-5xl md:text-7xl font-bold animate-fade">
       Practice What You Pitch
     </h1>
@@ -28,6 +33,7 @@
     >
       Start Now
     </button>
+    </div>
   </div>
 </section>
-</div>
+{/if}
