@@ -4,7 +4,22 @@
   import '../app.css';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
-  import { Home, Mic, Info, Sun, Moon, X, Menu, CheckCircle2, AlertTriangle, ArrowLeftRight } from 'lucide-svelte';
+  import { Home, Mic, Info, Sun, Moon, X, Menu, Wallet } from 'lucide-svelte';
+  
+  // Simple wallet connect without Web3Modal to avoid build-time dependency issues
+  let account = '';
+  async function open() {
+    try {
+      if (typeof window === 'undefined' || !(window as any).ethereum) {
+        console.warn('No injected wallet found');
+        return;
+      }
+      const accounts: string[] = await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
+      account = accounts?.[0] ?? '';
+    } catch (e) {
+      console.error('Wallet connect failed', e);
+    }
+  }
 
   let mounted = false;
   onMount(() => { mounted = true; });
@@ -56,6 +71,10 @@
   <button class="btn glass-subtle btn-neon-cool w-40 mb-2 flex items-center gap-2 border-0 hover:scale-105 transition-all duration-300" on:click={() => navTo('/')}><Home size={18}/> Home</button>
   <button class="btn glass-subtle btn-neon-cool w-40 mb-2 flex items-center gap-2 border-0 hover:scale-105 transition-all duration-300" on:click={() => navTo('/pitch')}><Mic size={18}/> Pitch</button>
   <button class="btn glass-subtle btn-neon-cool w-40 mb-2 flex items-center gap-2 border-0 hover:scale-105 transition-all duration-300" on:click={() => navTo('/learnMore')}><Info size={18}/> Learn More</button>
+  <button on:click={open} class="btn glass-subtle btn-neon-subtle w-40 mb-2 flex items-center gap-2 border-0 hover:scale-105 transition-all duration-300">
+    <Wallet size={18} />
+    Connect Wallet
+  </button>
         <div class="w-full flex flex-col items-center mt-2">
           <button
             class="btn btn-circle glass-subtle border-0 hover:scale-110 transition-all duration-300"
