@@ -67,3 +67,15 @@ npm run build
 You can preview the production build with `npm run preview`.
 
 > To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+
+## GitHub-Only Frontend Deployment
+
+If your repository contains both `frontend/` and `backend/` but you only want to deploy the static frontend to Blacknight:
+
+1. A GitHub Actions workflow `.github/workflows/deploy-frontend.yml` builds only the frontend when `main` changes.
+2. It publishes the contents of `frontend/build/` to a branch named `frontend-deploy`.
+3. Option A: In Blacknight, configure a Git deploy (if supported) against that branch.
+4. Option B (recommended now): Provide FTP credentials as repo secrets (`FTP_HOST`, `FTP_USER`, `FTP_PASSWORD`, `FTP_TARGET_DIR`) to auto‑upload after each successful build.
+5. The backend folder is ignored in the deployment; no server code is uploaded.
+
+To trigger manually: run the workflow via the Actions tab (workflow_dispatch).
