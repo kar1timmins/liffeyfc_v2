@@ -11,11 +11,15 @@ node_modules
 .DS_Store
 Thumbs.db
 
-# Env
+# Env (keep private secrets ignored, allow explicit public file)
 .env
+.env.local
+.env.public
 .env.*
 !.env.example
 !.env.test
+!.env.public
+!.env.production.public
 
 # Vite
 vite.config.js.timestamp-*

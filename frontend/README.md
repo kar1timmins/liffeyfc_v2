@@ -14,14 +14,23 @@ The production assets are emitted to `build/`. Upload the contents of that folde
 - `static/api/interest/submit/index.php` – PHP relay for form submission (ensure environment variables are configured in hosting panel or via `.htaccess` `SetEnv`).
 - `static/robots.txt` & `static/sitemap.xml` – SEO indexing hints.
 
-### Required environment variables (server-side)
-Set via Blacknight control panel or add (not recommended for secrets) to `.htaccess` using:
+### Environment Variables
+
+Public (client-exposed) values: put in `.env.public` (committed). They must be prefixed with `PUBLIC_`.
+
+Private secrets (not committed): create `.env` locally or set via hosting control panel / SetEnv in `.htaccess`.
+
+Example `.env.public`:
 ```
-SetEnv RECAPTCHA_SECRET_KEY your-secret
-SetEnv WEB3FORMS_ACCESS_KEY your-access-key
+PUBLIC_RECAPTCHA_SITE_KEY=your_site_key
 ```
 
-Client-side site key is provided at build time as `PUBLIC_RECAPTCHA_SITE_KEY` (configure in a `.env` file before building if referenced in code).
+Server-side (PHP relay) expects environment variables:
+```
+RECAPTCHA_SECRET_KEY=your_secret
+WEB3FORMS_ACCESS_KEY=your_web3forms_key
+```
+(Set those via hosting, NOT in `.env.public`.)
 
 ### Form Endpoint
 Frontend posts to `/api/interest/submit/` (note trailing slash tolerated). Apache rewrites leave `/api/` paths untouched so PHP executes normally.
