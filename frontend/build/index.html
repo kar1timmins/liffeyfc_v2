@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+				<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+				<script>
+					// Set theme ASAP to prevent flash on first paint
+					try {
+						const t = localStorage.getItem('theme');
+						if (t) document.documentElement.setAttribute('data-theme', t);
+					} catch {}
+				</script>
+		
+		<link rel="modulepreload" href="/_app/immutable/entry/start.CkTOhzRO.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/rhSJIdJ2.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/06JXK29d.js">
+		<link rel="modulepreload" href="/_app/immutable/entry/app.D2Q4gbY3.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/DsnmJJEf.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/CdS3nJvf.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/BcWt7_Ty.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/DUTYWncO.js">
+		<link rel="modulepreload" href="/_app/env.js">
+	</head>
+	<body data-sveltekit-preload-data="hover">
+		<div style="display: contents">
+			<script>
+				{
+					__sveltekit_17fxl9t = {
+						base: "",
+						env: null
+					};
+
+					const element = document.currentScript.parentElement;
+
+					import("/_app/env.js").then(({ env }) => {
+						__sveltekit_17fxl9t.env = env;
+
+						Promise.all([
+							import("/_app/immutable/entry/start.CkTOhzRO.js"),
+							import("/_app/immutable/entry/app.D2Q4gbY3.js")
+						]).then(([kit, app]) => {
+							kit.start(app, element);
+						});
+					});
+				}
+			</script>
+		</div>
+	</body>
+</html>

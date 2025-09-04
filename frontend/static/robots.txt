@@ -1,3 +1,5 @@
-# allow crawling everything by default
+# robots.txt for Liffey Founders Club
 User-agent: *
 Disallow:
+
+Sitemap: https://www.liffeyfoundersclub.com/sitemap.xml

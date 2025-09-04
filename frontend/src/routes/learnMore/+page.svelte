@@ -381,7 +381,8 @@
 				recaptchaToken
 			};
 
-			const res = await fetch('/api/interest/submit', {
+			// On static Apache hosting this is served by PHP relay at /api/interest/submit/
+			const res = await fetch('/api/interest/submit/', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
