@@ -44,6 +44,7 @@ jobs:
           git checkout -b ${DEPLOY_BRANCH}
           git add .
           git -c user.name='github-actions' -c user.email='actions@github.com' commit -m 'Deploy frontend'
+          git remote add origin https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
           git push --force origin ${DEPLOY_BRANCH}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
