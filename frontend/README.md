@@ -22,15 +22,17 @@ Private secrets (not committed): create `.env` locally or set via hosting contro
 
 Example `.env.public`:
 ```
-PUBLIC_RECAPTCHA_SITE_KEY=your_site_key
+PUBLIC_RECAPTCHA_SITE_KEY=your_v3_site_key
 ```
 
 Server-side (PHP relay) expects environment variables:
 ```
-RECAPTCHA_SECRET_KEY=your_secret
+RECAPTCHA_SECRET_KEY=your_v3_secret
 WEB3FORMS_ACCESS_KEY=your_web3forms_key
 ```
 (Set those via hosting, NOT in `.env.public`.)
+
+**Note**: This project uses reCAPTCHA v3 (invisible verification) for seamless user experience.
 
 ### Form Endpoint
 Frontend posts to `/api/interest/submit/` (note trailing slash tolerated). Apache rewrites leave `/api/` paths untouched so PHP executes normally.

@@ -16,14 +16,14 @@
 	import { goto } from '$app/navigation';
 
 	// Dev logger (visible by default in dev; can force with ?debug=1 or PUBLIC_DEBUG_LOGS=1)
-	let DBG_ENABLED = Boolean(import.meta.env?.DEV) || publicEnv.PUBLIC_DEBUG_LOGS === '1';
+	let DBG_ENABLED = process.env.NODE_ENV === 'development' || publicEnv.PUBLIC_DEBUG_LOGS === '1';
 	const dbg = (...args: any[]) => {
 		if (DBG_ENABLED) console.log('[learnMore]', ...args);
 	};
 
 	let submitted: 'idle' | 'submitting' | 'success' | 'error' = 'idle';
 	let step = 0;
-	let view: 'interest' | 'register' = 'interest';
+	let view: 'about' | 'interest' | 'register' = 'about';
 
 	const interests = ['Attending', 'Pitching my business', 'Investing / Partnering'];
 	let name = '';
@@ -293,7 +293,7 @@
 			}
 		} catch {}
 		dbg('debug init', {
-			DEV: import.meta.env?.DEV,
+			DEV: process.env.NODE_ENV === 'development',
 			PUBLIC_DEBUG_LOGS: publicEnv.PUBLIC_DEBUG_LOGS,
 			enabled: DBG_ENABLED
 		});
@@ -486,31 +486,113 @@
 				</p>
 			</div>
 
-			<div class="glass glass-learn-more overflow-hidden rounded-3xl backdrop-blur-xl"
-			>
-				<div class="p-6 md:p-10 backdrop-blur-sm">
-					<div role="tablist" class="tabs tabs-boxed bg-transparent border-0 backdrop-blur-md rounded-3xl p-1">
-						<button
-							role="tab"
-							class="tab h-12 text-sm md:text-base font-medium transition-all duration-300 rounded-2xl btn-neon-subtle {view === 'interest' ? 'glass-subtle text-primary shadow-md' : 'text-base-content/70 hover:text-base-content hover:bg-white/5'}"
-							on:click={() => (view = 'interest')}
-						>
-							Register Interest
-						</button>
-						<button
-							role="tab"
-							class="tab h-12 text-sm md:text-base font-medium transition-all duration-300 rounded-2xl btn-neon-subtle {view === 'register' ? 'glass-subtle text-primary shadow-md' : 'text-base-content/70 hover:text-base-content hover:bg-white/5'}"
-							on:click={() => (view = 'register')}
-						>
-							Event Registration
-						</button>
+			<div class="glass glass-learn-more overflow-hidden rounded-3xl backdrop-blur-xl">
+				<div class="p-4 md:p-6 lg:p-8 backdrop-blur-sm">
+					<div class="flex justify-center">
+						<div role="tablist" class="tabs tabs-boxed bg-transparent border-0 backdrop-blur-md rounded-3xl p-1 mb-4 md:mb-6">
+							<button
+								role="tab"
+								class="tab h-10 md:h-12 text-xs md:text-sm lg:text-base font-medium transition-all duration-300 rounded-2xl btn-neon-subtle {view === 'about' ? 'glass-subtle text-primary shadow-md' : 'text-base-content/70 hover:text-base-content hover:bg-white/5'}"
+								on:click={() => (view = 'about')}
+							>
+								About Events
+							</button>
+							<button
+								role="tab"
+								class="tab h-10 md:h-12 text-xs md:text-sm lg:text-base font-medium transition-all duration-300 rounded-2xl btn-neon-subtle {view === 'interest' ? 'glass-subtle text-primary shadow-md' : 'text-base-content/70 hover:text-base-content hover:bg-white/5'}"
+								on:click={() => (view = 'interest')}
+							>
+								Register Interest
+							</button>
+							<button
+								role="tab"
+								class="tab h-10 md:h-12 text-xs md:text-sm lg:text-base font-medium transition-all duration-300 rounded-2xl btn-neon-subtle {view === 'register' ? 'glass-subtle text-primary shadow-md' : 'text-base-content/70 hover:text-base-content hover:bg-white/5'}"
+								on:click={() => (view = 'register')}
+							>
+								Event Registration
+							</button>
+						</div>
 					</div>
 				</div>
 
-				<div class="p-6 pt-2 md:p-10 md:pt-4">
+				<div class="p-4 pt-0 md:p-6 md:pt-0 lg:p-8 lg:pt-0">
 					<div class="relative overflow-hidden">
 						<div class="grid grid-cols-1 grid-rows-1">
-						{#if view === 'interest'}
+						{#if view === 'about'}
+							<div
+								class="col-start-1 row-start-1 glass-learn-more rounded-3xl p-4 md:p-6 lg:p-8 backdrop-blur-md"
+								out:outView={{ key: 'lm-view' }}
+								in:inView={{ key: 'lm-view' }}
+							>
+								<div class="text-center mb-6 md:mb-8">
+									<h2 class="text-base-content text-xl md:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-base-content to-base-content/80 bg-clip-text mb-3 md:mb-4">
+										Quarterly Startup Events
+									</h2>
+									<p class="text-sm md:text-base lg:text-lg text-base-content/80 max-w-2xl mx-auto leading-relaxed">
+										Join Dublin's most exciting entrepreneurial community for networking, pitching, and learning opportunities.
+									</p>
+								</div>
+
+								<div class="grid gap-4 md:gap-6 lg:gap-8 md:grid-cols-2 mb-6 md:mb-8">
+									<div class="glass-subtle rounded-2xl p-4 md:p-6 backdrop-blur-sm">
+										<div class="flex items-center gap-3 mb-3">
+											<div class="w-8 h-8 md:w-10 md:h-10 bg-primary/20 rounded-full flex items-center justify-center">
+												<ArrowLeftRight class="w-4 h-4 md:w-5 md:h-5 text-primary" />
+											</div>
+											<h4 class="text-base md:text-lg font-semibold text-base-content">Pitch Your Business</h4>
+										</div>
+										<p class="text-sm md:text-base text-base-content/80 leading-relaxed">
+											Present your business idea to investors, mentors, and fellow entrepreneurs in a supportive environment.
+										</p>
+									</div>
+
+									<div class="glass-subtle rounded-2xl p-4 md:p-6 backdrop-blur-sm">
+										<div class="flex items-center gap-3 mb-3">
+											<div class="w-8 h-8 md:w-10 md:h-10 bg-accent/20 rounded-full flex items-center justify-center">
+												<BadgeDollarSign class="w-4 h-4 md:w-5 md:h-5 text-accent" />
+											</div>
+											<h4 class="text-base md:text-lg font-semibold text-base-content">Connect with Investors</h4>
+										</div>
+										<p class="text-sm md:text-base text-base-content/80 leading-relaxed">
+											Meet angel investors and VCs looking for the next big opportunity in Dublin's startup scene.
+										</p>
+									</div>
+
+									<div class="glass-subtle rounded-2xl p-4 md:p-6 backdrop-blur-sm">
+										<div class="flex items-center gap-3 mb-3">
+											<div class="w-8 h-8 md:w-10 md:h-10 bg-success/20 rounded-full flex items-center justify-center">
+												<MapPin class="w-4 h-4 md:w-5 md:h-5 text-success" />
+											</div>
+											<h4 class="text-base md:text-lg font-semibold text-base-content">Community Building</h4>
+										</div>
+										<p class="text-sm md:text-base text-base-content/80 leading-relaxed">
+											Join a thriving community of founders, entrepreneurs, and innovators in Dublin.
+										</p>
+									</div>
+
+									<div class="glass-subtle rounded-2xl p-4 md:p-6 backdrop-blur-sm">
+										<div class="flex items-center gap-3 mb-3">
+											<div class="w-8 h-8 md:w-10 md:h-10 bg-warning/20 rounded-full flex items-center justify-center">
+												<Clock class="w-4 h-4 md:w-5 md:h-5 text-warning" />
+											</div>
+											<h4 class="text-base md:text-lg font-semibold text-base-content">Regular Events</h4>
+										</div>
+										<p class="text-sm md:text-base text-base-content/80 leading-relaxed">
+											Quarterly events ensure consistent networking and growth opportunities throughout the year.
+										</p>
+									</div>
+								</div>
+
+								<div class="text-center">
+									<button
+										class="btn btn-primary btn-neon-adaptive px-6 py-3 md:px-8 md:py-4 text-sm md:text-base font-medium rounded-full"
+										on:click={() => (view = 'interest')}
+									>
+										Get Started →
+									</button>
+								</div>
+							</div>
+						{:else if view === 'interest'}
 							<div
 								class="col-start-1 row-start-1 glass-learn-more rounded-3xl p-6 md:p-8 backdrop-blur-md"
 								out:outView={{ key: 'lm-view' }}
@@ -543,14 +625,16 @@
 								{:else}
 									<form on:submit|preventDefault={submitForm} class="space-y-6">
 										<div class="glass-subtle rounded-2xl p-4 backdrop-blur-sm">
-											<div class="overflow-x-auto -mx-2 px-2">
-												<ul class="steps w-max md:w-full mb-2 text-base-content text-xs md:text-sm whitespace-nowrap">
-													<li class="step {step >= 0 ? 'step-primary' : 'step-base-300'}">Start</li>
-													<li class="step {step >= 1 ? 'step-primary' : 'step-base-300'}">Interest</li>
-													<li class="step {step >= 2 ? 'step-primary' : 'step-base-300'}">Details</li>
-													<li class="step {step >= 3 ? 'step-primary' : 'step-base-300'}">Message</li>
-													<li class="step {step >= 4 ? 'step-primary' : 'step-base-300'}">Consent</li>
-												</ul>
+											<div class="flex justify-center">
+												<div class="overflow-x-auto">
+													<ul class="steps w-max md:w-full mb-2 text-base-content text-xs md:text-sm whitespace-nowrap">
+														<li class="step {step >= 0 ? 'step-primary' : 'step-base-300'}">Start</li>
+														<li class="step {step >= 1 ? 'step-primary' : 'step-base-300'}">Interest</li>
+														<li class="step {step >= 2 ? 'step-primary' : 'step-base-300'}">Details</li>
+														<li class="step {step >= 3 ? 'step-primary' : 'step-base-300'}">Message</li>
+														<li class="step {step >= 4 ? 'step-primary' : 'step-base-300'}">Consent</li>
+													</ul>
+												</div>
 											</div>
 										</div>
 

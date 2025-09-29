@@ -64,42 +64,51 @@
     </div>
   {/if}
 
-  <!-- Floating Action Button (FAB) Navigation -->
-  <div class="fixed bottom-8 right-8 z-[9999] flex flex-col items-end gap-2">
+  <!-- Floating Action Button (FAB) Navigation - Mobile Optimized -->
+  <div class="fixed fab-container bottom-6 right-6 md:bottom-8 md:right-8 z-[9999] flex flex-col items-end gap-2">
     {#if fabOpen}
-      <div class="flex flex-col items-center mb-2 p-3 rounded-2xl glass-subtle animate-fade-in">
-  <button class="btn glass-subtle btn-neon-cool w-40 mb-2 flex items-center gap-2 border-0 hover:scale-105 transition-all duration-300" on:click={() => navTo('/')}><Home size={18}/> Home</button>
-  <button class="btn glass-subtle btn-neon-cool w-40 mb-2 flex items-center gap-2 border-0 hover:scale-105 transition-all duration-300" on:click={() => navTo('/pitch')}><Mic size={18}/> Pitch</button>
-  <button class="btn glass-subtle btn-neon-cool w-40 mb-2 flex items-center gap-2 border-0 hover:scale-105 transition-all duration-300" on:click={() => navTo('/learnMore')}><Info size={18}/> Learn More</button>
-  <button on:click={open} class="btn glass-subtle btn-neon-subtle w-40 mb-2 flex items-center gap-2 border-0 hover:scale-105 transition-all duration-300">
-    <Wallet size={18} />
-    Connect Wallet
-  </button>
+      <div class="fab-menu flex flex-col items-center mb-2 p-2 md:p-3 rounded-2xl glass-subtle animate-fade-in w-44 md:w-48">
+        <button class="btn glass-subtle btn-neon-cool w-full mb-2 flex items-center justify-center gap-2 border-0 hover:scale-105 transition-all duration-300 text-sm md:text-base" on:click={() => navTo('/')}>
+          <Home size={16} class="md:w-[18px] md:h-[18px]"/> 
+          Home
+        </button>
+        <button class="btn glass-subtle btn-neon-cool w-full mb-2 flex items-center justify-center gap-2 border-0 hover:scale-105 transition-all duration-300 text-sm md:text-base" on:click={() => navTo('/pitch')}>
+          <Mic size={16} class="md:w-[18px] md:h-[18px]"/> 
+          Pitch
+        </button>
+        <button class="btn glass-subtle btn-neon-cool w-full mb-2 flex items-center justify-center gap-2 border-0 hover:scale-105 transition-all duration-300 text-sm md:text-base" on:click={() => navTo('/learnMore')}>
+          <Info size={16} class="md:w-[18px] md:h-[18px]"/> 
+          Learn More
+        </button>
+        <button on:click={open} class="btn glass-subtle btn-neon-subtle w-full mb-2 flex items-center justify-center gap-2 border-0 hover:scale-105 transition-all duration-300 text-sm md:text-base">
+          <Wallet size={16} class="md:w-[18px] md:h-[18px]" />
+          Connect Wallet
+        </button>
         <div class="w-full flex flex-col items-center mt-2">
           <button
-            class="btn btn-circle glass-subtle border-0 hover:scale-110 transition-all duration-300"
+            class="btn btn-circle glass-subtle border-0 hover:scale-110 transition-all duration-300 w-10 h-10 md:w-12 md:h-12"
             aria-label="Toggle light/dark theme"
             on:click={() => setTheme(selectedTheme === 'light' ? 'dark' : 'light')}
           >
             {#if selectedTheme === 'light'}
-              <Sun class="h-6 w-6" />
+              <Sun class="h-5 w-5 md:h-6 md:w-6" />
             {:else}
-              <Moon class="h-6 w-6" />
+              <Moon class="h-5 w-5 md:h-6 md:w-6" />
             {/if}
           </button>
         </div>
       </div>
     {/if}
     <button
-      class="btn btn-circle btn-xl glass-subtle text-base-content shadow-lg hover:scale-110 transition-all duration-300 flex items-center justify-center text-3xl ring-2 ring-base-content/20 border-0 backdrop-blur-xl"
-      style="width:4.5rem;height:4.5rem;border-radius:50%;"
+      class="fab-button btn btn-circle glass-subtle text-base-content shadow-lg hover:scale-110 transition-all duration-300 flex items-center justify-center ring-2 ring-base-content/20 border-0 backdrop-blur-xl w-14 h-14 md:w-[4.5rem] md:h-[4.5rem]"
+      style="border-radius:50%;"
       aria-label="Open navigation menu"
       on:click={() => fabOpen = !fabOpen}
     >
       {#if fabOpen}
-        <X class="h-10 w-10" stroke-width={2.5} />
+        <X class="h-7 w-7 md:h-10 md:w-10" stroke-width={2.5} />
       {:else}
-        <Menu class="h-10 w-10" stroke-width={2.5} />
+        <Menu class="h-7 w-7 md:h-10 md:w-10" stroke-width={2.5} />
       {/if}
     </button>
   </div>

@@ -87,6 +87,14 @@ if (!$recaptchaJson || empty($recaptchaJson['success'])) {
   exit;
 }
 
+// For reCAPTCHA v3, check the score (v2 compatibility maintained)
+$scoreThreshold = 0.5; // Adjust as needed (0.0 = very likely bot, 1.0 = very likely human)
+if (isset($recaptchaJson['score']) && $recaptchaJson['score'] < $scoreThreshold) {
+  http_response_code(400);
+  echo json_encode(['error' => 'recaptcha_score_too_low', 'score' => $recaptchaJson['score'], 'threshold' => $scoreThreshold]);
+  exit;
+}
+
 $accessKey = getenv('WEB3FORMS_ACCESS_KEY') ?: getenv('WEB_ACCESS_KEY');
 if (!$accessKey) {
   http_response_code(500);

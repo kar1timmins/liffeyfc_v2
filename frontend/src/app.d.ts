@@ -10,4 +10,18 @@ declare global {
 	}
 }
 
+// Extend ImportMeta interface for Vite environment variables
+interface ImportMeta {
+	readonly env: ImportMetaEnv;
+}
+
+interface ImportMetaEnv {
+	readonly DEV: boolean;
+	readonly PROD: boolean;
+	readonly SSR: boolean;
+	readonly MODE: string;
+	// Add other Vite env variables as needed
+	[key: string]: any;
+}
+
 export {};
