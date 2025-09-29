@@ -15,6 +15,10 @@ concurrency:
 jobs:
   build-and-publish-branch:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -44,10 +48,10 @@ jobs:
           git checkout -b ${DEPLOY_BRANCH}
           git add .
           git -c user.name='github-actions' -c user.email='actions@github.com' commit -m 'Deploy frontend'
-          git remote add origin https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
+          git remote add origin https://oauth2:${DEPLOY_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
           git push --force origin ${DEPLOY_BRANCH}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
 
       - name: (Optional) FTP upload to Blacknight
         if: env.FTP_HOST != ''
