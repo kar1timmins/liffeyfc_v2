@@ -184,26 +184,97 @@ $payload = [
   'consent' => $consent
 ];
 
-$web3formsContext = stream_context_create([
-  'http' => [
-    'method' => 'POST',
-    'header' => "Content-Type: application/json\r\nAccept: application/json\r\n",
-    'content' => json_encode($payload)
-  ]
-]);
+error_log("Interest form submission - Submitting to Web3Forms with access key: " . substr($accessKey, 0, 8) . "...");
 
-$web3formsResponse = file_get_contents('https://api.web3forms.com/submit', false, $web3formsContext);
+// Try cURL first for Web3Forms submission
+$web3formsResponse = false;
+if (function_exists('curl_init')) {
+  $curl = curl_init();
+  curl_setopt_array($curl, [
+    CURLOPT_URL => 'https://api.web3forms.com/submit',
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_TIMEOUT => 30,
+    CURLOPT_POST => true,
+    CURLOPT_POSTFIELDS => json_encode($payload),
+    CURLOPT_HTTPHEADER => [
+      'Content-Type: application/json',
+      'Accept: application/json',
+      'User-Agent: LiffeyFC-ContactForm/1.0'
+    ],
+    CURLOPT_SSL_VERIFYPEER => true,
+    CURLOPT_SSL_VERIFYHOST => 2
+  ]);
+  
+  $web3formsResponse = curl_exec($curl);
+  $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+  $curlError = curl_error($curl);
+  curl_close($curl);
+  
+  if ($web3formsResponse === false || !empty($curlError)) {
+    error_log("Interest form submission - cURL failed for Web3Forms: " . $curlError);
+    $web3formsResponse = false;
+  } else {
+    error_log("Interest form submission - Web3Forms cURL success, HTTP code: " . $httpCode);
+  }
+}
+
+// Fallback to file_get_contents if cURL failed
+if ($web3formsResponse === false && ini_get('allow_url_fopen')) {
+  error_log("Interest form submission - Trying file_get_contents fallback for Web3Forms");
+  $web3formsContext = stream_context_create([
+    'http' => [
+      'method' => 'POST',
+      'header' => "Content-Type: application/json\r\nAccept: application/json\r\nUser-Agent: LiffeyFC-ContactForm/1.0\r\n",
+      'content' => json_encode($payload),
+      'timeout' => 30
+    ]
+  ]);
+  
+  $web3formsResponse = file_get_contents('https://api.web3forms.com/submit', false, $web3formsContext);
+  if ($web3formsResponse === false) {
+    error_log("Interest form submission - file_get_contents also failed for Web3Forms");
+  }
+}
+
 if ($web3formsResponse === false) {
+  error_log("Interest form submission - All methods failed to contact Web3Forms API");
   http_response_code(502);
-  echo json_encode(['error' => 'web3forms_failed']);
+  echo json_encode([
+    'error' => 'web3forms_api_unreachable',
+    'details' => 'Server cannot reach Web3Forms API. Please contact administrator.',
+    'curl_available' => function_exists('curl_init'),
+    'url_fopen_enabled' => ini_get('allow_url_fopen')
+  ]);
   exit;
 }
+
+error_log("Interest form submission - Web3Forms API response: " . $web3formsResponse);
 
 $web3formsJson = json_decode($web3formsResponse, true);
-if (!$web3formsJson || empty($web3formsJson['success'])) {
+if (!$web3formsJson) {
+  error_log("Interest form submission - Invalid JSON response from Web3Forms API");
   http_response_code(502);
-  echo json_encode(['error' => 'web3forms_error','detail' => $web3formsJson]);
+  echo json_encode([
+    'error' => 'web3forms_invalid_response', 
+    'raw_response' => substr($web3formsResponse, 0, 500) // Limit response length
+  ]);
   exit;
 }
 
-echo json_encode(['ok' => true]);
+if (empty($web3formsJson['success'])) {
+  error_log("Interest form submission - Web3Forms submission failed: " . json_encode($web3formsJson));
+  http_response_code(502);
+  echo json_encode([
+    'error' => 'web3forms_submission_failed',
+    'details' => $web3formsJson['message'] ?? 'Unknown error',
+    'web3forms_response' => $web3formsJson
+  ]);
+  exit;
+}
+
+error_log("Interest form submission - Successfully submitted to Web3Forms");
+echo json_encode([
+  'ok' => true,
+  'message' => 'Form submitted successfully',
+  'web3forms_id' => $web3formsJson['id'] ?? null
+]);

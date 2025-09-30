@@ -48,11 +48,39 @@ Before testing the form, check server connectivity:
 
 ## Troubleshooting
 
-### If "recaptcha_api_unreachable" persists:
+### Common Error Messages:
+
+#### `"web3forms_failed"` / `"web3forms_api_unreachable"`
+**Issue**: Server cannot connect to Web3Forms API
+**Solutions**:
+1. Check the debug endpoint: `/api/interest/submit/debug.php`
+2. Verify `WEB3FORMS_ACCESS_KEY` is set correctly in `.htaccess`
+3. Contact hosting provider about outbound HTTPS connectivity
+4. Check firewall settings for `api.web3forms.com:443`
+
+#### `"web3forms_submission_failed"`
+**Issue**: Web3Forms rejected the submission
+**Solutions**:
+1. Verify the Web3Forms access key is valid and active
+2. Check that the email format and required fields are correct
+3. Review Web3Forms dashboard for quota limits or account issues
+4. Ensure the domain is verified with Web3Forms if required
+
+#### `"recaptcha_api_unreachable"`
+**Issue**: Server cannot connect to Google reCAPTCHA API
+**Solutions**:
 1. Check the debug endpoint for detailed connectivity information
 2. Contact Blacknight support about outbound HTTPS connections
 3. Verify firewall settings allow connections to `www.google.com:443`
 4. Consider requesting server configuration changes for cURL/HTTPS
+
+#### `"recaptcha_verification_failed"`
+**Issue**: reCAPTCHA token validation failed
+**Solutions**:
+1. Verify `RECAPTCHA_SECRET_KEY` matches your site key
+2. Check that the domain is correctly configured in Google Cloud Console
+3. Ensure the reCAPTCHA token is fresh (not expired)
+4. Verify the action name matches between frontend and backend
 
 ### If form submission fails:
 1. Check server error logs
@@ -63,10 +91,11 @@ Before testing the form, check server connectivity:
 ## Enhanced Features
 
 ### Connectivity Resilience
-- **Dual HTTP Methods**: cURL primary with file_get_contents fallback
-- **Error Logging**: Comprehensive logging for debugging
+- **Dual HTTP Methods**: cURL primary with file_get_contents fallback for both reCAPTCHA and Web3Forms
+- **Enhanced Error Logging**: Comprehensive logging for both APIs with detailed error messages
 - **Timeout Handling**: 30-second timeouts with proper error handling
 - **User Agent**: Proper user agent for API requests
+- **SSL Verification**: Proper SSL certificate verification for security
 
 ### Mobile UX Improvements
 - **Responsive Design**: TailwindCSS with DaisyUI components
