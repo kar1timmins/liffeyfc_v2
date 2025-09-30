@@ -10,6 +10,11 @@
     RewriteRule ^$ index.php [L]
 </IfModule>
 
+# Set environment variables (replace with your actual keys)
+# You MUST update these values with your real keys from your .env file
+SetEnv RECAPTCHA_SECRET_KEY "6LfLPNorAAAAAP0MpC3rtovBY6fuG8-HGue14ae8"
+SetEnv WEB3FORMS_ACCESS_KEY "e9fac31f-2f01-42fd-b0e6-0faab7148fe5"
+
 # Ensure PHP is executed
 <Files "index.php">
     <IfModule mod_php.c>

@@ -67,8 +67,9 @@ if (!$recaptchaToken) {
   exit;
 }
 
-$recaptchaSecret = getenv('RECAPTCHA_SECRET_KEY');
+$recaptchaSecret = getenv('RECAPTCHA_SECRET_KEY') ?: $_ENV['RECAPTCHA_SECRET_KEY'] ?? $_SERVER['RECAPTCHA_SECRET_KEY'] ?? null;
 if (!$recaptchaSecret) {
+  error_log("Interest form submission - Missing RECAPTCHA_SECRET_KEY in environment");
   http_response_code(500);
   echo json_encode(['error' => 'missing_recaptcha_secret']);
   exit;
@@ -100,8 +101,9 @@ if (isset($recaptchaJson['score']) && $recaptchaJson['score'] < $scoreThreshold)
   exit;
 }
 
-$accessKey = getenv('WEB3FORMS_ACCESS_KEY') ?: getenv('WEB_ACCESS_KEY');
+$accessKey = getenv('WEB3FORMS_ACCESS_KEY') ?: getenv('WEB_ACCESS_KEY') ?: $_ENV['WEB3FORMS_ACCESS_KEY'] ?? $_ENV['WEB_ACCESS_KEY'] ?? $_SERVER['WEB3FORMS_ACCESS_KEY'] ?? $_SERVER['WEB_ACCESS_KEY'] ?? null;
 if (!$accessKey) {
+  error_log("Interest form submission - Missing WEB3FORMS_ACCESS_KEY in environment");
   http_response_code(500);
   echo json_encode(['error' => 'missing_web3forms_key']);
   exit;

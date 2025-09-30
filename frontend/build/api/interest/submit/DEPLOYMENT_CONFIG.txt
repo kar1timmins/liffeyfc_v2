@@ -1,0 +1,23 @@
+# Environment Configuration for Production
+# Copy this template and customize for your hosting environment
+
+# Method 1: Using .htaccess (recommended for shared hosting)
+# Add these lines to /api/interest/submit/.htaccess:
+SetEnv RECAPTCHA_SECRET_KEY "your-recaptcha-secret-key"
+SetEnv WEB3FORMS_ACCESS_KEY "your-web3forms-access-key"
+
+# Method 2: Using hosting control panel
+# Go to your hosting control panel and set these environment variables:
+# RECAPTCHA_SECRET_KEY = your-recaptcha-secret-key
+# WEB3FORMS_ACCESS_KEY = your-web3forms-access-key
+
+# Method 3: Using php.ini (if you have access)
+# Add these lines to your php.ini:
+# auto_prepend_file = "/path/to/env-config.php"
+# Then create env-config.php with:
+# $_ENV['RECAPTCHA_SECRET_KEY'] = 'your-recaptcha-secret-key';
+# $_ENV['WEB3FORMS_ACCESS_KEY'] = 'your-web3forms-access-key';
+
+# Current values from your .env file:
+# RECAPTCHA_SECRET_KEY = 6LfLPNorAAAAAP0MpC3rtovBY6fuG8-HGue14ae8
+# WEB3FORMS_ACCESS_KEY = e9fac31f-2f01-42fd-b0e6-0faab7148fe5
