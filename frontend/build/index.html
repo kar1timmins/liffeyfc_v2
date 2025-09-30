@@ -1,46 +1,49 @@
 <!doctype html>
 <html lang="en" data-theme="light">
-				<head>
+	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-				<script>
-					// Set theme ASAP to prevent flash on first paint
-					try {
-						const t = localStorage.getItem('theme');
-						if (t) document.documentElement.setAttribute('data-theme', t);
-					} catch {}
-				</script>
+		<meta http-equiv="Content-Security-Policy" content="
+			default-src 'self';
+			script-src 'self' 'unsafe-inline' https://www.google.com https://www.gstatic.com;
+			style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+			font-src 'self' https://fonts.gstatic.com;
+			connect-src 'self' https://www.google.com https://api.web3forms.com;
+			frame-src 'self' https://www.google.com https://recaptcha.google.com;
+			img-src 'self' data: https:;
+		" />
+		<script>
+			// Set theme ASAP to prevent flash on first paint
+			try {
+				const t = localStorage.getItem('theme');
+				if (t) document.documentElement.setAttribute('data-theme', t);
+			} catch {}
+		</script>
 		
-		<link rel="modulepreload" href="/_app/immutable/entry/start.-AH9AN0J.js">
-		<link rel="modulepreload" href="/_app/immutable/chunks/dEk8DbPM.js">
+		<link rel="modulepreload" href="/_app/immutable/entry/start.DpKnwV9v.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/CXVuvDv_.js">
 		<link rel="modulepreload" href="/_app/immutable/chunks/-nAcHlOV.js">
-		<link rel="modulepreload" href="/_app/immutable/entry/app.o-6L10US.js">
+		<link rel="modulepreload" href="/_app/immutable/entry/app.DSmrbNKW.js">
 		<link rel="modulepreload" href="/_app/immutable/chunks/DsnmJJEf.js">
 		<link rel="modulepreload" href="/_app/immutable/chunks/xxJvGU-2.js">
 		<link rel="modulepreload" href="/_app/immutable/chunks/DbPmA-la.js">
 		<link rel="modulepreload" href="/_app/immutable/chunks/Bmgvg9Vq.js">
-		<link rel="modulepreload" href="/_app/env.js">
 	</head>
 	<body data-sveltekit-preload-data="hover">
 		<div style="display: contents">
 			<script>
 				{
-					__sveltekit_1bu7t08 = {
-						base: "",
-						env: null
+					__sveltekit_y7ppa1 = {
+						base: ""
 					};
 
 					const element = document.currentScript.parentElement;
 
-					import("/_app/env.js").then(({ env }) => {
-						__sveltekit_1bu7t08.env = env;
-
-						Promise.all([
-							import("/_app/immutable/entry/start.-AH9AN0J.js"),
-							import("/_app/immutable/entry/app.o-6L10US.js")
-						]).then(([kit, app]) => {
-							kit.start(app, element);
-						});
+					Promise.all([
+						import("/_app/immutable/entry/start.DpKnwV9v.js"),
+						import("/_app/immutable/entry/app.DSmrbNKW.js")
+					]).then(([kit, app]) => {
+						kit.start(app, element);
 					});
 				}
 			</script>
