@@ -1,6 +1,0 @@
-[build.environment]
-  NODE_VERSION = "20"
-  NPM_FLAGS = "--include=dev"
-[build]
-  command = "npm ci && npm run build"
-  publish = ".netlify/publish"
