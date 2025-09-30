@@ -76,18 +76,41 @@ if (!$recaptchaSecret) {
 }
 
 // Verify reCAPTCHA
+error_log("Interest form submission - Attempting reCAPTCHA verification");
+error_log("Interest form submission - Token length: " . strlen($recaptchaToken));
+
+$recaptchaData = [
+  'secret' => $recaptchaSecret,
+  'response' => $recaptchaToken
+];
+
 $recaptchaResponse = file_get_contents('https://www.google.com/recaptcha/api/siteverify', false, stream_context_create([
   'http' => [
     'method' => 'POST',
     'header' => "Content-type: application/x-www-form-urlencoded\r\n",
-    'content' => http_build_query([
-      'secret' => $recaptchaSecret,
-      'response' => $recaptchaToken
-    ])
+    'content' => http_build_query($recaptchaData)
   ]
 ]));
+
+if ($recaptchaResponse === false) {
+  error_log("Interest form submission - Failed to contact reCAPTCHA API");
+  http_response_code(400);
+  echo json_encode(['error' => 'recaptcha_api_unreachable']);
+  exit;
+}
+
+error_log("Interest form submission - reCAPTCHA API response: " . $recaptchaResponse);
+
 $recaptchaJson = json_decode($recaptchaResponse, true);
-if (!$recaptchaJson || empty($recaptchaJson['success'])) {
+if (!$recaptchaJson) {
+  error_log("Interest form submission - Invalid JSON response from reCAPTCHA API");
+  http_response_code(400);
+  echo json_encode(['error' => 'recaptcha_invalid_response', 'raw_response' => $recaptchaResponse]);
+  exit;
+}
+
+if (empty($recaptchaJson['success'])) {
+  error_log("Interest form submission - reCAPTCHA verification failed: " . json_encode($recaptchaJson));
   http_response_code(400);
   echo json_encode(['error' => 'recaptcha_verification_failed','detail' => $recaptchaJson]);
   exit;
