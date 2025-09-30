@@ -13,9 +13,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
   exit;
 }
 
+// Debug logging
+error_log("Interest form submission - Method: " . $_SERVER['REQUEST_METHOD']);
+error_log("Interest form submission - Content-Type: " . ($_SERVER['CONTENT_TYPE'] ?? 'not set'));
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+  error_log("Interest form submission - Invalid method: " . $_SERVER['REQUEST_METHOD']);
   http_response_code(405);
-  echo json_encode(['error' => 'method_not_allowed']);
+  echo json_encode(['error' => 'method_not_allowed', 'method' => $_SERVER['REQUEST_METHOD']]);
   exit;
 }
 

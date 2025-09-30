@@ -7,7 +7,7 @@ export default defineConfig({
 	plugins: [tailwindcss(), sveltekit(), devtoolsJson()],
 	server: {
 		proxy: {
-			'/api/interest/submit': {
+			'/api/interest/submit/': {
 				target: 'http://backend:3000',
 				changeOrigin: true,
 				rewrite: (path) => '/contact/interest',

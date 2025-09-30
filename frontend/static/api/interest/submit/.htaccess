@@ -1,0 +1,26 @@
+# Enable PHP execution and proper routing for API endpoint
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Ensure PHP files are processed
+    DirectoryIndex index.php
+    
+    # Handle POST requests to this directory
+    RewriteCond %{REQUEST_METHOD} ^POST$
+    RewriteRule ^$ index.php [L]
+</IfModule>
+
+# Ensure PHP is executed
+<Files "index.php">
+    <IfModule mod_php.c>
+        php_flag engine on
+    </IfModule>
+</Files>
+
+# Set proper headers for API responses
+<IfModule mod_headers.c>
+    Header always set Access-Control-Allow-Origin "*"
+    Header always set Access-Control-Allow-Methods "POST, OPTIONS"
+    Header always set Access-Control-Allow-Headers "Content-Type"
+    Header always set Content-Type "application/json; charset=utf-8"
+</IfModule>

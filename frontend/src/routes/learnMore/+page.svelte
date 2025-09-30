@@ -180,7 +180,7 @@
 				recaptchaToken: token
 			};
 
-			const res = await fetch('/api/interest/submit', {
+			const res = await fetch('/api/interest/submit/', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(payload)
