@@ -15,6 +15,15 @@
 SetEnv RECAPTCHA_SECRET_KEY "6LfLPNorAAAAAP0MpC3rtovBY6fuG8-HGue14ae8"
 SetEnv WEB3FORMS_ACCESS_KEY "e9fac31f-2f01-42fd-b0e6-0faab7148fe5"
 
+# PHP configuration for better connectivity
+<IfModule mod_php.c>
+    php_flag engine on
+    php_value allow_url_fopen 1
+    php_value user_agent "Mozilla/5.0 (compatible; reCAPTCHA verification)"
+    php_value default_socket_timeout 30
+    php_value max_execution_time 60
+</IfModule>
+
 # Ensure PHP is executed
 <Files "index.php">
     <IfModule mod_php.c>

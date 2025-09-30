@@ -25,22 +25,57 @@ $info = [
   'file_get_contents_enabled' => function_exists('file_get_contents') && ini_get('allow_url_fopen'),
   'curl_enabled' => function_exists('curl_init'),
   'openssl_enabled' => extension_loaded('openssl'),
+  'user_agent_restriction' => ini_get('user_agent'),
+  'max_execution_time' => ini_get('max_execution_time'),
   'server_time' => date('Y-m-d H:i:s T'),
 ];
 
-// Test reCAPTCHA API connectivity (without sending actual secret)
-$testUrl = 'https://www.google.com/recaptcha/api/siteverify';
-$testContext = stream_context_create([
-  'http' => [
-    'method' => 'POST',
-    'header' => "Content-type: application/x-www-form-urlencoded\r\n",
-    'content' => http_build_query(['secret' => 'test', 'response' => 'test'])
-  ]
-]);
+// Test reCAPTCHA API connectivity with cURL
+if (function_exists('curl_init')) {
+  $ch = curl_init();
+  curl_setopt($ch, CURLOPT_URL, 'https://www.google.com/recaptcha/api/siteverify');
+  curl_setopt($ch, CURLOPT_POST, true);
+  curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query(['secret' => 'test', 'response' => 'test']));
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+  curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+  curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (compatible; reCAPTCHA verification)');
+  
+  $curlResponse = curl_exec($ch);
+  $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+  $curlError = curl_error($ch);
+  curl_close($ch);
+  
+  $info['curl_test'] = [
+    'success' => $curlResponse !== false,
+    'http_code' => $httpCode,
+    'error' => $curlError,
+    'response_length' => $curlResponse ? strlen($curlResponse) : 0
+  ];
+} else {
+  $info['curl_test'] = 'cURL not available';
+}
 
-$testResponse = @file_get_contents($testUrl, false, $testContext);
-$info['can_reach_recaptcha_api'] = $testResponse !== false;
-$info['recaptcha_api_test_response'] = $testResponse ? 'received response' : 'failed to connect';
+// Test file_get_contents connectivity
+if (ini_get('allow_url_fopen')) {
+  $context = stream_context_create([
+    'http' => [
+      'method' => 'POST',
+      'header' => "Content-type: application/x-www-form-urlencoded\r\n",
+      'content' => http_build_query(['secret' => 'test', 'response' => 'test']),
+      'timeout' => 10
+    ]
+  ]);
+  
+  $fgcResponse = @file_get_contents('https://www.google.com/recaptcha/api/siteverify', false, $context);
+  
+  $info['file_get_contents_test'] = [
+    'success' => $fgcResponse !== false,
+    'response_length' => $fgcResponse ? strlen($fgcResponse) : 0
+  ];
+} else {
+  $info['file_get_contents_test'] = 'allow_url_fopen disabled';
+}
 
 echo json_encode($info, JSON_PRETTY_PRINT);
 ?>

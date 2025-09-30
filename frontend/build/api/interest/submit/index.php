@@ -84,18 +84,54 @@ $recaptchaData = [
   'response' => $recaptchaToken
 ];
 
-$recaptchaResponse = file_get_contents('https://www.google.com/recaptcha/api/siteverify', false, stream_context_create([
-  'http' => [
-    'method' => 'POST',
-    'header' => "Content-type: application/x-www-form-urlencoded\r\n",
-    'content' => http_build_query($recaptchaData)
-  ]
-]));
+$recaptchaResponse = false;
+$recaptchaJson = null;
+
+// Try cURL first (more reliable on shared hosting)
+if (function_exists('curl_init')) {
+  error_log("Interest form submission - Using cURL for reCAPTCHA verification");
+  $ch = curl_init();
+  curl_setopt($ch, CURLOPT_URL, 'https://www.google.com/recaptcha/api/siteverify');
+  curl_setopt($ch, CURLOPT_POST, true);
+  curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($recaptchaData));
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+  curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+  curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (compatible; reCAPTCHA verification)');
+  
+  $recaptchaResponse = curl_exec($ch);
+  $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+  $curlError = curl_error($ch);
+  curl_close($ch);
+  
+  if ($recaptchaResponse === false) {
+    error_log("Interest form submission - cURL failed: " . $curlError);
+  } else {
+    error_log("Interest form submission - cURL success, HTTP code: " . $httpCode);
+  }
+}
+
+// Fallback to file_get_contents if cURL failed
+if ($recaptchaResponse === false && ini_get('allow_url_fopen')) {
+  error_log("Interest form submission - Falling back to file_get_contents");
+  $recaptchaResponse = file_get_contents('https://www.google.com/recaptcha/api/siteverify', false, stream_context_create([
+    'http' => [
+      'method' => 'POST',
+      'header' => "Content-type: application/x-www-form-urlencoded\r\n",
+      'content' => http_build_query($recaptchaData)
+    ]
+  ]));
+}
 
 if ($recaptchaResponse === false) {
-  error_log("Interest form submission - Failed to contact reCAPTCHA API");
+  error_log("Interest form submission - Failed to contact reCAPTCHA API with both methods");
   http_response_code(400);
-  echo json_encode(['error' => 'recaptcha_api_unreachable']);
+  echo json_encode([
+    'error' => 'recaptcha_api_unreachable',
+    'details' => 'Server cannot reach Google reCAPTCHA API. Please contact administrator.',
+    'curl_available' => function_exists('curl_init'),
+    'url_fopen_enabled' => ini_get('allow_url_fopen')
+  ]);
   exit;
 }
 
