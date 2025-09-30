@@ -168,6 +168,17 @@ if (!$accessKey) {
   exit;
 }
 
+// Validate access key format (Web3Forms keys are typically UUIDs)
+if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $accessKey)) {
+  error_log("Interest form submission - Invalid Web3Forms access key format: " . substr($accessKey, 0, 8) . "...");
+  http_response_code(500);
+  echo json_encode([
+    'error' => 'invalid_web3forms_key_format',
+    'details' => 'Web3Forms access key should be a valid UUID format'
+  ]);
+  exit;
+}
+
 $payload = [
   'access_key' => $accessKey,
   'to' => 'info@liffeyfoundersclub.com',
@@ -185,9 +196,11 @@ $payload = [
 ];
 
 error_log("Interest form submission - Submitting to Web3Forms with access key: " . substr($accessKey, 0, 8) . "...");
+error_log("Interest form submission - Payload keys: " . implode(', ', array_keys($payload)));
 
 // Try cURL first for Web3Forms submission
 $web3formsResponse = false;
+$responseHeaders = '';
 if (function_exists('curl_init')) {
   $curl = curl_init();
   curl_setopt_array($curl, [
@@ -202,7 +215,11 @@ if (function_exists('curl_init')) {
       'User-Agent: LiffeyFC-ContactForm/1.0'
     ],
     CURLOPT_SSL_VERIFYPEER => true,
-    CURLOPT_SSL_VERIFYHOST => 2
+    CURLOPT_SSL_VERIFYHOST => 2,
+    CURLOPT_HEADERFUNCTION => function($curl, $header) use (&$responseHeaders) {
+      $responseHeaders .= $header;
+      return strlen($header);
+    }
   ]);
   
   $web3formsResponse = curl_exec($curl);
@@ -215,6 +232,7 @@ if (function_exists('curl_init')) {
     $web3formsResponse = false;
   } else {
     error_log("Interest form submission - Web3Forms cURL success, HTTP code: " . $httpCode);
+    error_log("Interest form submission - Response headers: " . trim($responseHeaders));
   }
 }
 
@@ -248,15 +266,58 @@ if ($web3formsResponse === false) {
   exit;
 }
 
-error_log("Interest form submission - Web3Forms API response: " . $web3formsResponse);
+error_log("Interest form submission - Web3Forms API response length: " . strlen($web3formsResponse));
+error_log("Interest form submission - Web3Forms API response (first 500 chars): " . substr($web3formsResponse, 0, 500));
+
+// Check if response looks like HTML (error page)
+if (stripos($web3formsResponse, '<!DOCTYPE') !== false || stripos($web3formsResponse, '<html') !== false) {
+  error_log("Interest form submission - Web3Forms returned HTML instead of JSON");
+  http_response_code(502);
+  echo json_encode([
+    'error' => 'web3forms_html_response',
+    'details' => 'Web3Forms API returned HTML error page instead of JSON',
+    'response_preview' => substr(strip_tags($web3formsResponse), 0, 200)
+  ]);
+  exit;
+}
 
 $web3formsJson = json_decode($web3formsResponse, true);
+$jsonError = json_last_error();
+
 if (!$web3formsJson) {
-  error_log("Interest form submission - Invalid JSON response from Web3Forms API");
+  $jsonErrorMsg = '';
+  switch ($jsonError) {
+    case JSON_ERROR_NONE:
+      $jsonErrorMsg = 'No errors';
+      break;
+    case JSON_ERROR_DEPTH:
+      $jsonErrorMsg = 'Maximum stack depth exceeded';
+      break;
+    case JSON_ERROR_STATE_MISMATCH:
+      $jsonErrorMsg = 'Underflow or the modes mismatch';
+      break;
+    case JSON_ERROR_CTRL_CHAR:
+      $jsonErrorMsg = 'Unexpected control character found';
+      break;
+    case JSON_ERROR_SYNTAX:
+      $jsonErrorMsg = 'Syntax error, malformed JSON';
+      break;
+    case JSON_ERROR_UTF8:
+      $jsonErrorMsg = 'Malformed UTF-8 characters, possibly incorrectly encoded';
+      break;
+    default:
+      $jsonErrorMsg = 'Unknown error';
+      break;
+  }
+  
+  error_log("Interest form submission - JSON decode error: $jsonErrorMsg (code: $jsonError)");
   http_response_code(502);
   echo json_encode([
     'error' => 'web3forms_invalid_response', 
-    'raw_response' => substr($web3formsResponse, 0, 500) // Limit response length
+    'details' => "JSON decode failed: $jsonErrorMsg",
+    'json_error_code' => $jsonError,
+    'raw_response' => substr($web3formsResponse, 0, 500),
+    'response_length' => strlen($web3formsResponse)
   ]);
   exit;
 }
