@@ -14,6 +14,7 @@
 	import { onMount } from 'svelte';
 	import { env as publicEnv } from '$env/dynamic/public';
 	import { goto } from '$app/navigation';
+	import { generateRandomCircles, animateCircles, getNextEvent, type Circle } from '$lib/animations';
 
 	// Dev logger (visible by default in dev; can force with ?debug=1 or PUBLIC_DEBUG_LOGS=1)
 	let DBG_ENABLED = process.env.NODE_ENV === 'development' || publicEnv.PUBLIC_DEBUG_LOGS === '1';
@@ -80,54 +81,16 @@
 	$: emailValid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailClean);
 
 	// Dynamic floating circles
-	interface Circle {
-		id: number;
-		x: number;
-		y: number;
-		size: number;
-		animationDelay: number;
-		dx: number;
-		dy: number;
-	}
-
 	let circles: Circle[] = [];
 	let animationFrame: number;
 
-	function generateRandomCircles() {
-		circles = Array.from({ length: 6 }, (_, i) => ({
-			id: i,
-			x: Math.random() * 80 + 10, // 10-90% to avoid edges
-			y: Math.random() * 80 + 10,
-			size: Math.random() * 20 + 10, // 10-30px sizes
-			animationDelay: Math.random() * 4,
-			dx: (Math.random() - 0.5) * 0.02, // Slow movement speed
-			dy: (Math.random() - 0.5) * 0.02
-		}));
+	function initCircles() {
+		circles = generateRandomCircles(12);
 	}
 
-	function animateCircles() {
-		circles = circles.map(circle => {
-			let newX = circle.x + circle.dx;
-			let newY = circle.y + circle.dy;
-
-			// Bounce off edges
-			if (newX <= 5 || newX >= 95) {
-				circle.dx *= -1;
-				newX = Math.max(5, Math.min(95, newX));
-			}
-			if (newY <= 5 || newY >= 95) {
-				circle.dy *= -1;
-				newY = Math.max(5, Math.min(95, newY));
-			}
-
-			return {
-				...circle,
-				x: newX,
-				y: newY
-			};
-		});
-
-		animationFrame = requestAnimationFrame(animateCircles);
+	function startAnimation() {
+		circles = animateCircles(circles);
+		animationFrame = requestAnimationFrame(startAnimation);
 	}
 	$: step2NameOk = nameClean.length >= 2;
 	$: step2EmailOk = emailValid;
@@ -178,10 +141,8 @@
 		return recaptchaScriptPromise;
 	}
 
-	// Compute the event's year and quarter (align with header logic)
-	const now = new Date();
-	const eventYear = now.getFullYear();
-	const eventQuarter = now.getMonth() >= 6 ? 3 : 2; // mirrors the header display
+	// Compute the next event details
+	const nextEvent = getNextEvent();
 
 	function next() {
 		if (step < 4) step += 1;
@@ -298,8 +259,8 @@
 			enabled: DBG_ENABLED
 		});
 		// Initialize floating circles
-		generateRandomCircles();
-		animateCircles();
+		initCircles();
+		startAnimation();
 		// Render will be scheduled reactively when step === 4
 		mountedLM = true;
 
@@ -375,8 +336,8 @@
 				pitchedBefore,
 				interest,
 				message,
-				event_year: eventYear,
-				event_quarter: `Q${eventQuarter}`,
+				event_year: nextEvent.year,
+				event_quarter: nextEvent.displayQuarter,
 				consent,
 				recaptchaToken
 			};
@@ -460,7 +421,7 @@
 		}}
 	>
 		<!-- Floating background elements for depth -->
-		<div class="absolute inset-0 pointer-events-none opacity-40">
+		<div class="absolute inset-0 pointer-events-none">
 			{#each circles as circle (circle.id)}
 				<div 
 					class="absolute rounded-full glass-subtle animate-pulse transition-all duration-1000 ease-out" 
@@ -471,6 +432,7 @@
 						height: {circle.size}px;
 						animation-delay: {circle.animationDelay}s;
 						transform: translate(-50%, -50%);
+						opacity: {circle.opacity};
 					"
 				></div>
 			{/each}
@@ -894,14 +856,14 @@
 										<div class="glass-subtle rounded-full px-4 py-2 inline-flex items-center gap-2">
 											<span class="w-3 h-3 bg-accent rounded-full animate-pulse"></span>
 											<h3 class="text-lg font-bold md:text-xl text-accent">
-												Next Event: Q{eventQuarter} {eventYear}
+												Next Event: {nextEvent.displayQuarter} {nextEvent.year}
 											</h3>
 										</div>
 									</div>
 									<div class="grid grid-cols-1 gap-4 text-sm text-base-content md:grid-cols-2">
 										<div class="glass-subtle rounded-xl p-4 flex items-center gap-3 backdrop-blur-sm">
 											<CalendarDays class="text-accent h-6 w-6 flex-shrink-0" />
-											<div><span class="font-semibold">Date:</span> 9th September</div>
+											<div><span class="font-semibold">Date:</span> {nextEvent.nextEventDate}</div>
 										</div>
 										<div class="glass-subtle rounded-xl p-4 flex items-center gap-3 backdrop-blur-sm">
 											<Clock class="text-accent h-6 w-6 flex-shrink-0" />

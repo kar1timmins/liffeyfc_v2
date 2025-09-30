@@ -1,1 +1,1 @@
-export const env={"PUBLIC_RECAPTCHA_SITE_KEY":"6LfFSdkrAAAAAPj-dUVXMhGUvbYWsL3-XvjFJG6X","PUBLIC_DEBUG_LOGS":"1","PUBLIC_APP_ENV":"production","PUBLIC_API_URL":"http://localhost:3000","PUBLIC_FORM_API_URL":"/api/interest/submit/"}
+export const env={"PUBLIC_RECAPTCHA_SITE_KEY":"6LfFSdkrAAAAAPj-dUVXMhGUvbYWsL3-XvjFJG6X","PUBLIC_DEBUG_LOGS":"1","PUBLIC_APP_ENV":"development","PUBLIC_API_URL":"http://localhost:3000","PUBLIC_FORM_API_URL":"/api/interest/submit/"}

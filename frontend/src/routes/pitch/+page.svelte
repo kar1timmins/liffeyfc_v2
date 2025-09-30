@@ -4,6 +4,7 @@
   import { fade } from 'svelte/transition';
   import { goto, preloadCode } from '$app/navigation';
   import { MoveRight, ChevronLeft, ChevronRight, X as CloseIcon } from 'lucide-svelte';
+  import { generateRandomCircles, animateCircles, type Circle } from '$lib/animations';
 
   // Using 9 images to match the collage layout in the reference photo
   const images = [
@@ -40,10 +41,15 @@
 
   onMount(() => {
     mountedPitch = true;
+    // Initialize floating circles
+    initCircles();
+    startAnimation();
   });
 
   onDestroy(() => {
-    // no-op
+    if (animationFrame) {
+      cancelAnimationFrame(animationFrame);
+    }
   });
 
   async function revealStats() {
@@ -78,6 +84,19 @@
   function nextImage() { lightboxIndex = (lightboxIndex + 1) % images.length; }
   function prevImage() { lightboxIndex = (lightboxIndex - 1 + images.length) % images.length; }
 
+  // Dynamic floating circles
+  let circles: Circle[] = [];
+  let animationFrame: number;
+
+  function initCircles() {
+    circles = generateRandomCircles(15); // More circles for pitch page
+  }
+
+  function startAnimation() {
+    circles = animateCircles(circles);
+    animationFrame = requestAnimationFrame(startAnimation);
+  }
+
   function onKey(e: KeyboardEvent) {
     if (!lightboxOpen) return;
     if (e.key === 'Escape') { e.preventDefault(); closeLightbox(); }
@@ -111,8 +130,28 @@
 
 {#if showCarousel}
   <div out:send={{ key: 'pitch-sect' }} in:receive={{ key: 'pitch-sect' }}>
-    <section class="py-16 px-4 max-w-6xl mx-auto">
-      <h2 class="text-4xl md:text-5xl font-extrabold mb-10 text-center tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent drop-shadow-lg">
+    <section class="py-16 px-4 max-w-6xl mx-auto relative overflow-hidden">
+      <!-- Floating background elements for depth -->
+      {#if !showStats}
+        <div class="absolute inset-0 pointer-events-none">
+          {#each circles as circle (circle.id)}
+            <div 
+              class="absolute rounded-full glass-subtle animate-pulse transition-all duration-1000 ease-out" 
+              style="
+                left: {circle.x}%; 
+                top: {circle.y}%; 
+                width: {circle.size}px; 
+                height: {circle.size}px;
+                animation-delay: {circle.animationDelay}s;
+                transform: translate(-50%, -50%);
+                opacity: {circle.opacity};
+              "
+            ></div>
+          {/each}
+        </div>
+      {/if}
+
+      <h2 class="text-4xl md:text-5xl font-extrabold mb-10 text-center tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent drop-shadow-lg relative z-10">
         Visualize Your Pitch!
       </h2>
 
