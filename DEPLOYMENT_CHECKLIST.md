@@ -36,10 +36,11 @@ SetEnv WEB3FORMS_ACCESS_KEY "your_actual_web3forms_key_here"
 
 ### 3. Test Connectivity
 Before testing the form, check server connectivity and configuration:
-1. **General diagnostics**: `https://yourdomain.com/api/interest/submit/debug.php`
-2. **Web3Forms specific test**: `https://yourdomain.com/api/interest/submit/test_web3forms.php`
-3. Review the connectivity test results
-4. Verify both cURL and file_get_contents functionality
+1. **Network connectivity**: `https://yourdomain.com/api/interest/submit/connectivity_test.php`
+2. **General diagnostics**: `https://yourdomain.com/api/interest/submit/debug.php`
+3. **Web3Forms specific test**: `https://yourdomain.com/api/interest/submit/test_web3forms.php`
+4. Review the connectivity test results
+5. Verify both cURL and file_get_contents functionality
 
 ### 4. Test Form Submission
 1. Visit your main site
@@ -50,6 +51,16 @@ Before testing the form, check server connectivity and configuration:
 ## Troubleshooting
 
 ### Common Error Messages:
+
+#### `"web3forms_api_unreachable"`
+**Issue**: Server cannot connect to Web3Forms API using any method
+**Solutions**:
+1. **Network Diagnostics**: Run the connectivity test script to identify the specific issue
+2. **Firewall Settings**: Contact Blacknight about outbound HTTPS connections on port 443
+3. **DNS Resolution**: Verify `api.web3forms.com` resolves correctly from your server
+4. **IP Blocking**: Check if your server IP is blocked by Cloudflare or Web3Forms
+5. **Proxy Configuration**: Ask hosting provider about proxy settings for outbound requests
+6. **Alternative Ports**: Some hosts block standard HTTPS ports - ask about alternatives
 
 #### `"web3forms_failed"` / `"web3forms_api_unreachable"`
 **Issue**: Server cannot connect to Web3Forms API

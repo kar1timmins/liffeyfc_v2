@@ -238,6 +238,7 @@ if (function_exists('curl_init')) {
   
   if ($web3formsResponse === false || !empty($curlError)) {
     error_log("Interest form submission - cURL failed for Web3Forms: " . $curlError);
+    error_log("Interest form submission - cURL info: HTTP Code: $httpCode, Error: $curlError");
     $web3formsResponse = false;
   } else {
     error_log("Interest form submission - Web3Forms cURL success, HTTP code: " . $httpCode);
@@ -269,18 +270,62 @@ if ($web3formsResponse === false && ini_get('allow_url_fopen')) {
   
   $web3formsResponse = file_get_contents('https://api.web3forms.com/submit', false, $web3formsContext);
   if ($web3formsResponse === false) {
+    $error = error_get_last();
     error_log("Interest form submission - file_get_contents also failed for Web3Forms");
+    error_log("Interest form submission - file_get_contents error: " . ($error['message'] ?? 'Unknown error'));
+  } else {
+    error_log("Interest form submission - Web3Forms file_get_contents success");
   }
 }
 
 if ($web3formsResponse === false) {
   error_log("Interest form submission - All methods failed to contact Web3Forms API");
+  
+  // Gather diagnostic information
+  $diagnostics = [
+    'curl_available' => function_exists('curl_init'),
+    'url_fopen_enabled' => ini_get('allow_url_fopen'),
+    'openssl_loaded' => extension_loaded('openssl'),
+    'user_agent_set' => !empty(ini_get('user_agent')),
+    'server_time' => date('Y-m-d H:i:s T'),
+    'php_version' => PHP_VERSION
+  ];
+  
+  // Try a simple connectivity test
+  $testConnectivity = false;
+  if (function_exists('curl_init')) {
+    $testCurl = curl_init();
+    curl_setopt_array($testCurl, [
+      CURLOPT_URL => 'https://api.web3forms.com',
+      CURLOPT_RETURNTRANSFER => true,
+      CURLOPT_TIMEOUT => 10,
+      CURLOPT_NOBODY => true,
+      CURLOPT_SSL_VERIFYPEER => false  // Disable SSL verification for test
+    ]);
+    $testResult = curl_exec($testCurl);
+    $testHttpCode = curl_getinfo($testCurl, CURLINFO_HTTP_CODE);
+    curl_close($testCurl);
+    
+    if ($testResult !== false && $testHttpCode > 0) {
+      $testConnectivity = "HTTP $testHttpCode";
+    }
+  }
+  
+  $diagnostics['basic_connectivity'] = $testConnectivity;
+  
+  error_log("Interest form submission - Diagnostics: " . json_encode($diagnostics));
+  
   http_response_code(502);
   echo json_encode([
     'error' => 'web3forms_api_unreachable',
-    'details' => 'Server cannot reach Web3Forms API. Please contact administrator.',
-    'curl_available' => function_exists('curl_init'),
-    'url_fopen_enabled' => ini_get('allow_url_fopen')
+    'details' => 'Server cannot reach Web3Forms API after trying both cURL and file_get_contents methods.',
+    'diagnostics' => $diagnostics,
+    'troubleshooting' => [
+      'Check server firewall settings for outbound HTTPS connections',
+      'Verify DNS resolution for api.web3forms.com',
+      'Contact hosting provider about outbound connection restrictions',
+      'Consider using alternative email services'
+    ]
   ]);
   exit;
 }
