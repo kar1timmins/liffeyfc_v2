@@ -36,11 +36,12 @@ SetEnv WEB3FORMS_ACCESS_KEY "your_actual_web3forms_key_here"
 
 ### 3. Test Connectivity
 Before testing the form, check server connectivity and configuration:
-1. **Network connectivity**: `https://yourdomain.com/api/interest/submit/connectivity_test.php`
-2. **General diagnostics**: `https://yourdomain.com/api/interest/submit/debug.php`
-3. **Web3Forms specific test**: `https://yourdomain.com/api/interest/submit/test_web3forms.php`
-4. Review the connectivity test results
-5. Verify both cURL and file_get_contents functionality
+1. **Access key validation**: `https://yourdomain.com/api/interest/submit/validate_key.php`
+2. **Network connectivity**: `https://yourdomain.com/api/interest/submit/connectivity_test.php`
+3. **General diagnostics**: `https://yourdomain.com/api/interest/submit/debug.php`
+4. **Web3Forms specific test**: `https://yourdomain.com/api/interest/submit/test_web3forms.php`
+5. Review the connectivity test results
+6. Verify both cURL and file_get_contents functionality
 
 ### 4. Test Form Submission
 1. Visit your main site
@@ -51,6 +52,15 @@ Before testing the form, check server connectivity and configuration:
 ## Troubleshooting
 
 ### Common Error Messages:
+
+#### `"web3forms_access_denied"`
+**Issue**: Web3Forms API returns HTTP 403 Forbidden
+**Solutions**:
+1. **Validate Access Key**: Use the key validation script to test your access key
+2. **Check Account Status**: Login to Web3Forms dashboard and verify account is active
+3. **Quota Limits**: Ensure you haven't exceeded your monthly submission limits
+4. **Regenerate Key**: Try creating a new access key in your Web3Forms dashboard
+5. **Domain Restrictions**: Verify there are no domain restrictions on your access key
 
 #### `"web3forms_api_unreachable"`
 **Issue**: Server cannot connect to Web3Forms API using any method

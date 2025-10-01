@@ -174,7 +174,8 @@ if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
   http_response_code(500);
   echo json_encode([
     'error' => 'invalid_web3forms_key_format',
-    'details' => 'Web3Forms access key should be a valid UUID format'
+    'details' => 'Web3Forms access key should be a valid UUID format',
+    'key_preview' => substr($accessKey, 0, 8) . '...'
   ]);
   exit;
 }
@@ -197,6 +198,7 @@ $payload = [
 
 error_log("Interest form submission - Submitting to Web3Forms with access key: " . substr($accessKey, 0, 8) . "...");
 error_log("Interest form submission - Payload keys: " . implode(', ', array_keys($payload)));
+error_log("Interest form submission - Payload size: " . strlen(json_encode($payload)) . " bytes");
 
 // Try cURL first for Web3Forms submission
 $web3formsResponse = false;
@@ -243,6 +245,12 @@ if (function_exists('curl_init')) {
   } else {
     error_log("Interest form submission - Web3Forms cURL success, HTTP code: " . $httpCode);
     error_log("Interest form submission - Response headers: " . trim($responseHeaders));
+    
+    // Log 403 responses specifically for debugging
+    if ($httpCode == 403) {
+      error_log("Interest form submission - Got HTTP 403 from Web3Forms - this suggests access key or request format issues");
+      error_log("Interest form submission - 403 Response body: " . substr($web3formsResponse, 0, 500));
+    }
   }
 }
 
@@ -308,6 +316,26 @@ if ($web3formsResponse === false) {
     
     if ($testResult !== false && $testHttpCode > 0) {
       $testConnectivity = "HTTP $testHttpCode";
+      
+      // Special handling for 403 responses
+      if ($testHttpCode == 403) {
+        error_log("Interest form submission - Basic connectivity test also got 403 - this is likely an access key issue");
+        http_response_code(502);
+        echo json_encode([
+          'error' => 'web3forms_access_denied',
+          'details' => 'Web3Forms API is accessible but rejecting requests with HTTP 403 Forbidden. This typically indicates an invalid or expired access key.',
+          'http_code' => 403,
+          'diagnostics' => $diagnostics,
+          'troubleshooting' => [
+            'Verify your Web3Forms access key is correct and active',
+            'Check if your Web3Forms account has any restrictions or quotas exceeded',
+            'Ensure the access key is properly set in your .htaccess file',
+            'Test the access key directly on the Web3Forms website',
+            'Contact Web3Forms support if the key should be valid'
+          ]
+        ]);
+        exit;
+      }
     }
   }
   
