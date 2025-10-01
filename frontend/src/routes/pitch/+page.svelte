@@ -128,6 +128,12 @@
   }
 </script>
 
+<svelte:head>
+  <title>Startup Pitches - Liffey Founders Club | Dublin Entrepreneur Showcase</title>
+  <meta name="description" content="Watch inspiring startup pitches from Dublin's emerging entrepreneurs. See how founders present their vision and connect with the investor community." />
+  <link rel="canonical" href="https://liffeyfoundersclub.com/pitch" />
+</svelte:head>
+
 {#if showCarousel}
   <div out:send={{ key: 'pitch-sect' }} in:receive={{ key: 'pitch-sect' }}>
     <section class="py-16 px-4 max-w-6xl mx-auto relative overflow-hidden">

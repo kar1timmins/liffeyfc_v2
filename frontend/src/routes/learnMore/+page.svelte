@@ -322,6 +322,7 @@
 	<title>Learn More - Liffey FC</title>
 	<meta name="description" content="Learn more about our events and register your interest." />
 	<meta name="web3forms-access-key" content="c6083f7c-0367-4417-be5e-9e2ca45fcac8" />
+	<link rel="canonical" href="https://liffeyfoundersclub.com/learnMore" />
 </svelte:head>
 
 {#if showLM}
