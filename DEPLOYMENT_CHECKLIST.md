@@ -37,11 +37,12 @@ SetEnv WEB3FORMS_ACCESS_KEY "your_actual_web3forms_key_here"
 ### 3. Test Connectivity
 Before testing the form, check server connectivity and configuration:
 1. **Access key validation**: `https://yourdomain.com/api/interest/submit/validate_key.php`
-2. **Network connectivity**: `https://yourdomain.com/api/interest/submit/connectivity_test.php`
-3. **General diagnostics**: `https://yourdomain.com/api/interest/submit/debug.php`
-4. **Web3Forms specific test**: `https://yourdomain.com/api/interest/submit/test_web3forms.php`
-5. Review the connectivity test results
-6. Verify both cURL and file_get_contents functionality
+2. **Key comparison tool**: `https://yourdomain.com/api/interest/submit/key_comparison.php`
+3. **Network connectivity**: `https://yourdomain.com/api/interest/submit/connectivity_test.php`
+4. **General diagnostics**: `https://yourdomain.com/api/interest/submit/debug.php`
+5. **Web3Forms specific test**: `https://yourdomain.com/api/interest/submit/test_web3forms.php`
+6. Review the connectivity test results
+7. Verify both cURL and file_get_contents functionality
 
 ### 4. Test Form Submission
 1. Visit your main site
