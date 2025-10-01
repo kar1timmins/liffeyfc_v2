@@ -44,10 +44,14 @@ const createTransporter = () => {
             user: process.env.SMTP_USER, // Your Zoho email
             pass: process.env.SMTP_PASS  // Your app-specific password
         },
+        connectionTimeout: 60000, // 60 seconds
+        greetingTimeout: 30000,   // 30 seconds
+        socketTimeout: 60000,     // 60 seconds
         tls: {
             rejectUnauthorized: false,
-            // For Zoho EU servers, might need specific TLS settings
-            ciphers: 'SSLv3'
+            // Try different TLS settings for Zoho EU
+            servername: process.env.SMTP_HOST || 'smtp.zoho.com',
+            minVersion: 'TLSv1.2'
         }
     };
 
@@ -56,7 +60,8 @@ const createTransporter = () => {
         port: config.port,
         secure: config.secure,
         user: config.auth.user,
-        hasPassword: !!config.auth.pass
+        hasPassword: !!config.auth.pass,
+        connectionTimeout: config.connectionTimeout
     });
 
     return nodemailer.createTransport(config);

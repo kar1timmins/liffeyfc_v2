@@ -640,22 +640,22 @@
 																</div>
 															{/if}
 															<label
-																class="label text-base-content/80 cursor-pointer justify-center gap-3 text-sm md:text-base"
+																class="label cursor-pointer justify-start gap-3 text-sm md:text-base flex-wrap"
 															>
 																<input
 																	type="checkbox"
-																	class="checkbox checkbox-accent"
+																	class="checkbox checkbox-accent flex-shrink-0"
 																	bind:checked={consent}
 																	required
 																/>
-																<span class="label-text text-base-content/80"
+																<span class="label-text text-base-content/80 flex-1 leading-relaxed"
 																	>I agree to be contacted about upcoming quarterly events.</span
 																>
 															</label>
-															<p class="text-xs text-base-content/60 mt-4">
+															<p class="text-xs text-base-content/60 mt-4 leading-relaxed px-2">
 																This site is protected by reCAPTCHA and the Google
-																<a href="https://policies.google.com/privacy" class="link">Privacy Policy</a> and
-																<a href="https://policies.google.com/terms" class="link">Terms of Service</a> apply.
+																<a href="https://policies.google.com/privacy" class="link break-words">Privacy Policy</a> and
+																<a href="https://policies.google.com/terms" class="link break-words">Terms of Service</a> apply.
 															</p>
 															{#if fieldErrors.consent}
 																<p class="text-error mt-2 text-center text-xs">
