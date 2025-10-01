@@ -72,19 +72,25 @@ AddDefaultCharset utf-8
 <IfModule mod_rewrite.c>
   RewriteEngine On
   
-  # Explicitly allow _app directory assets (SvelteKit build artifacts)
-  RewriteRule ^_app/ - [L]
+  # Explicitly serve files from _app directory (most important - must be first)
+  RewriteCond %{REQUEST_URI} ^/_app/
+  RewriteRule ^ - [L]
   
-  # Skip existing files/directories
+  # Allow static asset directories
+  RewriteCond %{REQUEST_URI} ^/(img|videos|api)/
+  RewriteRule ^ - [L]
+  
+  # Allow files with specific extensions
+  RewriteCond %{REQUEST_URI} \.(js|mjs|css|json|svg|png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot|webm|mp4|br|gz|txt|xml|webmanifest)$
+  RewriteRule ^ - [L]
+  
+  # Allow existing files and directories
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d
   RewriteRule ^ - [L]
   
-  # Skip static assets by extension
-  RewriteRule \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|webm|mp4|json)$ - [L]
-  
-  # Otherwise serve index.html
-  RewriteRule . /index.html [L]
+  # Everything else goes to index.html for SPA routing
+  RewriteRule ^ /index.html [L]
 </IfModule>
 
 # Security headers (tweak as needed)
