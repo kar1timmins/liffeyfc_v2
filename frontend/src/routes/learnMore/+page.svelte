@@ -3,6 +3,7 @@
 	import { fade } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
 	import { PUBLIC_RECAPTCHA_SITE_KEY } from '$env/static/public';
+	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import {
 		generateRandomCircles,
@@ -54,6 +55,18 @@
 	// --- reCAPTCHA v3 State ---
 	let recaptchaReady = false;
 	const siteKey = PUBLIC_RECAPTCHA_SITE_KEY || '';
+
+	// Web3Forms access key - access from environment
+	function getWeb3FormsAccessKey(): string {
+		// Try to get from the public environment variable
+		if (typeof window !== 'undefined') {
+			// Client-side: try to get from meta tag or directly from env
+			const metaKey = document.querySelector('meta[name="web3forms-access-key"]')?.getAttribute('content');
+			if (metaKey) return metaKey;
+		}
+		// Fallback to the known access key
+		return 'c6083f7c-0367-4417-be5e-9e2ca45fcac8';
+	}
 
 	// Crossfade between Interest and Registration views
 	const [send, receive] = makeCrossfade(() => mountedLM, {
@@ -165,6 +178,30 @@
 			return;
 		}
 
+		// Validate required fields
+		if (!nameClean || nameClean.length < 2) {
+			formError = 'Please enter a valid name.';
+			submitted = 'error';
+			return;
+		}
+		if (!emailValid) {
+			formError = 'Please enter a valid email address.';
+			submitted = 'error';
+			return;
+		}
+		if (!consent) {
+			formError = 'Please agree to be contacted about upcoming events.';
+			submitted = 'error';
+			return;
+		}
+
+		const web3formsAccessKey = getWeb3FormsAccessKey();
+		if (!web3formsAccessKey) {
+			formError = 'Form configuration error. Please try again later.';
+			submitted = 'error';
+			return;
+		}
+
 		try {
 			// Get reCAPTCHA token
 			const token = await (window as any).grecaptcha.execute(siteKey, { action: 'submit' });
@@ -173,7 +210,7 @@
 			const formData = new FormData();
 			
 			// Web3Forms required fields
-			formData.append('access_key', 'c6083f7c-0367-4417-be5e-9e2ca45fcac8');
+			formData.append('access_key', web3formsAccessKey);
 			formData.append('subject', `New Interest Form - ${nameClean}`);
 			formData.append('from_name', nameClean);
 			formData.append('email', emailClean);
@@ -195,6 +232,10 @@
 				body: formData
 			});
 
+			if (!res.ok) {
+				throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+			}
+
 			const result = await res.json();
 
 			if (result.success) {
@@ -209,12 +250,25 @@
 				consent = false;
 				step = 0;
 			} else {
-				formError = result.message || 'Submission failed. Please try again later.';
+				// Handle Web3Forms specific error messages
+				if (result.message) {
+					formError = result.message;
+				} else if (result.errors && Array.isArray(result.errors)) {
+					formError = result.errors.join(', ');
+				} else {
+					formError = 'Submission failed. Please try again later.';
+				}
 				submitted = 'error';
 			}
 		} catch (error) {
 			console.error('Error submitting form:', error);
-			formError = 'A network error occurred. Please try again.';
+			if (error instanceof TypeError && error.message.includes('fetch')) {
+				formError = 'Network error. Please check your connection and try again.';
+			} else if (error instanceof Error) {
+				formError = `Error: ${error.message}`;
+			} else {
+				formError = 'An unexpected error occurred. Please try again.';
+			}
 			submitted = 'error';
 		}
 	}
@@ -267,6 +321,7 @@
 <svelte:head>
 	<title>Learn More - Liffey FC</title>
 	<meta name="description" content="Learn more about our events and register your interest." />
+	<meta name="web3forms-access-key" content="c6083f7c-0367-4417-be5e-9e2ca45fcac8" />
 </svelte:head>
 
 {#if showLM}
