@@ -169,40 +169,47 @@
 			// Get reCAPTCHA token
 			const token = await (window as any).grecaptcha.execute(siteKey, { action: 'submit' });
 
-			const payload = {
-				name: nameClean,
-				email: emailClean,
-				pitchedBefore,
-				interest,
-				message: message?.trim() || '',
-				event_year: nextEvent.year,
-				event_quarter: nextEvent.displayQuarter,
-				consent,
-				recaptchaToken: token
-			};
+			// Create FormData for Web3Forms
+			const formData = new FormData();
+			
+			// Web3Forms required fields
+			formData.append('access_key', 'c6083f7c-0367-4417-be5e-9e2ca45fcac8');
+			formData.append('subject', `New Interest Form - ${nameClean}`);
+			formData.append('from_name', nameClean);
+			formData.append('email', emailClean);
+			
+			// Custom fields
+			formData.append('name', nameClean);
+			formData.append('pitched_before', pitchedBefore);
+			formData.append('interest', interest);
+			formData.append('message', message?.trim() || 'No additional message');
+			formData.append('event_year', nextEvent.year.toString());
+			formData.append('event_quarter', nextEvent.displayQuarter);
+			formData.append('g-recaptcha-response', token);
+			
+			// Hidden fields for better email formatting
+			formData.append('redirect', 'https://liffeyfoundersclub.com/learnMore');
 
-			const res = await fetch('https://liffeyfcform-production.up.railway.app/api/contact/submit', {
+			const res = await fetch('https://api.web3forms.com/submit', {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(payload)
+				body: formData
 			});
 
-			if (res.ok) {
+			const result = await res.json();
+
+			if (result.success) {
 				submitted = 'success';
 				view = 'register'; // Switch to registration tab on success
+				
+				// Clear form
+				name = '';
+				email = '';
+				interest = null;
+				message = '';
+				consent = false;
+				step = 0;
 			} else {
-				const err = await res.json().catch(() => ({ error: 'An unknown error occurred.' }));
-				if (err?.error === 'validation_failed' && err?.errors) {
-					fieldErrors = err.errors;
-					formError = 'Please correct the highlighted fields.';
-					if (fieldErrors.pitchedBefore) step = 0;
-					else if (fieldErrors.interest) step = 1;
-					else if (fieldErrors.name || fieldErrors.email) step = 2;
-					else if (fieldErrors.message) step = 3;
-					else if (fieldErrors.consent) step = 4;
-				} else {
-					formError = err.error || 'Submission failed. Please try again later.';
-				}
+				formError = result.message || 'Submission failed. Please try again later.';
 				submitted = 'error';
 			}
 		} catch (error) {
