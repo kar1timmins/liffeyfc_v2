@@ -269,7 +269,11 @@ app.post('/api/contact/submit', validateContactForm, async (req, res) => {
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    res.json({ 
+        status: 'ok', 
+        timestamp: new Date().toISOString(),
+        version: '1.1.0' // Updated to trigger deployment
+    });
 });
 
 // 404 handler
