@@ -32,18 +32,31 @@ app.use(express.json({ limit: '10kb' }));
 
 // Nodemailer transporter for Zoho Mail
 const createTransporter = () => {
-    return nodemailer.createTransporter({
+    const port = parseInt(process.env.SMTP_PORT) || 587;
+    const config = {
         host: process.env.SMTP_HOST || 'smtp.zoho.com',
-        port: parseInt(process.env.SMTP_PORT) || 587,
-        secure: false, // true for 465, false for other ports
+        port: port,
+        secure: port === 465, // true for 465, false for other ports (like 587)
         auth: {
             user: process.env.SMTP_USER, // Your Zoho email
             pass: process.env.SMTP_PASS  // Your app-specific password
         },
         tls: {
-            rejectUnauthorized: false
+            rejectUnauthorized: false,
+            // For Zoho EU servers, might need specific TLS settings
+            ciphers: 'SSLv3'
         }
+    };
+
+    console.log('SMTP Configuration:', {
+        host: config.host,
+        port: config.port,
+        secure: config.secure,
+        user: config.auth.user,
+        hasPassword: !!config.auth.pass
     });
+
+    return nodemailer.createTransporter(config);
 };
 
 // Verify reCAPTCHA
@@ -117,7 +130,20 @@ app.post('/api/contact/submit', validateContactForm, async (req, res) => {
             return res.status(400).json({ error: 'reCAPTCHA verification failed' });
         }
 
+        // Create transporter and verify connection
         const transporter = createTransporter();
+        
+        // Test SMTP connection
+        try {
+            await transporter.verify();
+            console.log('SMTP connection verified successfully');
+        } catch (smtpError) {
+            console.error('SMTP connection failed:', smtpError);
+            return res.status(500).json({ 
+                error: 'Email service unavailable. Please try again later.',
+                details: process.env.NODE_ENV === 'development' ? smtpError.message : undefined
+            });
+        }
 
         // Email to admin
         const adminEmailOptions = {
@@ -200,7 +226,7 @@ app.post('/api/contact/submit', validateContactForm, async (req, res) => {
                         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
                         <p style="color: #6b7280; font-size: 12px;">
                             This is an automated response. For questions, contact us at 
-                            <a href="mailto:info@liffeyfoundersclub.com" style="color: #2563eb;">info@liffeyfoundersclub.com</a>
+                            <a href="mailto:${process.env.ADMIN_EMAIL || 'karl@liffeyfoundersclub.com'}" style="color: #2563eb;">${process.env.ADMIN_EMAIL || 'karl@liffeyfoundersclub.com'}</a>
                         </p>
                     </div>
                 </div>
@@ -220,8 +246,20 @@ app.post('/api/contact/submit', validateContactForm, async (req, res) => {
 
     } catch (error) {
         console.error('Email sending failed:', error);
+        
+        // Provide more specific error messages
+        let errorMessage = 'Failed to send email. Please try again later.';
+        if (error.code === 'EAUTH') {
+            errorMessage = 'Email authentication failed. Please contact support.';
+        } else if (error.code === 'ENOTFOUND') {
+            errorMessage = 'Email server not found. Please contact support.';
+        } else if (error.code === 'ECONNECTION') {
+            errorMessage = 'Unable to connect to email server. Please try again later.';
+        }
+        
         res.status(500).json({ 
-            error: 'Failed to send email. Please try again later.' 
+            error: errorMessage,
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 });
