@@ -166,6 +166,7 @@
 		}
 
 		try {
+			// Get reCAPTCHA token
 			const token = await (window as any).grecaptcha.execute(siteKey, { action: 'submit' });
 
 			const payload = {
@@ -180,7 +181,7 @@
 				recaptchaToken: token
 			};
 
-			const res = await fetch('/api/interest/submit/', {
+			const res = await fetch('https://liffeyfcform-production.up.railway.app/api/contact/submit', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(payload)
