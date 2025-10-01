@@ -690,9 +690,9 @@
 															</div>
 														</div>
 													{:else if step === 4}
-														<div class="text-center">
+														<div class="text-center w-full max-w-md mx-auto px-4">
 															<h3
-																class="text-base-content mb-3 text-center text-lg font-semibold md:text-xl"
+																class="text-base-content mb-6 text-center text-lg font-semibold md:text-xl"
 															>
 																Consent & Verification
 															</h3>
@@ -702,28 +702,44 @@
 																	<span>reCAPTCHA not configured.</span>
 																</div>
 															{/if}
-															<label
-																class="label cursor-pointer justify-start gap-3 text-sm md:text-base flex-wrap"
-															>
-																<input
-																	type="checkbox"
-																	class="checkbox checkbox-accent flex-shrink-0"
-																	bind:checked={consent}
-																	required
-																/>
-																<span class="label-text text-base-content/80 flex-1 leading-relaxed"
-																	>I agree to be contacted about upcoming quarterly events.</span
-																>
-															</label>
-															<p class="text-xs text-base-content/60 mt-4 leading-relaxed px-2">
-																This site is protected by reCAPTCHA and the Google
-																<a href="https://policies.google.com/privacy" class="link break-words">Privacy Policy</a> and
-																<a href="https://policies.google.com/terms" class="link break-words">Terms of Service</a> apply.
-															</p>
-															{#if fieldErrors.consent}
-																<p class="text-error mt-2 text-center text-xs">
-																	{fieldErrors.consent}
+															
+															<!-- Mobile-optimized consent checkbox -->
+															<div class="glass-subtle rounded-2xl p-4 md:p-6 mb-6 text-left">
+																<label class="flex items-start gap-3 cursor-pointer">
+																	<input
+																		type="checkbox"
+																		class="checkbox checkbox-accent flex-shrink-0 mt-1"
+																		bind:checked={consent}
+																		required
+																	/>
+																	<div class="flex-1">
+																		<span class="text-base-content text-sm md:text-base leading-relaxed block">
+																			I agree to be contacted about upcoming quarterly events and startup community updates.
+																		</span>
+																		<span class="text-base-content/60 text-xs mt-2 block">
+																			You can unsubscribe at any time. We respect your privacy.
+																		</span>
+																	</div>
+																</label>
+															</div>
+															
+															<!-- reCAPTCHA info -->
+															<div class="text-xs text-base-content/50 leading-relaxed px-2">
+																<p class="mb-2">🔒 This site is protected by reCAPTCHA</p>
+																<p>
+																	Google 
+																	<a href="https://policies.google.com/privacy" class="link link-hover">Privacy Policy</a> 
+																	and 
+																	<a href="https://policies.google.com/terms" class="link link-hover">Terms of Service</a> 
+																	apply.
 																</p>
+															</div>
+															
+															{#if fieldErrors.consent}
+																<div class="alert alert-error mt-4 text-sm">
+																	<AlertTriangle class="h-4 w-4" />
+																	<span>{fieldErrors.consent}</span>
+																</div>
 															{/if}
 														</div>
 													{/if}
