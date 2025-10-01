@@ -41,17 +41,12 @@ AddDefaultCharset utf-8
   AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json image/svg+xml
 </IfModule>
 
-# SvelteKit specific: Ensure _app directory files are served with correct MIME types
-<FilesMatch "\.(js|mjs)$">
-  Header set Content-Type "application/javascript"
-</FilesMatch>
-
-# Additional security for _app directory
-<Directory "_app">
+# SvelteKit specific: Ensure JS files are served with correct MIME types
+<IfModule mod_headers.c>
   <FilesMatch "\.(js|mjs)$">
     Header set Content-Type "application/javascript"
   </FilesMatch>
-</Directory>
+</IfModule>
 
 # Cache static assets (fingerprinted by Vite)
 <IfModule mod_expires.c>
@@ -99,8 +94,8 @@ AddDefaultCharset utf-8
   Header set Referrer-Policy "strict-origin-when-cross-origin"
   Header set X-XSS-Protection "1; mode=block"
   Header set Permissions-Policy "geolocation=(), microphone=(), camera=()"
-  # CSP is relaxed; tighten if you enumerate all sources
-  Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.google.com https://www.gstatic.com; connect-src 'self' https://api.web3forms.com https://www.google.com https://www.google.com/recaptcha/ https://www.gstatic.com; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; frame-src https://www.google.com/recaptcha/;"
+  # Updated CSP for Railway email server
+  Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.google.com https://www.gstatic.com; connect-src 'self' https://liffeyfcform-production.up.railway.app https://www.google.com https://www.google.com/recaptcha/ https://www.gstatic.com; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; frame-src https://www.google.com/recaptcha/;"
 </IfModule>
 
 # Disable directory listings
