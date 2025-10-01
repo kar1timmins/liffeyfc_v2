@@ -2,10 +2,56 @@
 # Ensure UTF-8
 AddDefaultCharset utf-8
 
+# MIME types for JavaScript modules and other assets
+<IfModule mod_mime.c>
+  # JavaScript modules
+  AddType application/javascript .js
+  AddType application/javascript .mjs
+  AddType text/javascript .js
+  
+  # CSS
+  AddType text/css .css
+  
+  # JSON
+  AddType application/json .json
+  
+  # SVG
+  AddType image/svg+xml .svg
+  
+  # Web fonts
+  AddType font/woff .woff
+  AddType font/woff2 .woff2
+  AddType application/font-woff .woff
+  AddType application/font-woff2 .woff2
+  
+  # Video formats
+  AddType video/webm .webm
+  AddType video/mp4 .mp4
+  
+  # Compressed files
+  AddType application/gzip .gz
+  AddType application/x-brotli .br
+  
+  # Manifest
+  AddType application/manifest+json .webmanifest
+</IfModule>
+
 # Compression (if not handled globally)
 <IfModule mod_deflate.c>
   AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json image/svg+xml
 </IfModule>
+
+# SvelteKit specific: Ensure _app directory files are served with correct MIME types
+<FilesMatch "\.(js|mjs)$">
+  Header set Content-Type "application/javascript"
+</FilesMatch>
+
+# Additional security for _app directory
+<Directory "_app">
+  <FilesMatch "\.(js|mjs)$">
+    Header set Content-Type "application/javascript"
+  </FilesMatch>
+</Directory>
 
 # Cache static assets (fingerprinted by Vite)
 <IfModule mod_expires.c>
@@ -30,12 +76,18 @@ AddDefaultCharset utf-8
 # Single Page App fallback: serve index.html for all non-file requests
 <IfModule mod_rewrite.c>
   RewriteEngine On
+  
+  # Explicitly allow _app directory assets (SvelteKit build artifacts)
+  RewriteRule ^_app/ - [L]
+  
   # Skip existing files/directories
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d
   RewriteRule ^ - [L]
-  # API endpoints (PHP proxy) - keep under /api/
-  RewriteRule ^api/ - [L]
+  
+  # Skip static assets by extension
+  RewriteRule \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|webm|mp4|json)$ - [L]
+  
   # Otherwise serve index.html
   RewriteRule . /index.html [L]
 </IfModule>
