@@ -167,17 +167,6 @@
 		formError = '';
 		fieldErrors = {};
 
-		if (!siteKey) {
-			formError = 'reCAPTCHA is not configured.';
-			submitted = 'error';
-			return;
-		}
-		if (!recaptchaReady) {
-			formError = 'reCAPTCHA is not ready. Please wait and try again.';
-			submitted = 'error';
-			return;
-		}
-
 		// Validate required fields
 		if (!nameClean || nameClean.length < 2) {
 			formError = 'Please enter a valid name.';
@@ -203,8 +192,15 @@
 		}
 
 		try {
-			// Get reCAPTCHA token
-			const token = await (window as any).grecaptcha.execute(siteKey, { action: 'submit' });
+			// Optional reCAPTCHA token (for additional security, but not required by Web3Forms)
+			let recaptchaToken = '';
+			if (siteKey && recaptchaReady) {
+				try {
+					recaptchaToken = await (window as any).grecaptcha.execute(siteKey, { action: 'submit' });
+				} catch (error) {
+					console.warn('reCAPTCHA failed, continuing without it:', error);
+				}
+			}
 
 			// Create FormData for Web3Forms
 			const formData = new FormData();
@@ -222,7 +218,11 @@
 			formData.append('message', message?.trim() || 'No additional message');
 			formData.append('event_year', nextEvent.year.toString());
 			formData.append('event_quarter', nextEvent.displayQuarter);
-			formData.append('g-recaptcha-response', token);
+			
+			// Add reCAPTCHA token only if available (Web3Forms free plan doesn't support it)
+			if (recaptchaToken) {
+				formData.append('recaptcha_response', recaptchaToken);
+			}
 			
 			// Hidden fields for better email formatting
 			formData.append('redirect', 'https://liffeyfoundersclub.com/learnMore');
@@ -696,12 +696,6 @@
 															>
 																Consent & Verification
 															</h3>
-															{#if !siteKey}
-																<div class="alert alert-warning mb-4 shadow">
-																	<AlertTriangle class="h-6 w-6" />
-																	<span>reCAPTCHA not configured.</span>
-																</div>
-															{/if}
 															
 															<!-- Mobile-optimized consent checkbox -->
 															<div class="glass-subtle rounded-2xl p-4 md:p-6 mb-6 text-left">
@@ -723,15 +717,18 @@
 																</label>
 															</div>
 															
-															<!-- reCAPTCHA info -->
+															<!-- reCAPTCHA info - now optional -->
 															<div class="text-xs text-base-content/50 leading-relaxed px-2">
-																<p class="mb-2">🔒 This site is protected by reCAPTCHA</p>
+																{#if siteKey && recaptchaReady}
+																	<p class="mb-2">🔒 Enhanced with reCAPTCHA protection</p>
+																{:else}
+																	<p class="mb-2">🔒 Form secured with basic validation</p>
+																{/if}
 																<p>
-																	Google 
-																	<a href="https://policies.google.com/privacy" class="link link-hover">Privacy Policy</a> 
-																	and 
-																	<a href="https://policies.google.com/terms" class="link link-hover">Terms of Service</a> 
-																	apply.
+																	Powered by 
+																	<a href="https://web3forms.com" class="link link-hover" target="_blank" rel="noopener">Web3Forms</a>
+																	• 
+																	<a href="https://policies.google.com/privacy" class="link link-hover">Google Privacy Policy</a>
 																</p>
 															</div>
 															
