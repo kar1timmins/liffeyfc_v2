@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta http-equiv="Content-Security-Policy" content="
+			default-src 'self';
+			script-src 'self' 'unsafe-inline' https://www.google.com https://www.gstatic.com;
+			style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+			font-src 'self' https://fonts.gstatic.com;
+			connect-src 'self' https://www.google.com https://liffeyfcform-production.up.railway.app;
+			frame-src 'self' https://www.google.com https://recaptcha.google.com;
+			img-src 'self' data: https:;
+		" />
+		<script>
+			// Set theme ASAP to prevent flash on first paint
+			try {
+				const t = localStorage.getItem('theme');
+				if (t) document.documentElement.setAttribute('data-theme', t);
+			} catch {}
+		</script>
+		
+		<link rel="modulepreload" href="/_app/immutable/entry/start.CBLvLbIu.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/CWTfLSWV.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/-nAcHlOV.js">
+		<link rel="modulepreload" href="/_app/immutable/entry/app.lXr0wDkJ.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/DsnmJJEf.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/xxJvGU-2.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/DbPmA-la.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/Bmgvg9Vq.js">
+	</head>
+	<body data-sveltekit-preload-data="hover">
+		<div style="display: contents">
+			<script>
+				{
+					__sveltekit_4kzd20 = {
+						base: ""
+					};
+
+					const element = document.currentScript.parentElement;
+
+					Promise.all([
+						import("/_app/immutable/entry/start.CBLvLbIu.js"),
+						import("/_app/immutable/entry/app.lXr0wDkJ.js")
+					]).then(([kit, app]) => {
+						kit.start(app, element);
+					});
+				}
+			</script>
+		</div>
+	</body>
+</html>

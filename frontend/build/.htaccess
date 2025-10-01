@@ -1,0 +1,22 @@
+# Minimal Apache configuration for SvelteKit - Emergency mode
+AddDefaultCharset utf-8
+
+# Essential rewrite rules only
+RewriteEngine On
+
+# Allow _app directory assets (critical for SvelteKit)
+RewriteRule ^_app/ - [L]
+
+# Allow static directories
+RewriteRule ^(img|videos|api)/ - [L]
+
+# Allow files that exist
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# Allow directories that exist  
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Everything else goes to index.html
+RewriteRule ^ /index.html [L]
