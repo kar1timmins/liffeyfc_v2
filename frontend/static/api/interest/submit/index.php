@@ -1,8 +1,8 @@
 <?php
-// Lightweight PHP relay for form submissions when deployed on Blacknight (Apache)
+// PHP relay for form submissions using Resend API
 // Expects JSON body and environment variables in server config (.htaccess SetEnv or control panel):
 //   RECAPTCHA_SECRET_KEY
-//   WEB3FORMS_ACCESS_KEY (preferred) or WEB_ACCESS_KEY (legacy)
+//   RESEND_API_KEY
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
@@ -160,67 +160,68 @@ if (isset($recaptchaJson['score']) && $recaptchaJson['score'] < $scoreThreshold)
   exit;
 }
 
-$accessKey = getenv('WEB3FORMS_ACCESS_KEY') ?: getenv('WEB_ACCESS_KEY') ?: $_ENV['WEB3FORMS_ACCESS_KEY'] ?? $_ENV['WEB_ACCESS_KEY'] ?? $_SERVER['WEB3FORMS_ACCESS_KEY'] ?? $_SERVER['WEB_ACCESS_KEY'] ?? null;
+$accessKey = getenv('RESEND_API_KEY') ?: $_ENV['RESEND_API_KEY'] ?? $_SERVER['RESEND_API_KEY'] ?? null;
 if (!$accessKey) {
-  error_log("Interest form submission - Missing WEB3FORMS_ACCESS_KEY in environment");
+  error_log("Interest form submission - Missing RESEND_API_KEY in environment");
   http_response_code(500);
-  echo json_encode(['error' => 'missing_web3forms_key']);
+  echo json_encode(['error' => 'missing_resend_key']);
   exit;
 }
 
-// Validate access key format (Web3Forms keys are typically UUIDs)
-if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $accessKey)) {
-  error_log("Interest form submission - Invalid Web3Forms access key format: " . substr($accessKey, 0, 8) . "...");
+// Validate API key format (Resend keys start with 're_')
+if (!preg_match('/^re_[A-Za-z0-9_]+$/', $accessKey)) {
+  error_log("Interest form submission - Invalid Resend API key format: " . substr($accessKey, 0, 8) . "...");
   http_response_code(500);
   echo json_encode([
-    'error' => 'invalid_web3forms_key_format',
-    'details' => 'Web3Forms access key should be a valid UUID format',
+    'error' => 'invalid_resend_key_format',
+    'details' => 'Resend API key should start with "re_"',
     'key_preview' => substr($accessKey, 0, 8) . '...'
   ]);
   exit;
 }
 
+// Create email content
+$emailContent = "
+<h2>New Interest Form Submission</h2>
+<p><strong>Name:</strong> " . htmlspecialchars($name) . "</p>
+<p><strong>Email:</strong> " . htmlspecialchars($email) . "</p>
+<p><strong>Has pitched before:</strong> " . htmlspecialchars($pitchedBefore) . "</p>
+<p><strong>Interest:</strong> " . htmlspecialchars($interest) . "</p>
+<p><strong>Event:</strong> " . htmlspecialchars($event_quarter) . " " . htmlspecialchars($event_year) . "</p>
+<p><strong>Message:</strong></p>
+<p>" . nl2br(htmlspecialchars($message)) . "</p>
+<p><strong>Consent given:</strong> " . ($consent ? 'Yes' : 'No') . "</p>
+<hr>
+<p><em>Submitted at: " . date('Y-m-d H:i:s T') . "</em></p>
+";
+
 $payload = [
-  'access_key' => $accessKey,
-  'to' => 'info@liffeyfoundersclub.com',
+  'from' => 'noreply@liffeyfoundersclub.com',
+  'to' => ['info@liffeyfoundersclub.com'],
   'subject' => 'New Interest Form Submission from ' . $name,
-  'from_name' => $name,
-  'from_email' => $email,
-  'name' => $name,
-  'email' => $email,
-  'pitchedBefore' => $pitchedBefore,
-  'interest' => $interest,
-  'message' => $message,
-  'event_year' => $event_year,
-  'event_quarter' => $event_quarter,
-  'consent' => $consent
+  'html' => $emailContent,
+  'reply_to' => $email
 ];
 
-error_log("Interest form submission - Submitting to Web3Forms with access key: " . substr($accessKey, 0, 8) . "...");
-error_log("Interest form submission - Payload keys: " . implode(', ', array_keys($payload)));
-error_log("Interest form submission - Payload size: " . strlen(json_encode($payload)) . " bytes");
+error_log("Interest form submission - Submitting to Resend with API key: " . substr($accessKey, 0, 8) . "...");
+error_log("Interest form submission - Email to: info@liffeyfoundersclub.com");
+error_log("Interest form submission - From: " . $name . " (" . $email . ")");
 
-// Try cURL first for Web3Forms submission
-$web3formsResponse = false;
+// Try cURL first for Resend submission
+$resendResponse = false;
 $responseHeaders = '';
 if (function_exists('curl_init')) {
   $curl = curl_init();
   curl_setopt_array($curl, [
-    CURLOPT_URL => 'https://api.web3forms.com/submit',
+    CURLOPT_URL => 'https://api.resend.com/emails',
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_TIMEOUT => 30,
     CURLOPT_POST => true,
     CURLOPT_POSTFIELDS => json_encode($payload),
     CURLOPT_HTTPHEADER => [
       'Content-Type: application/json',
-      'Accept: application/json',
-      'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-      'Accept-Language: en-US,en;q=0.9',
-      'Accept-Encoding: gzip, deflate, br',
-      'Cache-Control: no-cache',
-      'Pragma: no-cache',
-      'Origin: https://liffeyfoundersclub.com',
-      'Referer: https://liffeyfoundersclub.com/'
+      'Authorization: Bearer ' . $accessKey,
+      'User-Agent: LiffeyFC-ContactForm/1.0'
     ],
     CURLOPT_SSL_VERIFYPEER => true,
     CURLOPT_SSL_VERIFYHOST => 2,
@@ -233,42 +234,36 @@ if (function_exists('curl_init')) {
     }
   ]);
   
-  $web3formsResponse = curl_exec($curl);
+  $resendResponse = curl_exec($curl);
   $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
   $curlError = curl_error($curl);
   curl_close($curl);
   
-  if ($web3formsResponse === false || !empty($curlError)) {
-    error_log("Interest form submission - cURL failed for Web3Forms: " . $curlError);
+  if ($resendResponse === false || !empty($curlError)) {
+    error_log("Interest form submission - cURL failed for Resend: " . $curlError);
     error_log("Interest form submission - cURL info: HTTP Code: $httpCode, Error: $curlError");
-    $web3formsResponse = false;
+    $resendResponse = false;
   } else {
-    error_log("Interest form submission - Web3Forms cURL success, HTTP code: " . $httpCode);
+    error_log("Interest form submission - Resend cURL success, HTTP code: " . $httpCode);
     error_log("Interest form submission - Response headers: " . trim($responseHeaders));
     
-    // Log 403 responses specifically for debugging
-    if ($httpCode == 403) {
-      error_log("Interest form submission - Got HTTP 403 from Web3Forms - this suggests access key or request format issues");
-      error_log("Interest form submission - 403 Response body: " . substr($web3formsResponse, 0, 500));
+    // Log error responses for debugging
+    if ($httpCode >= 400) {
+      error_log("Interest form submission - Got HTTP $httpCode from Resend");
+      error_log("Interest form submission - Error response body: " . substr($resendResponse, 0, 500));
     }
   }
 }
 
 // Fallback to file_get_contents if cURL failed
-if ($web3formsResponse === false && ini_get('allow_url_fopen')) {
-  error_log("Interest form submission - Trying file_get_contents fallback for Web3Forms");
-  $web3formsContext = stream_context_create([
+if ($resendResponse === false && ini_get('allow_url_fopen')) {
+  error_log("Interest form submission - Trying file_get_contents fallback for Resend");
+  $resendContext = stream_context_create([
     'http' => [
       'method' => 'POST',
       'header' => "Content-Type: application/json\r\n" .
-                  "Accept: application/json\r\n" .
-                  "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36\r\n" .
-                  "Accept-Language: en-US,en;q=0.9\r\n" .
-                  "Accept-Encoding: gzip, deflate, br\r\n" .
-                  "Cache-Control: no-cache\r\n" .
-                  "Pragma: no-cache\r\n" .
-                  "Origin: https://liffeyfoundersclub.com\r\n" .
-                  "Referer: https://liffeyfoundersclub.com/\r\n",
+                  "Authorization: Bearer " . $accessKey . "\r\n" .
+                  "User-Agent: LiffeyFC-ContactForm/1.0\r\n",
       'content' => json_encode($payload),
       'timeout' => 30,
       'follow_location' => 1,
@@ -276,13 +271,13 @@ if ($web3formsResponse === false && ini_get('allow_url_fopen')) {
     ]
   ]);
   
-  $web3formsResponse = file_get_contents('https://api.web3forms.com/submit', false, $web3formsContext);
-  if ($web3formsResponse === false) {
+  $resendResponse = file_get_contents('https://api.resend.com/emails', false, $resendContext);
+  if ($resendResponse === false) {
     $error = error_get_last();
-    error_log("Interest form submission - file_get_contents also failed for Web3Forms");
+    error_log("Interest form submission - file_get_contents also failed for Resend");
     error_log("Interest form submission - file_get_contents error: " . ($error['message'] ?? 'Unknown error'));
   } else {
-    error_log("Interest form submission - Web3Forms file_get_contents success");
+    error_log("Interest form submission - Resend file_get_contents success");
   }
 }
 
@@ -302,9 +297,25 @@ if ($web3formsResponse === false) {
   // Try a simple connectivity test
   $testConnectivity = false;
   if (function_exists('curl_init')) {
+if ($resendResponse === false) {
+  error_log("Interest form submission - All methods failed to contact Resend API");
+  
+  // Gather diagnostic information
+  $diagnostics = [
+    'curl_available' => function_exists('curl_init'),
+    'url_fopen_enabled' => ini_get('allow_url_fopen'),
+    'openssl_loaded' => extension_loaded('openssl'),
+    'user_agent_set' => !empty(ini_get('user_agent')),
+    'server_time' => date('Y-m-d H:i:s T'),
+    'php_version' => PHP_VERSION
+  ];
+  
+  // Try a simple connectivity test
+  $testConnectivity = false;
+  if (function_exists('curl_init')) {
     $testCurl = curl_init();
     curl_setopt_array($testCurl, [
-      CURLOPT_URL => 'https://api.web3forms.com',
+      CURLOPT_URL => 'https://api.resend.com',
       CURLOPT_RETURNTRANSFER => true,
       CURLOPT_TIMEOUT => 10,
       CURLOPT_NOBODY => true,
@@ -316,26 +327,6 @@ if ($web3formsResponse === false) {
     
     if ($testResult !== false && $testHttpCode > 0) {
       $testConnectivity = "HTTP $testHttpCode";
-      
-      // Special handling for 403 responses
-      if ($testHttpCode == 403) {
-        error_log("Interest form submission - Basic connectivity test also got 403 - this is likely an access key issue");
-        http_response_code(502);
-        echo json_encode([
-          'error' => 'web3forms_access_denied',
-          'details' => 'Web3Forms API is accessible but rejecting requests with HTTP 403 Forbidden. This typically indicates an invalid or expired access key.',
-          'http_code' => 403,
-          'diagnostics' => $diagnostics,
-          'troubleshooting' => [
-            'Verify your Web3Forms access key is correct and active',
-            'Check if your Web3Forms account has any restrictions or quotas exceeded',
-            'Ensure the access key is properly set in your .htaccess file',
-            'Test the access key directly on the Web3Forms website',
-            'Contact Web3Forms support if the key should be valid'
-          ]
-        ]);
-        exit;
-      }
     }
   }
   
@@ -345,51 +336,26 @@ if ($web3formsResponse === false) {
   
   http_response_code(502);
   echo json_encode([
-    'error' => 'web3forms_api_unreachable',
-    'details' => 'Server cannot reach Web3Forms API after trying both cURL and file_get_contents methods.',
+    'error' => 'resend_api_unreachable',
+    'details' => 'Server cannot reach Resend API after trying both cURL and file_get_contents methods.',
     'diagnostics' => $diagnostics,
     'troubleshooting' => [
       'Check server firewall settings for outbound HTTPS connections',
-      'Verify DNS resolution for api.web3forms.com',
+      'Verify DNS resolution for api.resend.com',
       'Contact hosting provider about outbound connection restrictions',
-      'Consider using alternative email services'
+      'Verify your Resend API key is valid'
     ]
   ]);
   exit;
 }
 
-error_log("Interest form submission - Web3Forms API response length: " . strlen($web3formsResponse));
-error_log("Interest form submission - Web3Forms API response (first 500 chars): " . substr($web3formsResponse, 0, 500));
+error_log("Interest form submission - Resend API response length: " . strlen($resendResponse));
+error_log("Interest form submission - Resend API response (first 500 chars): " . substr($resendResponse, 0, 500));
 
-// Check if response looks like HTML (error page)
-if (stripos($web3formsResponse, '<!DOCTYPE') !== false || stripos($web3formsResponse, '<html') !== false) {
-  error_log("Interest form submission - Web3Forms returned HTML instead of JSON");
-  
-  // Check specifically for Cloudflare challenge
-  if (stripos($web3formsResponse, 'Just a moment') !== false || stripos($web3formsResponse, 'cloudflare') !== false) {
-    error_log("Interest form submission - Detected Cloudflare challenge page");
-    http_response_code(502);
-    echo json_encode([
-      'error' => 'web3forms_cloudflare_blocked',
-      'details' => 'Web3Forms API is protected by Cloudflare and blocked our request. This is a server configuration issue.',
-      'solution' => 'Please contact your hosting provider about configuring proper User-Agent and headers for outbound requests.'
-    ]);
-    exit;
-  }
-  
-  http_response_code(502);
-  echo json_encode([
-    'error' => 'web3forms_html_response',
-    'details' => 'Web3Forms API returned HTML error page instead of JSON',
-    'response_preview' => substr(strip_tags($web3formsResponse), 0, 200)
-  ]);
-  exit;
-}
-
-$web3formsJson = json_decode($web3formsResponse, true);
+$resendJson = json_decode($resendResponse, true);
 $jsonError = json_last_error();
 
-if (!$web3formsJson) {
+if (!$resendJson) {
   $jsonErrorMsg = '';
   switch ($jsonError) {
     case JSON_ERROR_NONE:
@@ -418,29 +384,43 @@ if (!$web3formsJson) {
   error_log("Interest form submission - JSON decode error: $jsonErrorMsg (code: $jsonError)");
   http_response_code(502);
   echo json_encode([
-    'error' => 'web3forms_invalid_response', 
+    'error' => 'resend_invalid_response', 
     'details' => "JSON decode failed: $jsonErrorMsg",
     'json_error_code' => $jsonError,
-    'raw_response' => substr($web3formsResponse, 0, 500),
-    'response_length' => strlen($web3formsResponse)
+    'raw_response' => substr($resendResponse, 0, 500),
+    'response_length' => strlen($resendResponse)
   ]);
   exit;
 }
 
-if (empty($web3formsJson['success'])) {
-  error_log("Interest form submission - Web3Forms submission failed: " . json_encode($web3formsJson));
+// Check for Resend API errors
+if (isset($resendJson['message']) && !isset($resendJson['id'])) {
+  error_log("Interest form submission - Resend API error: " . json_encode($resendJson));
   http_response_code(502);
   echo json_encode([
-    'error' => 'web3forms_submission_failed',
-    'details' => $web3formsJson['message'] ?? 'Unknown error',
-    'web3forms_response' => $web3formsJson
+    'error' => 'resend_api_error',
+    'details' => $resendJson['message'] ?? 'Unknown error',
+    'resend_response' => $resendJson
   ]);
   exit;
 }
 
-error_log("Interest form submission - Successfully submitted to Web3Forms");
+// Success case - Resend returns an 'id' field for successful emails
+if (isset($resendJson['id'])) {
+  error_log("Interest form submission - Successfully submitted to Resend, ID: " . $resendJson['id']);
+  echo json_encode([
+    'ok' => true,
+    'message' => 'Form submitted successfully',
+    'email_id' => $resendJson['id']
+  ]);
+  exit;
+}
+
+// Fallback error case
+error_log("Interest form submission - Unexpected Resend response: " . json_encode($resendJson));
+http_response_code(502);
 echo json_encode([
-  'ok' => true,
-  'message' => 'Form submitted successfully',
-  'web3forms_id' => $web3formsJson['id'] ?? null
+  'error' => 'resend_unexpected_response',
+  'details' => 'Resend API returned an unexpected response format',
+  'resend_response' => $resendJson
 ]);
