@@ -49,6 +49,11 @@ const createTransporter = () => {
 // Verify reCAPTCHA
 const verifyRecaptcha = async (token) => {
     try {
+        if (!process.env.RECAPTCHA_SECRET_KEY) {
+            console.error('RECAPTCHA_SECRET_KEY environment variable is not set');
+            return false;
+        }
+
         const response = await axios.post('https://www.google.com/recaptcha/api/siteverify', null, {
             params: {
                 secret: process.env.RECAPTCHA_SECRET_KEY,
@@ -56,7 +61,20 @@ const verifyRecaptcha = async (token) => {
             }
         });
         
-        return response.data.success && response.data.score > 0.5;
+        console.log('reCAPTCHA verification response:', response.data);
+        
+        if (!response.data.success) {
+            console.error('reCAPTCHA verification failed:', response.data['error-codes']);
+            return false;
+        }
+        
+        // For v3, check the score (should be > 0.5 for legitimate users)
+        if (response.data.score !== undefined && response.data.score < 0.5) {
+            console.warn('reCAPTCHA score too low:', response.data.score);
+            return false;
+        }
+        
+        return true;
     } catch (error) {
         console.error('reCAPTCHA verification failed:', error);
         return false;
