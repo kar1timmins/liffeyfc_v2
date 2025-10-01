@@ -212,10 +212,19 @@ if (function_exists('curl_init')) {
     CURLOPT_HTTPHEADER => [
       'Content-Type: application/json',
       'Accept: application/json',
-      'User-Agent: LiffeyFC-ContactForm/1.0'
+      'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      'Accept-Language: en-US,en;q=0.9',
+      'Accept-Encoding: gzip, deflate, br',
+      'Cache-Control: no-cache',
+      'Pragma: no-cache',
+      'Origin: https://liffeyfoundersclub.com',
+      'Referer: https://liffeyfoundersclub.com/'
     ],
     CURLOPT_SSL_VERIFYPEER => true,
     CURLOPT_SSL_VERIFYHOST => 2,
+    CURLOPT_FOLLOWLOCATION => true,
+    CURLOPT_MAXREDIRS => 3,
+    CURLOPT_ENCODING => '',  // Enable compression
     CURLOPT_HEADERFUNCTION => function($curl, $header) use (&$responseHeaders) {
       $responseHeaders .= $header;
       return strlen($header);
@@ -242,9 +251,19 @@ if ($web3formsResponse === false && ini_get('allow_url_fopen')) {
   $web3formsContext = stream_context_create([
     'http' => [
       'method' => 'POST',
-      'header' => "Content-Type: application/json\r\nAccept: application/json\r\nUser-Agent: LiffeyFC-ContactForm/1.0\r\n",
+      'header' => "Content-Type: application/json\r\n" .
+                  "Accept: application/json\r\n" .
+                  "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36\r\n" .
+                  "Accept-Language: en-US,en;q=0.9\r\n" .
+                  "Accept-Encoding: gzip, deflate, br\r\n" .
+                  "Cache-Control: no-cache\r\n" .
+                  "Pragma: no-cache\r\n" .
+                  "Origin: https://liffeyfoundersclub.com\r\n" .
+                  "Referer: https://liffeyfoundersclub.com/\r\n",
       'content' => json_encode($payload),
-      'timeout' => 30
+      'timeout' => 30,
+      'follow_location' => 1,
+      'max_redirects' => 3
     ]
   ]);
   
@@ -272,6 +291,19 @@ error_log("Interest form submission - Web3Forms API response (first 500 chars): 
 // Check if response looks like HTML (error page)
 if (stripos($web3formsResponse, '<!DOCTYPE') !== false || stripos($web3formsResponse, '<html') !== false) {
   error_log("Interest form submission - Web3Forms returned HTML instead of JSON");
+  
+  // Check specifically for Cloudflare challenge
+  if (stripos($web3formsResponse, 'Just a moment') !== false || stripos($web3formsResponse, 'cloudflare') !== false) {
+    error_log("Interest form submission - Detected Cloudflare challenge page");
+    http_response_code(502);
+    echo json_encode([
+      'error' => 'web3forms_cloudflare_blocked',
+      'details' => 'Web3Forms API is protected by Cloudflare and blocked our request. This is a server configuration issue.',
+      'solution' => 'Please contact your hosting provider about configuring proper User-Agent and headers for outbound requests.'
+    ]);
+    exit;
+  }
+  
   http_response_code(502);
   echo json_encode([
     'error' => 'web3forms_html_response',

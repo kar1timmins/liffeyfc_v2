@@ -67,6 +67,22 @@ Before testing the form, check server connectivity and configuration:
 3. Review Web3Forms dashboard for quota limits or account issues
 4. Ensure the domain is verified with Web3Forms if required
 
+#### `"web3forms_cloudflare_blocked"`
+**Issue**: Cloudflare is blocking server requests to Web3Forms API
+**Solutions**:
+1. **Server Configuration**: Contact Blacknight about configuring proper outbound request headers
+2. **IP Whitelisting**: Request your server IP be whitelisted with Web3Forms
+3. **Alternative Approach**: Consider client-side form submission instead of server-side
+4. **Alternative Service**: Switch to an email service without Cloudflare protection
+
+#### `"web3forms_html_response"`
+**Issue**: Web3Forms returned HTML instead of JSON (often an error page)
+**Solutions**:
+1. Check if it's a Cloudflare challenge (see above)
+2. Verify the Web3Forms service status
+3. Check for API rate limiting or quota issues
+4. Review the HTML response content for specific error messages
+
 #### `"recaptcha_api_unreachable"`
 **Issue**: Server cannot connect to Google reCAPTCHA API
 **Solutions**:
