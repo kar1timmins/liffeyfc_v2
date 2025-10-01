@@ -10,6 +10,9 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust proxy for Railway (needed for rate limiting and IP detection)
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet());
 app.use(cors({
@@ -56,7 +59,7 @@ const createTransporter = () => {
         hasPassword: !!config.auth.pass
     });
 
-    return nodemailer.createTransporter(config);
+    return nodemailer.createTransport(config);
 };
 
 // Verify reCAPTCHA
