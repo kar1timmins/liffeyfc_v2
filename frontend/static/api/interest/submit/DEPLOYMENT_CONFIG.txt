@@ -20,4 +20,4 @@ SetEnv WEB3FORMS_ACCESS_KEY "your-web3forms-access-key"
 
 # Current values from your .env file:
 # RECAPTCHA_SECRET_KEY = 6LfLPNorAAAAAP0MpC3rtovBY6fuG8-HGue14ae8
-# WEB3FORMS_ACCESS_KEY = e9fac31f-2f01-42fd-b0e6-0faab7148fe5
+# WEB3FORMS_ACCESS_KEY = c6083f7c-0367-4417-be5e-9e2ca45fcac8
