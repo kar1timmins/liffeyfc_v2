@@ -196,7 +196,7 @@ $emailContent = "
 ";
 
 $payload = [
-  'from' => 'noreply@liffeyfoundersclub.com',
+  'from' => 'onboarding@resend.dev',
   'to' => ['info@liffeyfoundersclub.com'],
   'subject' => 'New Interest Form Submission from ' . $name,
   'html' => $emailContent,
@@ -424,3 +424,5 @@ echo json_encode([
   'details' => 'Resend API returned an unexpected response format',
   'resend_response' => $resendJson
 ]);
+
+?>
