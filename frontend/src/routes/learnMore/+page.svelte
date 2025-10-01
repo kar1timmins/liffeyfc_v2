@@ -180,8 +180,8 @@
 			
 			// Custom fields
 			formData.append('name', nameClean);
-			formData.append('pitched_before', pitchedBefore);
-			formData.append('interest', interest);
+			formData.append('pitched_before', pitchedBefore ?? '');
+			formData.append('interest', interest ?? '');
 			formData.append('message', message?.trim() || 'No additional message');
 			formData.append('event_year', nextEvent.year.toString());
 			formData.append('event_quarter', nextEvent.displayQuarter);
