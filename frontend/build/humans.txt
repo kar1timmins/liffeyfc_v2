@@ -1,7 +1,0 @@
-/* TEAM */
-Developer: Liffey Founders Club
-Contact: info@liffeyfoundersclub.com
-Site: https://www.liffeyfoundersclub.com
-
-/* THANKS */
-Technology: SvelteKit, Tailwind CSS
