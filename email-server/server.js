@@ -12,15 +12,39 @@ const PORT = process.env.PORT || 3001;
 app.set('trust proxy', 1);
 
 // Security middleware
+// Security and CORS configuration
 app.use(helmet());
-app.use(cors({
-    origin: [
+
+// CORS configuration - allow your frontend domains
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+    ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+    : [
         'https://liffeyfoundersclub.com',
         'https://www.liffeyfoundersclub.com',
         'http://localhost:4173',
         'http://localhost:5173'
-    ]
+    ];
+
+console.log('🔧 CORS allowed origins:', allowedOrigins);
+
+app.use(cors({
+    origin: function (origin, callback) {
+        // Allow requests with no origin (mobile apps, etc.)
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        
+        console.log('❌ CORS blocked origin:', origin);
+        const msg = `CORS policy: Origin ${origin} not allowed. Allowed origins: ${allowedOrigins.join(', ')}`;
+        return callback(new Error(msg), false);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Accept', 'Origin', 'X-Requested-With']
 }));
+
 app.use(express.json());
 
 // SMTP transporter configuration
@@ -46,7 +70,18 @@ app.get('/health', (req, res) => {
         status: 'ok', 
         timestamp: new Date().toISOString(),
         message: 'Email server running - Web3Forms integration active',
-        smtp_configured: !!transporter
+        smtp_configured: !!transporter,
+        allowed_origins: allowedOrigins,
+        request_origin: req.get('Origin') || 'none'
+    });
+});
+
+// CORS test endpoint
+app.get('/cors-test', (req, res) => {
+    res.json({
+        message: 'CORS working correctly',
+        origin: req.get('Origin') || 'no-origin',
+        timestamp: new Date().toISOString()
     });
 });
 

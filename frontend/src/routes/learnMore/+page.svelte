@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
-	import { PUBLIC_RECAPTCHA_SITE_KEY, PUBLIC_EMAIL_SERVER_URL } from '$env/static/public';
+	import { PUBLIC_RECAPTCHA_SITE_KEY } from '$env/static/public';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import {
@@ -29,7 +29,7 @@
 	} from 'lucide-svelte';
 
 	// Configuration
-	const emailServerUrl = PUBLIC_EMAIL_SERVER_URL || 'https://your-railway-email-server.railway.app';
+	const emailServerUrl = 'https://liffeyfcform-production.up.railway.app';
 	const siteKey = PUBLIC_RECAPTCHA_SITE_KEY;
 	const web3formsAccessKey = 'c6083f7c-0367-4417-be5e-9e2ca45fcac8'; // FREE PLAN
 
