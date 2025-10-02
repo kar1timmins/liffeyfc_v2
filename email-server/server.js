@@ -65,16 +65,16 @@ app.use(cors({
 
 app.use(express.json());
 
-// SMTP transporter configuration
+// SMTP transporter configuration with multiple provider support
 let transporter = null;
-if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
-    transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: parseInt(process.env.SMTP_PORT) || 587,
-        secure: false, // true for 465, false for other ports
+const createTransporter = (config) => {
+    return nodemailer.createTransport({
+        host: config.host,
+        port: parseInt(config.port),
+        secure: config.secure,
         auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS
+            user: config.user,
+            pass: config.pass
         },
         // Connection timeout and retry settings
         connectionTimeout: 60000, // 60 seconds
@@ -96,6 +96,19 @@ if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
         debug: process.env.NODE_ENV !== 'production',
         logger: process.env.NODE_ENV !== 'production'
     });
+};
+
+if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+    // Primary SMTP configuration
+    const primaryConfig = {
+        host: process.env.SMTP_HOST,
+        port: process.env.SMTP_PORT || 587,
+        secure: process.env.SMTP_SECURE === 'true',
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
+    };
+    
+    transporter = createTransporter(primaryConfig);
     
     // Verify SMTP connection (non-blocking)
     setTimeout(() => {
@@ -103,6 +116,8 @@ if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
             transporter.verify((error, success) => {
                 if (error) {
                     console.log('❌ SMTP verification failed:', error.message);
+                    console.log('💡 Consider switching to Gmail or SendGrid SMTP');
+                    console.log('📖 See SMTP_ALTERNATIVES.md for setup instructions');
                 } else {
                     console.log('✅ SMTP server ready for messages');
                 }
@@ -113,6 +128,7 @@ if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
     }, 1000); // Delay verification to not block startup
     
     console.log('📧 SMTP transporter configured with timeouts and pooling');
+    console.log(`📮 Using SMTP: ${primaryConfig.host}:${primaryConfig.port} (secure: ${primaryConfig.secure})`);
 } else {
     console.log('⚠️  SMTP not configured - welcome emails will be disabled');
     console.log('Missing env vars:', {
