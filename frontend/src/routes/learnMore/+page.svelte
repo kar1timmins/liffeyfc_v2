@@ -192,17 +192,18 @@
 		}
 
 		try {
-			// Optional reCAPTCHA token (for additional security, but not required by Web3Forms)
+			// Optional reCAPTCHA token (for logging/analytics only, not sent to Web3Forms)
 			let recaptchaToken = '';
 			if (siteKey && recaptchaReady) {
 				try {
 					recaptchaToken = await (window as any).grecaptcha.execute(siteKey, { action: 'submit' });
+					console.log('reCAPTCHA token generated for security logging');
 				} catch (error) {
 					console.warn('reCAPTCHA failed, continuing without it:', error);
 				}
 			}
 
-			// Create FormData for Web3Forms
+			// Create FormData for Web3Forms (FREE PLAN - NO RECAPTCHA)
 			const formData = new FormData();
 			
 			// Web3Forms required fields
@@ -219,10 +220,8 @@
 			formData.append('event_year', nextEvent.year.toString());
 			formData.append('event_quarter', nextEvent.displayQuarter);
 			
-			// Add reCAPTCHA token only if available (Web3Forms free plan doesn't support it)
-			if (recaptchaToken) {
-				formData.append('recaptcha_response', recaptchaToken);
-			}
+			// NOTE: NO reCAPTCHA field sent to Web3Forms (Pro feature)
+			// reCAPTCHA token generated above for potential future use/logging only
 			
 			// Hidden fields for better email formatting
 			formData.append('redirect', 'https://liffeyfoundersclub.com/learnMore');
