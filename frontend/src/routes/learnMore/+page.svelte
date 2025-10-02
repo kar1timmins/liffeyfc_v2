@@ -212,6 +212,9 @@
 			formData.append('from_name', nameClean);
 			formData.append('email', emailClean);
 			
+			// Web3Forms bot protection (required for free plan)
+			formData.append('botcheck', '');
+			
 			// Custom fields
 			formData.append('name', nameClean);
 			formData.append('pitched_before', pitchedBefore ?? '');
@@ -222,12 +225,12 @@
 			
 			// NOTE: NO reCAPTCHA field sent to Web3Forms (Pro feature)
 			// reCAPTCHA token generated above for potential future use/logging only
-			
-			// Hidden fields for better email formatting
-			formData.append('redirect', 'https://liffeyfoundersclub.com/learnMore');
 
 			const res = await fetch('https://api.web3forms.com/submit', {
 				method: 'POST',
+				headers: {
+					'Accept': 'application/json'
+				},
 				body: formData
 			});
 
