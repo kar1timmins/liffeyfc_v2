@@ -215,6 +215,39 @@
 			// Web3Forms bot protection (required for free plan)
 			formData.append('botcheck', '');
 			
+			// Auto-response email configuration
+			formData.append('autoresponse', 'true');
+			formData.append('autoresponse_subject', 'Welcome to Liffey Founders Club - Registration Confirmed!');
+			formData.append('autoresponse_message', `Hello ${nameClean},
+
+Thank you for registering your interest with Liffey Founders Club! We're excited to have you join Dublin's premier startup community.
+
+🎯 What's Next:
+Your registration for our ${nextEvent.displayQuarter} ${nextEvent.year} event has been received. We'll be in touch soon with event details and networking opportunities.
+
+💡 About Your Interest:
+You mentioned you're interested in: ${interest || 'General participation'}
+${pitchedBefore === 'Yes' ? "We see you've pitched before - great! We'd love to hear about your experience." : "New to pitching? Perfect! Our community is welcoming to founders at all stages."}
+
+🌟 What to Expect:
+• Quarterly networking events with fellow entrepreneurs
+• Opportunities to practice and refine your pitch
+• Access to investors and industry mentors
+• Supportive community of Dublin-based founders
+• Regular updates on startup ecosystem events
+
+📧 Stay Connected:
+Follow us for the latest updates and community news. We'll send you event details and agenda closer to the date.
+
+Questions? Simply reply to this email - we're here to help!
+
+Best regards,
+The Liffey Founders Club Team
+
+---
+This email was sent because you registered at liffeyfoundersclub.com
+Event: ${nextEvent.displayQuarter} ${nextEvent.year} | Location: Dublin, Ireland`);
+			
 			// Custom fields
 			formData.append('name', nameClean);
 			formData.append('pitched_before', pitchedBefore ?? '');
