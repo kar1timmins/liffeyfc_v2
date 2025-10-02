@@ -215,39 +215,6 @@
 			// Web3Forms bot protection (required for free plan)
 			formData.append('botcheck', '');
 			
-			// Auto-response email configuration
-			formData.append('autoresponse', 'true');
-			formData.append('autoresponse_subject', 'Welcome to Liffey Founders Club - Registration Confirmed!');
-			formData.append('autoresponse_message', `Hello ${nameClean},
-
-Thank you for registering your interest with Liffey Founders Club! We're excited to have you join Dublin's premier startup community.
-
-🎯 What's Next:
-Your registration for our ${nextEvent.displayQuarter} ${nextEvent.year} event has been received. We'll be in touch soon with event details and networking opportunities.
-
-💡 About Your Interest:
-You mentioned you're interested in: ${interest || 'General participation'}
-${pitchedBefore === 'Yes' ? "We see you've pitched before - great! We'd love to hear about your experience." : "New to pitching? Perfect! Our community is welcoming to founders at all stages."}
-
-🌟 What to Expect:
-• Quarterly networking events with fellow entrepreneurs
-• Opportunities to practice and refine your pitch
-• Access to investors and industry mentors
-• Supportive community of Dublin-based founders
-• Regular updates on startup ecosystem events
-
-📧 Stay Connected:
-Follow us for the latest updates and community news. We'll send you event details and agenda closer to the date.
-
-Questions? Simply reply to this email - we're here to help!
-
-Best regards,
-The Liffey Founders Club Team
-
----
-This email was sent because you registered at liffeyfoundersclub.com
-Event: ${nextEvent.displayQuarter} ${nextEvent.year} | Location: Dublin, Ireland`);
-			
 			// Custom fields
 			formData.append('name', nameClean);
 			formData.append('pitched_before', pitchedBefore ?? '');
@@ -833,10 +800,16 @@ Event: ${nextEvent.displayQuarter} ${nextEvent.year} | Location: Dublin, Ireland
 											class="alert alert-success mb-6 shadow-lg glass-subtle backdrop-blur-md rounded-2xl border-0"
 										>
 											<CheckCircle2 class="h-6 w-6 shrink-0 stroke-current text-success" />
-											<div>
-												<h3 class="font-bold text-success-content">Thank you!</h3>
-												<div class="text-sm text-success-content/80">
-													Your interest has been submitted. You can now register for the event below.
+											<div class="flex-1">
+												<h3 class="font-bold text-success-content text-lg mb-2">Welcome to Liffey Founders Club!</h3>
+												<div class="text-sm text-success-content/90 space-y-2">
+													<p class="font-medium">Registration confirmed for {nextEvent.displayQuarter} {nextEvent.year}</p>
+													<div class="text-xs space-y-1">
+														<p>✅ Your information has been submitted successfully</p>
+														<p>📧 We'll contact you soon with event details and agenda</p>
+														<p>🌟 Join Dublin's premier startup community networking event</p>
+														<p class="font-medium mt-2">Next steps: Check your email for updates from our team</p>
+													</div>
 												</div>
 											</div>
 										</div>
