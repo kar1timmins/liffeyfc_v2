@@ -27,6 +27,24 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
 
 console.log('🔧 CORS allowed origins:', allowedOrigins);
 
+// Add preflight handler for all routes
+app.options('*', cors({
+    origin: function (origin, callback) {
+        // Allow requests with no origin (mobile apps, etc.)
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        
+        console.log('❌ CORS blocked origin:', origin);
+        return callback(null, false);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Accept', 'Origin', 'X-Requested-With']
+}));
+
 app.use(cors({
     origin: function (origin, callback) {
         // Allow requests with no origin (mobile apps, etc.)
@@ -52,16 +70,56 @@ let transporter = null;
 if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
     transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST,
-        port: process.env.SMTP_PORT || 587,
-        secure: false,
+        port: parseInt(process.env.SMTP_PORT) || 587,
+        secure: false, // true for 465, false for other ports
         auth: {
             user: process.env.SMTP_USER,
             pass: process.env.SMTP_PASS
-        }
+        },
+        // Connection timeout and retry settings
+        connectionTimeout: 60000, // 60 seconds
+        greetingTimeout: 30000,   // 30 seconds
+        socketTimeout: 60000,     // 60 seconds
+        
+        // Connection pooling
+        pool: true,
+        maxConnections: 5,
+        maxMessages: 100,
+        
+        // TLS settings for better compatibility
+        tls: {
+            ciphers: 'SSLv3',
+            rejectUnauthorized: false
+        },
+        
+        // Debug logging
+        debug: process.env.NODE_ENV !== 'production',
+        logger: process.env.NODE_ENV !== 'production'
     });
-    console.log('📧 SMTP transporter configured');
+    
+    // Verify SMTP connection (non-blocking)
+    setTimeout(() => {
+        try {
+            transporter.verify((error, success) => {
+                if (error) {
+                    console.log('❌ SMTP verification failed:', error.message);
+                } else {
+                    console.log('✅ SMTP server ready for messages');
+                }
+            });
+        } catch (verifyError) {
+            console.log('⚠️ SMTP verification error:', verifyError.message);
+        }
+    }, 1000); // Delay verification to not block startup
+    
+    console.log('📧 SMTP transporter configured with timeouts and pooling');
 } else {
     console.log('⚠️  SMTP not configured - welcome emails will be disabled');
+    console.log('Missing env vars:', {
+        SMTP_HOST: !!process.env.SMTP_HOST,
+        SMTP_USER: !!process.env.SMTP_USER,
+        SMTP_PASS: !!process.env.SMTP_PASS
+    });
 }
 
 // Health check endpoint
@@ -83,6 +141,36 @@ app.get('/cors-test', (req, res) => {
         origin: req.get('Origin') || 'no-origin',
         timestamp: new Date().toISOString()
     });
+});
+
+// SMTP test endpoint
+app.get('/smtp-test', async (req, res) => {
+    if (!transporter) {
+        return res.status(503).json({
+            success: false,
+            message: 'SMTP not configured',
+            configured: false
+        });
+    }
+    
+    try {
+        await transporter.verify();
+        res.json({
+            success: true,
+            message: 'SMTP connection successful',
+            configured: true,
+            host: process.env.SMTP_HOST,
+            port: process.env.SMTP_PORT || 587
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'SMTP connection failed',
+            configured: true,
+            error: error.message,
+            code: error.code
+        });
+    }
 });
 
 // Welcome email endpoint
@@ -223,7 +311,7 @@ The Liffey Founders Club Team
 This email was sent because you registered at liffeyfoundersclub.com
 Event: ${eventQuarter || 'Upcoming'} ${eventYear || '2025'} | Location: Dublin, Ireland`;
 
-        // Send email
+        // Send email with retry logic
         const mailOptions = {
             from: `"Liffey Founders Club" <${process.env.SMTP_USER}>`,
             to: email,
@@ -232,22 +320,59 @@ Event: ${eventQuarter || 'Upcoming'} ${eventYear || '2025'} | Location: Dublin, 
             html: welcomeEmailHTML
         };
 
-        await transporter.sendMail(mailOptions);
-
-        res.json({
-            success: true,
-            message: 'Welcome email sent successfully',
-            recipient: email
-        });
-
-        console.log(`✅ Welcome email sent to: ${email} (${name})`);
+        console.log(`📧 Attempting to send welcome email to: ${email}`);
+        
+        // Retry logic for SMTP timeouts
+        let retries = 3;
+        let lastError;
+        
+        for (let attempt = 1; attempt <= retries; attempt++) {
+            try {
+                const info = await transporter.sendMail(mailOptions);
+                console.log(`✅ Welcome email sent successfully to: ${email} (${name})`);
+                console.log('📧 Message ID:', info.messageId);
+                
+                res.json({
+                    success: true,
+                    message: 'Welcome email sent successfully',
+                    recipient: email,
+                    messageId: info.messageId
+                });
+                return; // Success, exit the function
+                
+            } catch (attemptError) {
+                lastError = attemptError;
+                console.log(`❌ Attempt ${attempt}/${retries} failed:`, attemptError.message);
+                
+                if (attempt < retries) {
+                    const waitTime = attempt * 1000; // 1s, 2s, 3s delay
+                    console.log(`⏳ Retrying in ${waitTime}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, waitTime));
+                }
+            }
+        }
+        
+        // All retries failed
+        throw lastError;
 
     } catch (error) {
         console.error('❌ Error sending welcome email:', error);
+        
+        // Provide more specific error messages
+        let errorMessage = 'Failed to send welcome email';
+        if (error.code === 'ETIMEDOUT' || error.code === 'ECONNRESET') {
+            errorMessage = 'SMTP connection timeout - please try again later';
+        } else if (error.code === 'EAUTH') {
+            errorMessage = 'SMTP authentication failed';
+        } else if (error.code === 'EENVELOPE') {
+            errorMessage = 'Invalid email address';
+        }
+        
         res.status(500).json({
             success: false,
-            message: 'Failed to send welcome email',
-            error: error.message
+            message: errorMessage,
+            error: error.message,
+            code: error.code
         });
     }
 });
@@ -263,17 +388,41 @@ app.get('/', (req, res) => {
 
 // 404 handler
 app.use('*', (req, res) => {
+    if (req.method === 'OPTIONS') {
+        // Handle any missed OPTIONS requests
+        res.header('Access-Control-Allow-Origin', req.get('Origin') || '*');
+        res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+        res.header('Access-Control-Allow-Headers', 'Content-Type,Accept,Origin,X-Requested-With');
+        res.header('Access-Control-Allow-Credentials', 'true');
+        return res.sendStatus(204);
+    }
     res.status(404).json({ error: 'Endpoint not found - using Web3Forms for email' });
 });
 
 // Error handler
 app.use((error, req, res, next) => {
-    console.error('Server error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('❌ Server error:', error.message);
+    console.error('📍 Stack trace:', error.stack);
+    console.error('🔍 Request:', {
+        method: req.method,
+        url: req.url,
+        origin: req.get('Origin'),
+        headers: req.headers
+    });
+    
+    res.status(500).json({ 
+        error: 'Internal server error',
+        message: error.message,
+        timestamp: new Date().toISOString()
+    });
 });
 
 app.listen(PORT, () => {
+    console.log('🚀 Server starting...');
     console.log(`📧 Email server running on port ${PORT}`);
-    console.log(`🚀 Health check: http://localhost:${PORT}/health`);
-    console.log(`✉️  Using Web3Forms for email delivery`);
+    console.log(`� Health check: http://localhost:${PORT}/health`);
+    console.log(`✉️  SMTP configured: ${!!transporter}`);
+    console.log(`🌐 CORS origins: ${allowedOrigins.join(', ')}`);
+    console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log('✅ Server ready to accept connections');
 });
