@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
-	import { PUBLIC_RECAPTCHA_SITE_KEY } from '$env/static/public';
+	import { PUBLIC_RECAPTCHA_SITE_KEY, PUBLIC_EMAIL_SERVER_URL } from '$env/static/public';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import {
@@ -27,6 +27,11 @@
 		CalendarDays,
 		ExternalLink
 	} from 'lucide-svelte';
+
+	// Configuration
+	const emailServerUrl = PUBLIC_EMAIL_SERVER_URL || 'https://your-railway-email-server.railway.app';
+	const siteKey = PUBLIC_RECAPTCHA_SITE_KEY;
+	const web3formsAccessKey = 'c6083f7c-0367-4417-be5e-9e2ca45fcac8'; // FREE PLAN
 
 	// Dev logger (visible by default in dev; can force with ?debug=1)
 	let DBG_ENABLED = process.env.NODE_ENV === 'development';
@@ -54,7 +59,6 @@
 
 	// --- reCAPTCHA v3 State ---
 	let recaptchaReady = false;
-	const siteKey = PUBLIC_RECAPTCHA_SITE_KEY || '';
 
 	// Web3Forms access key - access from environment
 	function getWeb3FormsAccessKey(): string {
@@ -184,7 +188,7 @@
 			return;
 		}
 
-		const web3formsAccessKey = getWeb3FormsAccessKey();
+		// Web3Forms access key is now available in the constant above
 		if (!web3formsAccessKey) {
 			formError = 'Form configuration error. Please try again later.';
 			submitted = 'error';
@@ -243,6 +247,41 @@
 			if (result.success) {
 				submitted = 'success';
 				view = 'register'; // Switch to registration tab on success
+				
+				// Send welcome email via Railway server
+				try {
+					// Check if email server URL is properly configured
+					if (!emailServerUrl || emailServerUrl.includes('your-railway-email-server')) {
+						console.warn('⚠️ Email server URL not configured properly. Welcome email skipped.');
+						console.warn('Please update PUBLIC_EMAIL_SERVER_URL in .env.public');
+					} else {
+						const welcomeResponse = await fetch(`${emailServerUrl}/send-welcome`, {
+							method: 'POST',
+							headers: {
+								'Content-Type': 'application/json',
+								'Accept': 'application/json'
+							},
+							body: JSON.stringify({
+								email: emailClean,
+								name: nameClean,
+								interest: interest || '',
+								pitchedBefore: pitchedBefore || '',
+								eventQuarter: nextEvent.displayQuarter,
+								eventYear: nextEvent.year
+							})
+						});
+
+						if (welcomeResponse.ok) {
+							const welcomeResult = await welcomeResponse.json();
+							console.log('✅ Welcome email sent successfully:', welcomeResult.message);
+						} else {
+							const welcomeError = await welcomeResponse.json();
+							console.warn('⚠️ Welcome email failed but registration succeeded:', welcomeError.message);
+						}
+					}
+				} catch (welcomeError) {
+					console.warn('⚠️ Welcome email service unavailable, but registration succeeded:', welcomeError);
+				}
 				
 				// Clear form
 				name = '';
