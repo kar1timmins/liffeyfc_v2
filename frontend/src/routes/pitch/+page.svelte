@@ -132,6 +132,21 @@
   <title>Startup Pitches - Liffey Founders Club | Dublin Entrepreneur Showcase</title>
   <meta name="description" content="Watch inspiring startup pitches from Dublin's emerging entrepreneurs. See how founders present their vision and connect with the investor community." />
   <link rel="canonical" href="https://liffeyfoundersclub.com/pitch" />
+  <meta name="robots" content="index, follow" />
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://liffeyfoundersclub.com/pitch" />
+  <meta property="og:title" content="Startup Pitches - Liffey Founders Club" />
+  <meta property="og:description" content="Watch inspiring startup pitches from Dublin's emerging entrepreneurs." />
+  <meta property="og:image" content="https://liffeyfoundersclub.com/img/event_june/image_1.jpg" />
+  
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="https://liffeyfoundersclub.com/pitch" />
+  <meta property="twitter:title" content="Startup Pitches - Liffey Founders Club" />
+  <meta property="twitter:description" content="Watch inspiring startup pitches from Dublin's emerging entrepreneurs." />
+  <meta property="twitter:image" content="https://liffeyfoundersclub.com/img/event_june/image_1.jpg" />
 </svelte:head>
 
 {#if showCarousel}
@@ -157,9 +172,18 @@
         </div>
       {/if}
 
-      <h2 class="text-4xl md:text-5xl font-extrabold mb-10 text-center tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent drop-shadow-lg relative z-10">
-        Visualize Your Pitch!
-      </h2>
+      <!-- SEO-optimized heading structure -->
+      <div class="text-center mb-10 relative z-10">
+        <h1 class="text-5xl md:text-6xl font-extrabold mb-4 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent drop-shadow-lg">
+          Dublin Startup Pitches
+        </h1>
+        <h2 class="text-2xl md:text-3xl font-bold text-base-content/80">
+          Visualize Your Pitch: See How Dublin Entrepreneurs Present Their Vision
+        </h2>
+        <p class="mt-4 text-lg text-base-content/70 max-w-2xl mx-auto">
+          Explore inspiring startup pitches from Dublin's emerging entrepreneurs. Watch how founders capture attention, showcase their vision, and connect with the investor community at Liffey Founders Club quarterly events.
+        </p>
+      </div>
 
       <div
         class="relative w-full h-[60vh] md:h-[640px]"

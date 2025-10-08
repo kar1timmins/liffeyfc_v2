@@ -64,6 +64,55 @@
     </div>
   {/if}
 
+  <!-- Footer with internal navigation for SEO -->
+  <footer class="bg-base-200/50 backdrop-blur-sm mt-auto py-8 px-4 border-t border-base-300">
+    <div class="max-w-6xl mx-auto">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-6">
+        <!-- About Section -->
+        <div>
+          <h3 class="font-bold text-lg mb-3">Liffey Founders Club</h3>
+          <p class="text-sm text-base-content/70">
+            Dublin's premier startup community for founders, entrepreneurs, and investors.
+          </p>
+        </div>
+        
+        <!-- Navigation Links -->
+        <div>
+          <h3 class="font-bold text-lg mb-3">Quick Links</h3>
+          <nav class="flex flex-col gap-2">
+            <a href="/" class="text-sm text-base-content/70 hover:text-primary transition-colors">
+              Home
+            </a>
+            <a href="/pitch" class="text-sm text-base-content/70 hover:text-primary transition-colors">
+              Startup Pitches
+            </a>
+            <a href="/learnMore" class="text-sm text-base-content/70 hover:text-primary transition-colors">
+              Join Community
+            </a>
+          </nav>
+        </div>
+        
+        <!-- Contact Info -->
+        <div>
+          <h3 class="font-bold text-lg mb-3">Connect</h3>
+          <div class="text-sm text-base-content/70">
+            <p class="mb-2">Dublin, Ireland</p>
+            <p>
+              <a href="mailto:hello@liffeyfoundersclub.com" class="hover:text-primary transition-colors">
+                hello@liffeyfoundersclub.com
+              </a>
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Copyright -->
+      <div class="text-center text-sm text-base-content/60 pt-6 border-t border-base-300">
+        <p>&copy; {new Date().getFullYear()} Liffey Founders Club. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+
   <!-- Floating Action Button (FAB) Navigation - Mobile Optimized -->
   <div class="fixed fab-container bottom-6 right-6 md:bottom-8 md:right-8 z-[9999] flex flex-col items-end gap-2">
     {#if fabOpen}

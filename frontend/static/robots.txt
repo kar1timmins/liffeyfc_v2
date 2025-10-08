@@ -1,5 +1,13 @@
 # robots.txt for Liffey Founders Club
-User-agent: *
-Disallow:
+# Allow all crawlers to index the site
 
-Sitemap: https://www.liffeyfoundersclub.com/sitemap.xml
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /welcome
+
+# Sitemap location
+Sitemap: https://liffeyfoundersclub.com/sitemap.xml
+
+# Crawl-delay for respectful crawling
+Crawl-delay: 1

@@ -16,6 +16,21 @@
   <title>Liffey Founders Club - Practice What You Pitch | Startup Community Dublin</title>
   <meta name="description" content="Join Dublin's premier startup community. Practice your pitch, connect with investors, and grow your business. Quarterly events for entrepreneurs in Dublin, Ireland." />
   <link rel="canonical" href="https://liffeyfoundersclub.com/" />
+  <meta name="robots" content="index, follow" />
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://liffeyfoundersclub.com/" />
+  <meta property="og:title" content="Liffey Founders Club - Practice What You Pitch" />
+  <meta property="og:description" content="Join Dublin's premier startup community. Practice your pitch, connect with investors, and grow your business." />
+  <meta property="og:image" content="https://liffeyfoundersclub.com/img/event_june/image_1.jpg" />
+  
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="https://liffeyfoundersclub.com/" />
+  <meta property="twitter:title" content="Liffey Founders Club - Practice What You Pitch" />
+  <meta property="twitter:description" content="Join Dublin's premier startup community. Practice your pitch, connect with investors, and grow your business." />
+  <meta property="twitter:image" content="https://liffeyfoundersclub.com/img/event_june/image_1.jpg" />
 </svelte:head>
 
 {#if show}

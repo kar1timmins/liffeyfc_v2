@@ -3,15 +3,30 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<meta http-equiv="Content-Security-Policy" content="
-			default-src 'self';
-			script-src 'self' 'unsafe-inline' https://www.google.com https://www.gstatic.com;
-			style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-			font-src 'self' https://fonts.gstatic.com;
-			connect-src 'self' https://www.google.com https://api.web3forms.com https://*.railway.app;
-			frame-src 'self' https://www.google.com https://recaptcha.google.com;
-			img-src 'self' data: https:;
-		" />
+		
+		<!-- Organization Structured Data -->
+		<script type="application/ld+json">
+		{
+			"@context": "https://schema.org",
+			"@type": "Organization",
+			"name": "Liffey Founders Club",
+			"url": "https://liffeyfoundersclub.com",
+			"logo": "https://liffeyfoundersclub.com/img/event_june/image_1.jpg",
+			"description": "Dublin's premier startup community. Practice your pitch, connect with investors, and grow your business at quarterly events.",
+			"address": {
+				"@type": "PostalAddress",
+				"addressLocality": "Dublin",
+				"addressCountry": "IE"
+			},
+			"sameAs": [],
+			"contactPoint": {
+				"@type": "ContactPoint",
+				"contactType": "Registration",
+				"email": "hello@liffeyfoundersclub.com"
+			}
+		}
+		</script>
+		
 		<script>
 			// Set theme ASAP to prevent flash on first paint
 			try {
@@ -20,28 +35,29 @@
 			} catch {}
 		</script>
 		
-		<link rel="modulepreload" href="/_app/immutable/entry/start.BrEsh-vh.js">
-		<link rel="modulepreload" href="/_app/immutable/chunks/BkEWYejO.js">
-		<link rel="modulepreload" href="/_app/immutable/chunks/DJSPr4zN.js">
-		<link rel="modulepreload" href="/_app/immutable/entry/app.CHJxHp88.js">
+		<link rel="modulepreload" href="/_app/immutable/entry/start.DHFmbJSK.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/DwdeZI5X.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/DRjrNWmg.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/CRZbjzs2.js">
+		<link rel="modulepreload" href="/_app/immutable/entry/app.DSG0SCme.js">
 		<link rel="modulepreload" href="/_app/immutable/chunks/DsnmJJEf.js">
-		<link rel="modulepreload" href="/_app/immutable/chunks/D8-rlypc.js">
-		<link rel="modulepreload" href="/_app/immutable/chunks/DxMr_79m.js">
-		<link rel="modulepreload" href="/_app/immutable/chunks/DJDUFofc.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/Crc_AomG.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/Cz6yJJ1c.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/CcwPPSxE.js">
 	</head>
 	<body data-sveltekit-preload-data="hover">
 		<div style="display: contents">
 			<script>
 				{
-					__sveltekit_fuu2e6 = {
+					__sveltekit_gjssev = {
 						base: ""
 					};
 
 					const element = document.currentScript.parentElement;
 
 					Promise.all([
-						import("/_app/immutable/entry/start.BrEsh-vh.js"),
-						import("/_app/immutable/entry/app.CHJxHp88.js")
+						import("/_app/immutable/entry/start.DHFmbJSK.js"),
+						import("/_app/immutable/entry/app.DSG0SCme.js")
 					]).then(([kit, app]) => {
 						kit.start(app, element);
 					});

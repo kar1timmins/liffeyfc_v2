@@ -380,10 +380,25 @@
 </script>
 
 <svelte:head>
-	<title>Learn More - Liffey FC</title>
-	<meta name="description" content="Learn more about our events and register your interest." />
+	<title>Join Liffey Founders Club - Dublin's Premier Startup Community | Register Now</title>
+	<meta name="description" content="Register to join Dublin's leading startup community. Practice your pitch, connect with investors, and grow your business at our quarterly events. Open to entrepreneurs, founders, and investors." />
 	<meta name="web3forms-access-key" content="c6083f7c-0367-4417-be5e-9e2ca45fcac8" />
 	<link rel="canonical" href="https://liffeyfoundersclub.com/learnMore" />
+	<meta name="robots" content="index, follow" />
+	
+	<!-- Open Graph / Facebook -->
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content="https://liffeyfoundersclub.com/learnMore" />
+	<meta property="og:title" content="Join Liffey Founders Club - Dublin's Premier Startup Community" />
+	<meta property="og:description" content="Register to join Dublin's leading startup community. Practice your pitch, connect with investors, and grow your business." />
+	<meta property="og:image" content="https://liffeyfoundersclub.com/img/event_june/image_1.jpg" />
+	
+	<!-- Twitter -->
+	<meta property="twitter:card" content="summary_large_image" />
+	<meta property="twitter:url" content="https://liffeyfoundersclub.com/learnMore" />
+	<meta property="twitter:title" content="Join Liffey Founders Club - Dublin's Premier Startup Community" />
+	<meta property="twitter:description" content="Register to join Dublin's leading startup community. Practice your pitch, connect with investors, and grow your business." />
+	<meta property="twitter:image" content="https://liffeyfoundersclub.com/img/event_june/image_1.jpg" />
 </svelte:head>
 
 {#if showLM}

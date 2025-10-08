@@ -23,6 +23,8 @@
 <svelte:head>
 	<title>Welcome to Liffey Founders Club!</title>
 	<meta name="description" content="Welcome to Dublin's premier startup community. Your registration is confirmed!" />
+	<link rel="canonical" href="https://liffeyfoundersclub.com/welcome" />
+	<meta name="robots" content="noindex, follow" />
 </svelte:head>
 
 <div class="min-h-screen bg-gradient-to-br from-primary/20 via-secondary/10 to-accent/20">
