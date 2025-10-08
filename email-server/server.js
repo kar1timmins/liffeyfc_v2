@@ -109,19 +109,26 @@ function createTransporter(config) {
         socketTimeout: 60000,
         pool: true,
         maxConnections: 5,
-        maxMessages: 100,
-        // Additional settings for Gmail compatibility
-        tls: {
-            rejectUnauthorized: false,
-            ciphers: 'SSLv3'
-        }
+        maxMessages: 100
     };
     
     // Gmail-specific optimizations
     if (config.host?.includes('gmail.com')) {
+        console.log('🔧 Applying Gmail-specific configuration');
         transporterConfig.service = 'gmail';
         transporterConfig.tls = {
-            rejectUnauthorized: false
+            rejectUnauthorized: false,
+            minVersion: 'TLSv1.2'
+        };
+        // Remove host/port when using service
+        delete transporterConfig.host;
+        delete transporterConfig.port;
+        delete transporterConfig.secure;
+    } else {
+        // For other SMTP providers, use standard TLS settings
+        transporterConfig.tls = {
+            rejectUnauthorized: false,
+            minVersion: 'TLSv1.2'
         };
     }
     

@@ -27,14 +27,17 @@
   onMount(() => { 
     mounted = true;
     
-    // Close FAB when clicking outside
+    // Close FAB when clicking outside (with small delay to prevent immediate closure)
     const handleClickOutside = (event: MouseEvent) => {
       if (fabOpen && fabContainer && !fabContainer.contains(event.target as Node)) {
         fabOpen = false;
       }
     };
     
-    document.addEventListener('click', handleClickOutside);
+    // Add listener with a small delay to avoid capturing the initial click
+    setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+    }, 100);
     
     return () => {
       document.removeEventListener('click', handleClickOutside);
@@ -57,6 +60,13 @@
   // Icons
   // FAB logic
   let fabOpen = false;
+  
+  // Toggle FAB with event stopping
+  function toggleFab(event: MouseEvent) {
+    event.stopPropagation();
+    fabOpen = !fabOpen;
+  }
+  
   let showShell = true;
   let pendingNav: string | null = null;
   function navTo(path: string) {
@@ -85,9 +95,9 @@
   <!-- Footer with internal navigation for SEO -->
   <footer class="bg-base-200/50 backdrop-blur-sm mt-auto py-8 px-4 border-t border-base-300">
     <div class="max-w-6xl mx-auto">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-6 text-center md:text-left">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-6">
         <!-- About Section -->
-        <div>
+        <div class="text-center md:text-left">
           <h3 class="font-bold text-lg mb-3">Liffey Founders Club</h3>
           <p class="text-sm text-base-content/70">
             Dublin's premier startup community for founders, entrepreneurs, and investors.
@@ -95,9 +105,9 @@
         </div>
         
         <!-- Navigation Links -->
-        <div>
+        <div class="text-center">
           <h3 class="font-bold text-lg mb-3">Quick Links</h3>
-          <nav class="flex flex-col gap-2 items-center md:items-start">
+          <nav class="flex flex-col gap-2 items-center">
             <a href="/" class="text-sm text-base-content/70 hover:text-primary transition-colors">
               Home
             </a>
@@ -111,7 +121,7 @@
         </div>
         
         <!-- Contact Info -->
-        <div>
+        <div class="text-center md:text-right">
           <h3 class="font-bold text-lg mb-3">Connect</h3>
           <div class="text-sm text-base-content/70">
             <p class="mb-2">Dublin, Ireland</p>
@@ -170,7 +180,7 @@
       class="fab-button btn btn-circle glass-subtle text-base-content shadow-lg hover:scale-110 transition-all duration-300 flex items-center justify-center ring-2 ring-base-content/20 border-0 backdrop-blur-xl w-14 h-14 md:w-[4.5rem] md:h-[4.5rem]"
       style="border-radius:50%;"
       aria-label="Open navigation menu"
-      on:click={() => fabOpen = !fabOpen}
+      on:click={toggleFab}
     >
       {#if fabOpen}
         <X class="h-7 w-7 md:h-10 md:w-10" stroke-width={2.5} />
