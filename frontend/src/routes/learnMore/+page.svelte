@@ -248,12 +248,15 @@
 				submitted = 'success';
 				view = 'register'; // Switch to registration tab on success
 				
+				let welcomeEmailSent = false;
+				
 				// Send welcome email via Railway server
 				try {
 					// Check if email server URL is properly configured
-					if (!emailServerUrl || emailServerUrl.includes('your-railway-email-server')) {
-						console.warn('⚠️ Email server URL not configured properly. Welcome email skipped.');
-						console.warn('Please update PUBLIC_EMAIL_SERVER_URL in .env.public');
+					if (!emailServerUrl || emailServerUrl.includes('your-railway-email-server') || emailServerUrl.includes('liffeyfcform-production')) {
+						console.warn('⚠️ Email server not available or configured. Using welcome page instead.');
+						// Skip email attempt and go directly to welcome page
+						welcomeEmailSent = false;
 					} else {
 						const welcomeResponse = await fetch(`${emailServerUrl}/send-welcome`, {
 							method: 'POST',
@@ -274,6 +277,7 @@
 						if (welcomeResponse.ok) {
 							const welcomeResult = await welcomeResponse.json();
 							console.log('✅ Welcome email sent successfully:', welcomeResult.message);
+							welcomeEmailSent = true;
 						} else {
 							const welcomeError = await welcomeResponse.json();
 							console.warn('⚠️ Welcome email failed but registration succeeded:', welcomeError.message);
@@ -281,6 +285,22 @@
 					}
 				} catch (welcomeError) {
 					console.warn('⚠️ Welcome email service unavailable, but registration succeeded:', welcomeError);
+				}
+				
+				// If welcome email failed or skipped, redirect to welcome page with user details
+				if (!welcomeEmailSent) {
+					console.log('📧 Redirecting to welcome page for personalized welcome experience');
+					const welcomeParams = new URLSearchParams({
+						name: nameClean,
+						email: emailClean,
+						interest: interest || '',
+						eventQuarter: nextEvent.displayQuarter,
+						eventYear: nextEvent.year.toString()
+					});
+					
+					// Immediate redirect for seamless experience
+					window.location.replace(`/welcome?${welcomeParams.toString()}`);
+					return; // Exit early to prevent showing success state
 				}
 				
 				// Clear form
@@ -845,9 +865,8 @@
 													<p class="font-medium">Registration confirmed for {nextEvent.displayQuarter} {nextEvent.year}</p>
 													<div class="text-xs space-y-1">
 														<p>✅ Your information has been submitted successfully</p>
-														<p>📧 We'll contact you soon with event details and agenda</p>
-														<p>🌟 Join Dublin's premier startup community networking event</p>
-														<p class="font-medium mt-2">Next steps: Check your email for updates from our team</p>
+														<p>📧 Welcome details have been sent</p>
+														<p>🌟 Welcome to Dublin's premier startup community!</p>
 													</div>
 												</div>
 											</div>

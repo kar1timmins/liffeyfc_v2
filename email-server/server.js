@@ -328,12 +328,17 @@ This email was sent because you registered at liffeyfoundersclub.com
 Event: ${eventQuarter || 'Upcoming'} ${eventYear || '2025'} | Location: Dublin, Ireland`;
 
         // Send email with retry logic
+        const fromAddress = process.env.FROM_EMAIL || process.env.SMTP_USER;
+        const fromName = process.env.FROM_NAME || "Liffey Founders Club";
+        
         const mailOptions = {
-            from: `"Liffey Founders Club" <${process.env.SMTP_USER}>`,
+            from: `"${fromName}" <${fromAddress}>`,
             to: email,
             subject: 'Welcome to Liffey Founders Club - Registration Confirmed!',
             text: welcomeEmailText,
-            html: welcomeEmailHTML
+            html: welcomeEmailHTML,
+            // Optional: Set reply-to if different from from address
+            replyTo: process.env.REPLY_TO_EMAIL || fromAddress
         };
 
         console.log(`📧 Attempting to send welcome email to: ${email}`);
