@@ -7,19 +7,14 @@ try {
     console.log('✅ Nodemailer loaded successfully');
     console.log('📦 Nodemailer version:', require('nodemailer/package.json').version);
     console.log('🔍 Nodemailer type:', typeof nodemailer);
-    console.log('🔍 Has createTransporter?', typeof nodemailer.createTransporter);
+    console.log('🔍 Has createTransport?', typeof nodemailer.createTransport);
     console.log('🔍 Nodemailer keys:', Object.keys(nodemailer).join(', '));
     
-    // Handle both CommonJS default export and named export
-    if (typeof nodemailer.createTransporter !== 'function') {
-        if (nodemailer.default && typeof nodemailer.default.createTransporter === 'function') {
-            console.log('🔧 Using nodemailer.default');
-            nodemailer = nodemailer.default;
-        } else {
-            console.error('❌ createTransporter not found in nodemailer object');
-            console.error('Available properties:', Object.keys(nodemailer));
-            process.exit(1);
-        }
+    // Validate that createTransport exists
+    if (typeof nodemailer.createTransport !== 'function') {
+        console.error('❌ createTransport not found in nodemailer object');
+        console.error('Available properties:', Object.keys(nodemailer));
+        process.exit(1);
     }
 } catch (err) {
     console.error('❌ Failed to load nodemailer:', err.message);
@@ -130,7 +125,7 @@ function createTransporter(config) {
         };
     }
     
-    const newTransporter = nodemailer.createTransporter(transporterConfig);
+    const newTransporter = nodemailer.createTransport(transporterConfig);
     
     console.log(`📮 Using SMTP: ${config.host}:${config.port} (secure: ${config.secure})`);
     
