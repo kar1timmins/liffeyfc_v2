@@ -67,46 +67,79 @@ app.use(express.json());
 
 // SMTP transporter configuration with multiple provider support
 let transporter = null;
-const createTransporter = (config) => {
-    return nodemailer.createTransport({
+function createTransporter(config) {
+    const transporterConfig = {
         host: config.host,
-        port: parseInt(config.port),
+        port: config.port,
         secure: config.secure,
         auth: {
             user: config.user,
             pass: config.pass
         },
-        // Connection timeout and retry settings
+        // Enhanced connection settings for reliability
         connectionTimeout: 60000, // 60 seconds
-        greetingTimeout: 30000,   // 30 seconds
-        socketTimeout: 60000,     // 60 seconds
-        
-        // Connection pooling
+        greetingTimeout: 30000,
+        socketTimeout: 60000,
         pool: true,
         maxConnections: 5,
         maxMessages: 100,
-        
-        // TLS settings for better compatibility
+        // Additional settings for Gmail compatibility
         tls: {
-            ciphers: 'SSLv3',
+            rejectUnauthorized: false,
+            ciphers: 'SSLv3'
+        }
+    };
+    
+    // Gmail-specific optimizations
+    if (config.host?.includes('gmail.com')) {
+        transporterConfig.service = 'gmail';
+        transporterConfig.tls = {
             rejectUnauthorized: false
-        },
-        
-        // Debug logging
-        debug: process.env.NODE_ENV !== 'production',
-        logger: process.env.NODE_ENV !== 'production'
-    });
-};
+        };
+    }
+    
+    const transporter = nodemailer.createTransporter(transporterConfig);
+    
+    console.log(`📮 Using SMTP: ${config.host}:${config.port} (secure: ${config.secure})`);
+    
+    return transporter;
+}
 
 if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
-    // Primary SMTP configuration
+    // Primary SMTP configuration with smart defaults
+    const port = parseInt(process.env.SMTP_PORT) || 587;
+    const isGmail = process.env.SMTP_HOST?.includes('gmail.com');
+    const isZoho = process.env.SMTP_HOST?.includes('zoho.com');
+    
+    // Smart secure setting based on provider and port
+    let secure;
+    if (process.env.SMTP_SECURE !== undefined) {
+        secure = process.env.SMTP_SECURE === 'true';
+    } else {
+        // Auto-detect based on port and provider
+        if (port === 465) {
+            secure = true; // Always secure for port 465
+        } else if (port === 587) {
+            secure = false; // Use STARTTLS for port 587
+        } else {
+            secure = false; // Default to STARTTLS
+        }
+    }
+    
     const primaryConfig = {
         host: process.env.SMTP_HOST,
-        port: process.env.SMTP_PORT || 587,
-        secure: process.env.SMTP_SECURE === 'true',
+        port: port,
+        secure: secure,
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS
     };
+    
+    console.log(`📮 SMTP Configuration: ${primaryConfig.host}:${primaryConfig.port} (secure: ${primaryConfig.secure})`);
+    if (isGmail) {
+        console.log('📧 Gmail SMTP detected - optimizing configuration');
+    } else if (isZoho) {
+        console.log('📧 Zoho SMTP detected - using compatible settings');
+    }
     
     transporter = createTransporter(primaryConfig);
     
