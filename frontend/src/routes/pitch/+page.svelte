@@ -33,6 +33,38 @@
     'col-span-1 row-span-1', // Image 9
   ];
 
+  // Progressive image loading state
+  let loadedImages = new Set<number>();
+  let allImagesLoaded = false;
+  
+  // Preload critical images (first 3 visible)
+  function preloadImages() {
+    const criticalImages = images.slice(0, 3);
+    criticalImages.forEach((src, index) => {
+      const img = new Image();
+      img.onload = () => {
+        loadedImages.add(index);
+        loadedImages = loadedImages; // Trigger reactivity
+      };
+      img.src = src;
+    });
+    
+    // Lazy load remaining images
+    setTimeout(() => {
+      images.slice(3).forEach((src, index) => {
+        const img = new Image();
+        img.onload = () => {
+          loadedImages.add(index + 3);
+          loadedImages = loadedImages;
+          if (loadedImages.size === images.length) {
+            allImagesLoaded = true;
+          }
+        };
+        img.src = src;
+      });
+    }, 300);
+  }
+
   let showCarousel = true;
   let showStats = false;
   // Crossfade between the two sections
@@ -41,6 +73,8 @@
 
   onMount(() => {
     mountedPitch = true;
+    // Preload images for faster rendering
+    preloadImages();
     // Initialize floating circles
     initCircles();
     startAnimation();
@@ -194,16 +228,60 @@
           <!-- Mobile: simple 2-col grid, no spans -->
           <div class="md:hidden grid grid-cols-2 gap-2 w-full h-full">
             {#each images as src, i}
-              <button class="relative w-full h-full rounded-lg overflow-hidden bg-base-200/60 focus:outline-none" on:click={() => openLightbox(i)} aria-label={`Open image ${i+1}`}>
-                <img {src} alt={`Pitch tile ${i + 1}`} class="absolute inset-0 w-full h-full object-cover" in:fade={{ duration: 420, delay: Math.min(i * 50, 500), easing: crossEase }} loading="lazy" />
+              <button 
+                class="relative w-full h-full rounded-lg overflow-hidden bg-base-200/60 focus:outline-none" 
+                on:click={() => openLightbox(i)} 
+                aria-label={`Open image ${i+1}`}
+              >
+                <!-- Blur placeholder while loading -->
+                <div 
+                  class="absolute inset-0 bg-gradient-to-br from-base-300 to-base-200 animate-pulse"
+                  class:opacity-0={loadedImages.has(i)}
+                  class:opacity-100={!loadedImages.has(i)}
+                  style="transition: opacity 0.3s ease;"
+                ></div>
+                <!-- Actual image -->
+                <img 
+                  {src} 
+                  alt={`Pitch event photo ${i + 1}`} 
+                  class="absolute inset-0 w-full h-full object-cover transition-opacity duration-300" 
+                  class:opacity-0={!loadedImages.has(i)}
+                  class:opacity-100={loadedImages.has(i)}
+                  in:fade={{ duration: 420, delay: Math.min(i * 50, 500), easing: crossEase }} 
+                  loading={i < 3 ? 'eager' : 'lazy'}
+                  decoding="async"
+                  fetchpriority={i === 0 ? 'high' : 'auto'}
+                />
               </button>
             {/each}
           </div>
           <!-- Desktop/tablet: collage with spans -->
           <div class="hidden md:grid grid-cols-4 grid-rows-3 gap-3 w-full h-full">
             {#each images as src, i}
-              <button class="relative w-full h-full rounded-lg overflow-hidden bg-base-200/60 {gridLayoutClasses[i]} focus:outline-none" on:click={() => openLightbox(i)} aria-label={`Open image ${i+1}`}>
-                <img {src} alt={`Pitch tile ${i + 1}`} class="absolute inset-0 w-full h-full object-cover" in:fade={{ duration: 520, delay: Math.min(i * 60, 600), easing: crossEase }} loading="lazy" />
+              <button 
+                class="relative w-full h-full rounded-lg overflow-hidden bg-base-200/60 {gridLayoutClasses[i]} focus:outline-none" 
+                on:click={() => openLightbox(i)} 
+                aria-label={`Open image ${i+1}`}
+              >
+                <!-- Blur placeholder while loading -->
+                <div 
+                  class="absolute inset-0 bg-gradient-to-br from-base-300 to-base-200 animate-pulse"
+                  class:opacity-0={loadedImages.has(i)}
+                  class:opacity-100={!loadedImages.has(i)}
+                  style="transition: opacity 0.3s ease;"
+                ></div>
+                <!-- Actual image -->
+                <img 
+                  {src} 
+                  alt={`Pitch event photo ${i + 1}`} 
+                  class="absolute inset-0 w-full h-full object-cover transition-opacity duration-300" 
+                  class:opacity-0={!loadedImages.has(i)}
+                  class:opacity-100={loadedImages.has(i)}
+                  in:fade={{ duration: 520, delay: Math.min(i * 60, 600), easing: crossEase }} 
+                  loading={i < 3 ? 'eager' : 'lazy'}
+                  decoding="async"
+                  fetchpriority={i === 0 ? 'high' : 'auto'}
+                />
               </button>
             {/each}
           </div>

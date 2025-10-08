@@ -1,7 +1,15 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const nodemailer = require('nodemailer');
+let nodemailer;
+try {
+    nodemailer = require('nodemailer');
+    console.log('✅ Nodemailer loaded successfully');
+    console.log('📦 Nodemailer version:', require('nodemailer/package.json').version);
+} catch (err) {
+    console.error('❌ Failed to load nodemailer:', err.message);
+    process.exit(1);
+}
 const { body, validationResult } = require('express-validator');
 require('dotenv').config();
 
@@ -67,7 +75,12 @@ app.use(express.json());
 
 // SMTP transporter configuration with multiple provider support
 let transporter = null;
+
 function createTransporter(config) {
+    if (!nodemailer || typeof nodemailer.createTransporter !== 'function') {
+        throw new Error('Nodemailer not properly loaded - createTransporter is not available');
+    }
+    
     const transporterConfig = {
         host: config.host,
         port: config.port,
@@ -98,11 +111,11 @@ function createTransporter(config) {
         };
     }
     
-    const transporter = nodemailer.createTransporter(transporterConfig);
+    const newTransporter = nodemailer.createTransporter(transporterConfig);
     
     console.log(`📮 Using SMTP: ${config.host}:${config.port} (secure: ${config.secure})`);
     
-    return transporter;
+    return newTransporter;
 }
 
 if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
