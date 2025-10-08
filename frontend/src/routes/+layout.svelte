@@ -22,7 +22,25 @@
   }
 
   let mounted = false;
-  onMount(() => { mounted = true; });
+  let fabContainer: HTMLElement;
+  
+  onMount(() => { 
+    mounted = true;
+    
+    // Close FAB when clicking outside
+    const handleClickOutside = (event: MouseEvent) => {
+      if (fabOpen && fabContainer && !fabContainer.contains(event.target as Node)) {
+        fabOpen = false;
+      }
+    };
+    
+    document.addEventListener('click', handleClickOutside);
+    
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  });
+  
   let selectedTheme = typeof window !== 'undefined' && window.localStorage.getItem('theme') || 'light';
   function setTheme(theme: string) {
     selectedTheme = theme;
@@ -67,7 +85,7 @@
   <!-- Footer with internal navigation for SEO -->
   <footer class="bg-base-200/50 backdrop-blur-sm mt-auto py-8 px-4 border-t border-base-300">
     <div class="max-w-6xl mx-auto">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-6 text-center md:text-left">
         <!-- About Section -->
         <div>
           <h3 class="font-bold text-lg mb-3">Liffey Founders Club</h3>
@@ -79,7 +97,7 @@
         <!-- Navigation Links -->
         <div>
           <h3 class="font-bold text-lg mb-3">Quick Links</h3>
-          <nav class="flex flex-col gap-2">
+          <nav class="flex flex-col gap-2 items-center md:items-start">
             <a href="/" class="text-sm text-base-content/70 hover:text-primary transition-colors">
               Home
             </a>
@@ -114,7 +132,7 @@
   </footer>
 
   <!-- Floating Action Button (FAB) Navigation - Mobile Optimized -->
-  <div class="fixed fab-container bottom-6 right-6 md:bottom-8 md:right-8 z-[9999] flex flex-col items-end gap-2">
+  <div bind:this={fabContainer} class="fixed fab-container bottom-6 right-6 md:bottom-8 md:right-8 z-[9999] flex flex-col items-end gap-2">
     {#if fabOpen}
       <div class="fab-menu flex flex-col items-center mb-2 p-2 md:p-3 rounded-2xl glass-subtle animate-fade-in w-44 md:w-48">
         <button class="btn glass-subtle btn-neon-cool w-full mb-2 flex items-center justify-center gap-2 border-0 hover:scale-105 transition-all duration-300 text-sm md:text-base" on:click={() => navTo('/')}>

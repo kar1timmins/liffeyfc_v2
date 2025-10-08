@@ -6,6 +6,21 @@ try {
     nodemailer = require('nodemailer');
     console.log('✅ Nodemailer loaded successfully');
     console.log('📦 Nodemailer version:', require('nodemailer/package.json').version);
+    console.log('🔍 Nodemailer type:', typeof nodemailer);
+    console.log('🔍 Has createTransporter?', typeof nodemailer.createTransporter);
+    console.log('🔍 Nodemailer keys:', Object.keys(nodemailer).join(', '));
+    
+    // Handle both CommonJS default export and named export
+    if (typeof nodemailer.createTransporter !== 'function') {
+        if (nodemailer.default && typeof nodemailer.default.createTransporter === 'function') {
+            console.log('🔧 Using nodemailer.default');
+            nodemailer = nodemailer.default;
+        } else {
+            console.error('❌ createTransporter not found in nodemailer object');
+            console.error('Available properties:', Object.keys(nodemailer));
+            process.exit(1);
+        }
+    }
 } catch (err) {
     console.error('❌ Failed to load nodemailer:', err.message);
     process.exit(1);
@@ -77,9 +92,13 @@ app.use(express.json());
 let transporter = null;
 
 function createTransporter(config) {
-    if (!nodemailer || typeof nodemailer.createTransporter !== 'function') {
-        throw new Error('Nodemailer not properly loaded - createTransporter is not available');
-    }
+    // Validation already done at module load, so we can safely use nodemailer here
+    console.log('🔧 Creating transporter with config:', {
+        host: config.host,
+        port: config.port,
+        secure: config.secure,
+        user: config.user ? '***' : 'missing'
+    });
     
     const transporterConfig = {
         host: config.host,
@@ -124,10 +143,14 @@ if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
     const isGmail = process.env.SMTP_HOST?.includes('gmail.com');
     const isZoho = process.env.SMTP_HOST?.includes('zoho.com');
     
+    console.log('🔍 Environment SMTP_SECURE:', process.env.SMTP_SECURE);
+    console.log('🔍 SMTP_SECURE is undefined?', process.env.SMTP_SECURE === undefined);
+    
     // Smart secure setting based on provider and port
     let secure;
-    if (process.env.SMTP_SECURE !== undefined) {
+    if (process.env.SMTP_SECURE !== undefined && process.env.SMTP_SECURE !== '') {
         secure = process.env.SMTP_SECURE === 'true';
+        console.log('🔧 Using SMTP_SECURE from env:', secure);
     } else {
         // Auto-detect based on port and provider
         if (port === 465) {
@@ -137,6 +160,7 @@ if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
         } else {
             secure = false; // Default to STARTTLS
         }
+        console.log('🔧 Auto-detected secure setting for port', port, ':', secure);
     }
     
     const primaryConfig = {
