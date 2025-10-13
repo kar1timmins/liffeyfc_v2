@@ -119,7 +119,7 @@
           <h3 class="text-lg font-semibold mb-3">Connect</h3>
           <ul class="space-y-2">
             <li><a href="https://www.linkedin.com/company/liffey-founders-club/" target="_blank" rel="external" class="hover:text-primary transition-colors" aria-label="LinkedIn">LinkedIn</a></li>
-            <li><a href="https://lu.ma/liffeyfoundersclub" target="_blank" rel="external" class="hover:text-primary transition-colors" aria-label="Luma">Luma</a></li>
+            <li><a href="https://lu.ma/event/evt-Hs6RP2j7Bkc8jGQ" target="_blank" rel="external" class="hover:text-primary transition-colors" aria-label="Luma">Luma</a></li>
           </ul>
         </div>
       </div>

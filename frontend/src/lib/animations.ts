@@ -57,48 +57,37 @@ export interface NextEvent {
 export function getNextEvent(): NextEvent {
 	const now = new Date();
 	const currentYear = now.getFullYear();
-	const currentMonth = now.getMonth(); // 0-11
-
-	// Determine current quarter
-	let currentQuarter: number;
-	if (currentMonth <= 2) currentQuarter = 1; // Jan-Mar
-	else if (currentMonth <= 5) currentQuarter = 2; // Apr-Jun
-	else if (currentMonth <= 8) currentQuarter = 3; // Jul-Sep
-	else currentQuarter = 4; // Oct-Dec
-
-	// Event dates (assuming events happen around the middle of each quarter)
-	const eventDates = {
-		1: new Date(currentYear, 1, 15), // Feb 15 (Q1)
-		2: new Date(currentYear, 4, 15), // May 15 (Q2)
-		3: new Date(currentYear, 7, 15), // Aug 15 (Q3)
-		4: new Date(currentYear, 10, 15) // Nov 15 (Q4)
-	};
-
-	const currentQuarterEvent = eventDates[currentQuarter as keyof typeof eventDates];
-	const hasCurrentQuarterPassed = now > currentQuarterEvent;
-
-	let nextQuarter = currentQuarter;
-	let nextYear = currentYear;
-
-	if (hasCurrentQuarterPassed) {
-		nextQuarter = currentQuarter === 4 ? 1 : currentQuarter + 1;
-		if (nextQuarter === 1) nextYear = currentYear + 1;
+	
+	// Next event is December 9, 2025
+	const nextEventDate = new Date(2025, 11, 9); // Month is 0-indexed, so 11 = December
+	const hasEventPassed = now > nextEventDate;
+	
+	// If the December 2025 event has passed, calculate next year's Q1 event
+	let eventDate: Date;
+	let quarter: number;
+	let year: number;
+	
+	if (hasEventPassed) {
+		// Move to Q1 2026
+		eventDate = new Date(2026, 1, 15); // Feb 15, 2026
+		quarter = 1;
+		year = 2026;
+	} else {
+		// Use December 9, 2025 event
+		eventDate = nextEventDate;
+		quarter = 4;
+		year = 2025;
 	}
 
-	const nextEventDate = eventDates[nextQuarter as keyof typeof eventDates];
-	if (nextQuarter === 1) {
-		nextEventDate.setFullYear(nextYear);
-	}
-
-	// Format display date (middle of the quarter)
+	// Format display date
 	const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
 		'July', 'August', 'September', 'October', 'November', 'December'];
-	const displayDate = `${nextEventDate.getDate()} ${monthNames[nextEventDate.getMonth()]}`;
+	const displayDate = `${eventDate.getDate()} ${monthNames[eventDate.getMonth()]}`;
 
 	return {
-		year: nextYear,
-		quarter: nextQuarter,
-		displayQuarter: `Q${nextQuarter}`,
+		year: year,
+		quarter: quarter,
+		displayQuarter: `Q${quarter}`,
 		nextEventDate: displayDate,
 		hasPassed: false // This will always be the next upcoming event
 	};
