@@ -8,6 +8,3 @@ Disallow: /welcome
 
 # Sitemap location
 Sitemap: https://liffeyfoundersclub.com/sitemap.xml
-
-# Crawl-delay for respectful crawling
-Crawl-delay: 1

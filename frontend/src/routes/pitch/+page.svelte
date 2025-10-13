@@ -181,6 +181,95 @@
   <meta property="twitter:title" content="Startup Pitches - Liffey Founders Club" />
   <meta property="twitter:description" content="Watch inspiring startup pitches from Dublin's emerging entrepreneurs." />
   <meta property="twitter:image" content="https://liffeyfoundersclub.com/img/event_june/image_1.jpg" />
+
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      "itemListElement": [
+        {
+          "@type": "VideoObject",
+          "name": "Pitch by Bilal Nasrullah",
+          "description": "Startup pitch from a Liffey Founders Club event.",
+          "thumbnailUrl": "https://liffeyfoundersclub.com/img/event_june/image_1.jpg",
+          "uploadDate": "2025-10-08",
+          "contentUrl": "https://liffeyfoundersclub.com/videos/pitches/Bilal_Nasrullah.webm",
+          "publisher": {
+            "@type": "Organization",
+            "name": "Liffey Founders Club",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://liffeyfoundersclub.com/img/event_june/image_1.jpg"
+            }
+          }
+        },
+        {
+          "@type": "VideoObject",
+          "name": "Pitch by Kanupriya Jamwal",
+          "description": "Startup pitch from a Liffey Founders Club event.",
+          "thumbnailUrl": "https://liffeyfoundersclub.com/img/event_june/image_4.jpg",
+          "uploadDate": "2025-10-08",
+          "contentUrl": "https://liffeyfoundersclub.com/videos/pitches/Kanupriya_Jamwal.webm",
+          "publisher": {
+            "@type": "Organization",
+            "name": "Liffey Founders Club",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://liffeyfoundersclub.com/img/event_june/image_1.jpg"
+            }
+          }
+        },
+        {
+          "@type": "VideoObject",
+          "name": "Pitch by Ricardo Ionescu",
+          "description": "Startup pitch from a Liffey Founders Club event.",
+          "thumbnailUrl": "https://liffeyfoundersclub.com/img/event_june/image_5.jpg",
+          "uploadDate": "2025-10-08",
+          "contentUrl": "https://liffeyfoundersclub.com/videos/pitches/Ricardo_Ionescu.webm",
+          "publisher": {
+            "@type": "Organization",
+            "name": "Liffey Founders Club",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://liffeyfoundersclub.com/img/event_june/image_1.jpg"
+            }
+          }
+        },
+        {
+          "@type": "VideoObject",
+          "name": "Pitch by Toby Steele",
+          "description": "Startup pitch from a Liffey Founders Club event.",
+          "thumbnailUrl": "https://liffeyfoundersclub.com/img/event_june/image_6.jpg",
+          "uploadDate": "2025-10-08",
+          "contentUrl": "https://liffeyfoundersclub.com/videos/pitches/Toby_Steele.webm",
+          "publisher": {
+            "@type": "Organization",
+            "name": "Liffey Founders Club",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://liffeyfoundersclub.com/img/event_june/image_1.jpg"
+            }
+          }
+        },
+        {
+          "@type": "VideoObject",
+          "name": "Pitch by Vishranth",
+          "description": "Startup pitch from a Liffey Founders Club event.",
+          "thumbnailUrl": "https://liffeyfoundersclub.com/img/event_june/image_7.jpg",
+          "uploadDate": "2025-10-08",
+          "contentUrl": "https://liffeyfoundersclub.com/videos/pitches/Vishranth.webm",
+          "publisher": {
+            "@type": "Organization",
+            "name": "Liffey Founders Club",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://liffeyfoundersclub.com/img/event_june/image_1.jpg"
+            }
+          }
+        }
+      ]
+    }
+  </script>
 </svelte:head>
 
 {#if showCarousel}

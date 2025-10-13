@@ -98,39 +98,29 @@
       <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-6">
         <!-- About Section -->
         <div class="text-center md:text-left">
-          <h3 class="font-bold text-lg mb-3">Liffey Founders Club</h3>
-          <p class="text-sm text-base-content/70">
-            Dublin's premier startup community for founders, entrepreneurs, and investors.
+          <h3 class="text-lg font-semibold mb-3">Liffey Founders Club</h3>
+          <p class="text-sm text-base-content/80">
+            Liffey Founders Club is a premier, private, invite-only community for visionary founders and innovators in Ireland, dedicated to fostering collaboration and driving success.
           </p>
         </div>
         
-        <!-- Navigation Links -->
+        <!-- Quick Links -->
         <div class="text-center">
-          <h3 class="font-bold text-lg mb-3">Quick Links</h3>
-          <nav class="flex flex-col gap-2 items-center">
-            <a href="/" class="text-sm text-base-content/70 hover:text-primary transition-colors">
-              Home
-            </a>
-            <a href="/pitch" class="text-sm text-base-content/70 hover:text-primary transition-colors">
-              Startup Pitches
-            </a>
-            <a href="/learnMore" class="text-sm text-base-content/70 hover:text-primary transition-colors">
-              Join Community
-            </a>
-          </nav>
+          <h3 class="text-lg font-semibold mb-3">Quick Links</h3>
+          <ul class="space-y-2">
+            <li><a href="/" class="hover:text-primary transition-colors" data-sveltekit-prefetch aria-label="Home">Home</a></li>
+            <li><a href="/pitch" class="hover:text-primary transition-colors" data-sveltekit-prefetch aria-label="Pitch">Pitch</a></li>
+            <li><a href="/learnMore" class="hover:text-primary transition-colors" data-sveltekit-prefetch aria-label="Learn More">Learn More</a></li>
+          </ul>
         </div>
         
-        <!-- Contact Info -->
+        <!-- Social Links -->
         <div class="text-center md:text-right">
-          <h3 class="font-bold text-lg mb-3">Connect</h3>
-          <div class="text-sm text-base-content/70">
-            <p class="mb-2">Dublin, Ireland</p>
-            <p>
-              <a href="mailto:hello@liffeyfoundersclub.com" class="hover:text-primary transition-colors">
-                hello@liffeyfoundersclub.com
-              </a>
-            </p>
-          </div>
+          <h3 class="text-lg font-semibold mb-3">Connect</h3>
+          <ul class="space-y-2">
+            <li><a href="https://www.linkedin.com/company/liffey-founders-club/" target="_blank" rel="external" class="hover:text-primary transition-colors" aria-label="LinkedIn">LinkedIn</a></li>
+            <li><a href="https://lu.ma/liffeyfoundersclub" target="_blank" rel="external" class="hover:text-primary transition-colors" aria-label="Luma">Luma</a></li>
+          </ul>
         </div>
       </div>
       

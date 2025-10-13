@@ -11,9 +11,12 @@ const config = {
 		adapter: adapter({
 			pages: 'build',
 			assets: 'build',
-			fallback: 'index.html', // SPA-style routing fallback
+			fallback: null,
 			precompress: true
-		})
+		}),
+		prerender: {
+			entries: ['*', '/pitch', '/learnMore']
+		}
 	}
 };
 

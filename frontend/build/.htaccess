@@ -26,22 +26,125 @@ Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
 # Content Security Policy - Comprehensive XSS Protection
 Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com https://challenges.cloudflare.com https://web3forms.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://liffeyfcform-production.up.railway.app https://api.web3forms.com; frame-src 'self' https://www.google.com https://challenges.cloudflare.com; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self' https://api.web3forms.com; frame-ancestors 'self';"
 
-# Essential rewrite rules only
-RewriteEngine On
+# ============================================
+# COMPRESSION - Serve Pre-compressed Files
+# ============================================
+<IfModule mod_rewrite.c>
+  RewriteEngine On
 
-# Allow _app directory assets (critical for SvelteKit)
-RewriteRule ^_app/ - [L]
+  # Serve Brotli compressed files if available and browser supports them
+  RewriteCond %{HTTP:Accept-Encoding} br
+  RewriteCond %{REQUEST_FILENAME}.br -f
+  RewriteRule ^(.*)$ $1.br [L]
 
-# Allow static directories
-RewriteRule ^(img|videos|api)/ - [L]
+  # Serve Gzip compressed files if available and browser supports them
+  RewriteCond %{HTTP:Accept-Encoding} gzip
+  RewriteCond %{REQUEST_FILENAME}.gz -f
+  RewriteRule ^(.*)$ $1.gz [L]
+</IfModule>
 
-# Allow files that exist
-RewriteCond %{REQUEST_FILENAME} -f
-RewriteRule ^ - [L]
+# Set correct content type and encoding for compressed files
+<IfModule mod_headers.c>
+  <FilesMatch "\.js\.br$">
+    Header set Content-Type "application/javascript"
+    Header set Content-Encoding "br"
+  </FilesMatch>
+  <FilesMatch "\.js\.gz$">
+    Header set Content-Type "application/javascript"
+    Header set Content-Encoding "gzip"
+  </FilesMatch>
+  <FilesMatch "\.css\.br$">
+    Header set Content-Type "text/css"
+    Header set Content-Encoding "br"
+  </FilesMatch>
+  <FilesMatch "\.css\.gz$">
+    Header set Content-Type "text/css"
+    Header set Content-Encoding "gzip"
+  </FilesMatch>
+  <FilesMatch "\.html\.br$">
+    Header set Content-Type "text/html"
+    Header set Content-Encoding "br"
+  </FilesMatch>
+  <FilesMatch "\.html\.gz$">
+    Header set Content-Type "text/html"
+    Header set Content-Encoding "gzip"
+  </FilesMatch>
+  <FilesMatch "\.xml\.br$">
+    Header set Content-Type "application/xml"
+    Header set Content-Encoding "br"
+  </FilesMatch>
+  <FilesMatch "\.xml\.gz$">
+    Header set Content-Type "application/xml"
+    Header set Content-Encoding "gzip"
+  </FilesMatch>
+</IfModule>
 
-# Allow directories that exist  
-RewriteCond %{REQUEST_FILENAME} -d
-RewriteRule ^ - [L]
+# ============================================
+# CACHING POLICY - Optimize Performance
+# ============================================
+<IfModule mod_expires.c>
+  ExpiresActive On
 
-# Everything else goes to index.html
-RewriteRule ^ /index.html [L]
+  # Immutable assets in _app/immutable directory - cache for 1 year
+  <FilesMatch "^_app/immutable/.*\.(js|css)$">
+    ExpiresDefault "access plus 1 year"
+    Header append Cache-Control "public, immutable"
+  </FilesMatch>
+
+  # Images and media - cache for 1 year
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+  ExpiresByType image/webp "access plus 1 year"
+  ExpiresByType video/mp4 "access plus 1 year"
+  ExpiresByType video/webm "access plus 1 year"
+  
+  # HTML and data files - no cache to ensure fresh content
+  ExpiresByType text/html "access plus 0 seconds"
+  ExpiresByType application/json "access plus 0 seconds"
+  ExpiresByType text/xml "access plus 0 seconds"
+</IfModule>
+
+# ============================================
+# ROUTING - SvelteKit Pre-rendered Pages
+# ============================================
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Allow _app directory assets (critical for SvelteKit)
+  RewriteRule ^_app/ - [L]
+
+  # Allow static directories
+  RewriteRule ^(img|videos|api)/ - [L]
+
+  # Allow files that exist
+  RewriteCond %{REQUEST_FILENAME} -f
+  RewriteRule ^ - [L]
+
+  # Allow directories that exist  
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # For pre-rendered routes, try to serve the .html file
+  # This handles clean URLs like /pitch -> /pitch.html
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_FILENAME}.html -f
+  RewriteRule ^(.*)$ $1.html [L]
+
+  # Fallback to index.html for any remaining routes
+  RewriteRule ^ /index.html [L]
+</IfModule>
+
+# ============================================
+# FILE PROTECTION
+# ============================================
+<Files ".htaccess">
+  Require all denied
+</Files>
+<Files "package.json">
+  Require all denied
+</Files>
+<Files "svelte.config.js">
+  Require all denied
+</Files>
