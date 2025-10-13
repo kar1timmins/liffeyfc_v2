@@ -391,14 +391,18 @@
 	<meta property="og:url" content="https://liffeyfoundersclub.com/learnMore" />
 	<meta property="og:title" content="Join Liffey Founders Club - Dublin's Premier Startup Community" />
 	<meta property="og:description" content="Register to join Dublin's leading startup community. Practice your pitch, connect with investors, and grow your business." />
-	<meta property="og:image" content="https://liffeyfoundersclub.com/img/event_june/image_1.jpg" />
+	<meta property="og:image" content="https://liffeyfoundersclub.com/img/logo/Liffey_Founders_Club_Logo.png" />
+	<meta property="og:image:width" content="1200" />
+	<meta property="og:image:height" content="630" />
+	<meta property="og:image:alt" content="Liffey Founders Club Logo" />
 	
 	<!-- Twitter -->
 	<meta property="twitter:card" content="summary_large_image" />
 	<meta property="twitter:url" content="https://liffeyfoundersclub.com/learnMore" />
 	<meta property="twitter:title" content="Join Liffey Founders Club - Dublin's Premier Startup Community" />
 	<meta property="twitter:description" content="Register to join Dublin's leading startup community. Practice your pitch, connect with investors, and grow your business." />
-	<meta property="twitter:image" content="https://liffeyfoundersclub.com/img/event_june/image_1.jpg" />
+	<meta property="twitter:image" content="https://liffeyfoundersclub.com/img/logo/Liffey_Founders_Club_Logo.png" />
+	<meta property="twitter:image:alt" content="Liffey Founders Club Logo" />
 </svelte:head>
 
 {#if showLM}

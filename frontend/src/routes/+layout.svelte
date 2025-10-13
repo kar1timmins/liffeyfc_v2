@@ -83,6 +83,54 @@
   }
 </script>
 
+<svelte:head>
+  <!-- Favicons - Multi-platform support -->
+  <link rel="icon" type="image/x-icon" href="/img/favicon_io/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon_io/favicon-16x16.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon_io/favicon-32x32.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/img/favicon_io/apple-touch-icon.png" />
+  <link rel="manifest" href="/img/favicon_io/site.webmanifest" />
+  
+  <!-- Organization Structured Data -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Liffey Founders Club",
+      "url": "https://liffeyfoundersclub.com",
+      "logo": "https://liffeyfoundersclub.com/img/logo/Liffey_Founders_Club_Logo.png",
+      "description": "Dublin's premier startup community for founders, entrepreneurs, and investors. Practice your pitch, connect with the community, and grow your business.",
+      "foundingDate": "2024",
+      "sameAs": [
+        "https://www.linkedin.com/company/liffey-founders-club/",
+        "https://lu.ma/event/evt-Hs6RP2j7Bkc8jGQ"
+      ],
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "Event Registration",
+        "url": "https://liffeyfoundersclub.com/learnMore"
+      }
+    }
+  </script>
+  
+  <!-- Website Structured Data -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Liffey Founders Club",
+      "url": "https://liffeyfoundersclub.com",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://liffeyfoundersclub.com/?q={search_term_string}"
+        },
+        "query-input": "required name=search_term_string"
+      }
+    }
+  </script>
+</svelte:head>
 
 
 <main class="min-h-screen overflow-hidden">

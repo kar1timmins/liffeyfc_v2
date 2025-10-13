@@ -27,6 +27,7 @@ pids
 # Build outputs
 dist/
 .output/
+/build
 
 # Cache directories
 .cache/
