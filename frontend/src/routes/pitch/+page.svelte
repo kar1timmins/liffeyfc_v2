@@ -174,12 +174,13 @@
   <meta property="og:title" content="Startup Pitches - Liffey Founders Club" />
   <meta property="og:description" content="Watch inspiring startup pitches from Dublin's emerging entrepreneurs." />
   <meta property="og:image" content="https://liffeyfoundersclub.com/img/logo/Liffey_Founders_Club_Logo.png" />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="630" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1668" />
+  <meta property="og:image:height" content="2388" />
   <meta property="og:image:alt" content="Liffey Founders Club Logo" />
   
   <!-- Twitter -->
-  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:card" content="summary" />
   <meta property="twitter:url" content="https://liffeyfoundersclub.com/pitch" />
   <meta property="twitter:title" content="Startup Pitches - Liffey Founders Club" />
   <meta property="twitter:description" content="Watch inspiring startup pitches from Dublin's emerging entrepreneurs." />
