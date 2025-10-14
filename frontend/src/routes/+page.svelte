@@ -36,6 +36,132 @@
   <meta property="twitter:description" content="Join Dublin's premier startup community. Practice your pitch, connect with investors, and grow your business." />
   <meta property="twitter:image" content="https://liffeyfoundersclub.com/img/logo/Liffey_Founders_Club_Logo.png" />
   <meta property="twitter:image:alt" content="Liffey Founders Club Logo" />
+  
+  <!-- Enhanced Structured Data for Google AI Overview -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Liffey Founders Club",
+      "alternateName": "Liffey FC",
+      "url": "https://liffeyfoundersclub.com",
+      "logo": "https://liffeyfoundersclub.com/img/logo/Liffey_Founders_Club_Logo.png",
+      "description": "Dublin's premier startup community for founders, entrepreneurs, and investors. Practice your pitch, connect with investors, and grow your business through quarterly networking events.",
+      "foundingDate": "2024",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Dublin",
+        "addressCountry": "IE"
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "addressCountry": "IE"
+      },
+      "slogan": "Practice What You Pitch",
+      "knowsAbout": [
+        "Startup Pitching",
+        "Entrepreneurship",
+        "Venture Capital",
+        "Angel Investment",
+        "Business Networking",
+        "Startup Community",
+        "Innovation",
+        "Dublin Startups"
+      ],
+      "memberOf": {
+        "@type": "Organization",
+        "name": "Dublin Startup Ecosystem"
+      },
+      "sameAs": [
+        "https://www.linkedin.com/company/liffey-founders-club/",
+        "https://lu.ma/event/evt-Hs6RP2j7Bkc8jGQ"
+      ],
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "Event Registration",
+        "url": "https://liffeyfoundersclub.com/learnMore"
+      }
+    }
+  </script>
+  
+  <!-- Event Structured Data -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Event",
+      "name": "Liffey Founders Club Q4 2025 Event",
+      "description": "Join Dublin's premier startup community for an evening of networking, pitching, and connecting with investors and fellow entrepreneurs.",
+      "startDate": "2025-12-09T18:00:00+00:00",
+      "endDate": "2025-12-09T21:00:00+00:00",
+      "eventStatus": "https://schema.org/EventScheduled",
+      "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+      "location": {
+        "@type": "Place",
+        "name": "Dublin, Ireland",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Dublin",
+          "addressCountry": "IE"
+        }
+      },
+      "image": "https://liffeyfoundersclub.com/img/logo/Liffey_Founders_Club_Logo.png",
+      "organizer": {
+        "@type": "Organization",
+        "name": "Liffey Founders Club",
+        "url": "https://liffeyfoundersclub.com"
+      },
+      "offers": {
+        "@type": "Offer",
+        "url": "https://lu.ma/event/evt-Hs6RP2j7Bkc8jGQ",
+        "price": "0",
+        "priceCurrency": "EUR",
+        "availability": "https://schema.org/InStock",
+        "validFrom": "2025-10-14T00:00:00+00:00"
+      }
+    }
+  </script>
+  
+  <!-- FAQPage Structured Data for AI Overview -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is Liffey Founders Club?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Liffey Founders Club is Dublin's premier startup community for founders, entrepreneurs, and investors. We host quarterly events where entrepreneurs can practice their pitch, connect with investors, and network with fellow innovators."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Who can join Liffey Founders Club?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Liffey Founders Club welcomes founders, entrepreneurs, startup employees, angel investors, venture capitalists, and anyone interested in the Dublin startup ecosystem. Whether you're pitching your business, looking to invest, or simply wanting to connect with the community, you're welcome to join our quarterly events."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "When is the next Liffey Founders Club event?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Our next event is scheduled for December 9, 2025, in Dublin. We host quarterly events throughout the year. Registration is available at https://liffeyfoundersclub.com/learnMore"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I pitch my startup at Liffey Founders Club?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "To pitch your startup, register for our next event via the Learn More page and indicate your interest in pitching. Selected founders will receive an invitation to present their business to investors and the community at our quarterly events."
+          }
+        }
+      ]
+    }
+  </script>
 </svelte:head>
 
 {#if show}

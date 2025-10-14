@@ -404,6 +404,28 @@
 	<meta property="twitter:description" content="Register to join Dublin's leading startup community. Practice your pitch, connect with investors, and grow your business." />
 	<meta property="twitter:image" content="https://liffeyfoundersclub.com/img/logo/Liffey_Founders_Club_Logo.png" />
 	<meta property="twitter:image:alt" content="Liffey Founders Club Logo" />
+	
+	<!-- Breadcrumb Structured Data -->
+	<script type="application/ld+json">
+		{
+			"@context": "https://schema.org",
+			"@type": "BreadcrumbList",
+			"itemListElement": [
+				{
+					"@type": "ListItem",
+					"position": 1,
+					"name": "Home",
+					"item": "https://liffeyfoundersclub.com/"
+				},
+				{
+					"@type": "ListItem",
+					"position": 2,
+					"name": "Join Community",
+					"item": "https://liffeyfoundersclub.com/learnMore"
+				}
+			]
+		}
+	</script>
 </svelte:head>
 
 {#if showLM}
