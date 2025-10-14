@@ -98,7 +98,14 @@
       "@type": "Organization",
       "name": "Liffey Founders Club",
       "url": "https://liffeyfoundersclub.com",
-      "logo": "https://liffeyfoundersclub.com/img/logo/Liffey_Founders_Club_Logo.png",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://liffeyfoundersclub.com/img/logo/Liffey_Founders_Club_Logo.png",
+        "width": 1668,
+        "height": 2388,
+        "caption": "Liffey Founders Club Logo"
+      },
+      "image": "https://liffeyfoundersclub.com/img/logo/Liffey_Founders_Club_Logo.png",
       "description": "Dublin's premier startup community for founders, entrepreneurs, and investors. Practice your pitch, connect with the community, and grow your business.",
       "foundingDate": "2024",
       "sameAs": [

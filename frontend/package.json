@@ -5,7 +5,10 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
-		"build": "vite build",
+		"build": "vite build && node scripts/generate-sitemap.js",
+		"build:only": "vite build",
+		"generate:sitemap": "node scripts/generate-sitemap.js",
+		"validate:sitemap": "node scripts/validate-sitemap.js",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",

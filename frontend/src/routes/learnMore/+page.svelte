@@ -470,14 +470,14 @@
 
 			<div class="glass glass-learn-more overflow-hidden rounded-3xl backdrop-blur-xl">
 				<div class="p-4 md:p-6 lg:p-8 backdrop-blur-sm">
-					<div class="flex justify-center">
+					<div class="flex justify-center px-2">
 						<div
 							role="tablist"
-							class="tabs tabs-boxed bg-transparent border-0 backdrop-blur-md rounded-3xl p-1 mb-4 md:mb-6"
+							class="tabs tabs-boxed bg-transparent border-0 backdrop-blur-md rounded-3xl p-2 mb-4 md:mb-6 flex flex-col sm:flex-row gap-2 sm:gap-1 w-full max-w-md sm:max-w-none sm:w-auto"
 						>
 							<button
 								role="tab"
-								class="tab h-10 md:h-12 text-xs md:text-sm lg:text-base font-medium transition-all duration-300 rounded-2xl btn-neon-subtle {view ===
+								class="tab h-12 sm:h-10 md:h-12 text-sm sm:text-xs md:text-sm lg:text-base font-medium transition-all duration-300 rounded-2xl btn-neon-subtle whitespace-nowrap px-4 sm:px-3 md:px-4 flex-1 sm:flex-initial {view ===
 								'about'
 									? 'glass-subtle text-primary shadow-md'
 									: 'text-base-content/70 hover:text-base-content hover:bg-white/5'}"
@@ -487,7 +487,7 @@
 							</button>
 							<button
 								role="tab"
-								class="tab h-10 md:h-12 text-xs md:text-sm lg:text-base font-medium transition-all duration-300 rounded-2xl btn-neon-subtle {view ===
+								class="tab h-12 sm:h-10 md:h-12 text-sm sm:text-xs md:text-sm lg:text-base font-medium transition-all duration-300 rounded-2xl btn-neon-subtle whitespace-nowrap px-4 sm:px-3 md:px-4 flex-1 sm:flex-initial {view ===
 								'interest'
 									? 'glass-subtle text-primary shadow-md'
 									: 'text-base-content/70 hover:text-base-content hover:bg-white/5'}"
@@ -497,7 +497,7 @@
 							</button>
 							<button
 								role="tab"
-								class="tab h-10 md:h-12 text-xs md:text-sm lg:text-base font-medium transition-all duration-300 rounded-2xl btn-neon-subtle {view ===
+								class="tab h-12 sm:h-10 md:h-12 text-sm sm:text-xs md:text-sm lg:text-base font-medium transition-all duration-300 rounded-2xl btn-neon-subtle whitespace-nowrap px-4 sm:px-3 md:px-4 flex-1 sm:flex-initial {view ===
 								'register'
 									? 'glass-subtle text-primary shadow-md'
 									: 'text-base-content/70 hover:text-base-content hover:bg-white/5'}"
