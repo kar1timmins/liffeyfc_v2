@@ -211,7 +211,7 @@
         <div class="text-center md:text-left">
           <h3 class="text-lg font-semibold mb-3">Liffey Founders Club</h3>
           <p class="text-sm text-base-content/80">
-            Liffey Founders Club is a premier, private, invite-only community for visionary founders and innovators in Ireland, dedicated to fostering collaboration and driving success.
+            Liffey Founders Club is a premier, public, open to all community for visionary founders and innovators in Ireland, dedicated to fostering collaboration and driving success.
           </p>
         </div>
         
