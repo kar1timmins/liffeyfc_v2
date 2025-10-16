@@ -477,24 +477,12 @@ body::before {
 	bottom: 4px !important;
 	z-index: 9998 !important; /* Below FAB (9999) but above content */
 	
-	/* Collapse by default */
-	width: 50px !important;
-	height: 50px !important;
-	overflow: visible !important;
+	/* Collapse by default - balanced size */
+	width: 38px !important;
+	height: 38px !important;
+	overflow: hidden !important;
 	border-radius: 2px !important;
 	transition: width 0.3s ease, height 0.3s ease !important;
-	
-	/* Center the icon */
-	display: flex !important;
-	align-items: center !important;
-	justify-content: center !important;
-	padding: 0 !important;
-}
-
-/* Center and enlarge the circular icon */
-.grecaptcha-badge > * {
-	transform: scale(1.4) !important;
-	transform-origin: center !important;
 }
 
 /* Expand on hover */
@@ -504,9 +492,8 @@ body::before {
 	overflow: auto !important;
 }
 
-/* Reset scaling on hover to show full text */
+/* Show full content on hover */
 .grecaptcha-badge:hover > * {
-	transform: scale(1) !important;
 	opacity: 1 !important;
 	visibility: visible !important;
 }
@@ -516,26 +503,15 @@ body::before {
 	.grecaptcha-badge {
 		left: 4px !important;
 		bottom: 4px !important;
-		width: 50px !important;
-		height: 50px !important;
-		overflow: visible !important;
-		display: flex !important;
-		align-items: center !important;
-		justify-content: center !important;
-	}
-	
-	.grecaptcha-badge > * {
-		transform: scale(1.4) !important;
+		width: 38px !important;
+		height: 38px !important;
+		overflow: hidden !important;
 	}
 	
 	.grecaptcha-badge:hover {
 		width: 220px !important;
 		height: auto !important;
 		overflow: auto !important;
-	}
-	
-	.grecaptcha-badge:hover > * {
-		transform: scale(1) !important;
 	}
 }
 
