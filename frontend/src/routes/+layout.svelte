@@ -84,6 +84,9 @@
 </script>
 
 <svelte:head>
+  <!-- Meta - Prevent Search Template URL Indexing -->
+  <meta name="robots" content="index, follow, noodp, noydir" />
+  
   <!-- Favicons - Multi-platform support -->
   <link rel="icon" type="image/x-icon" href="/img/favicon_io/favicon.ico" />
   <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon_io/favicon-16x16.png" />

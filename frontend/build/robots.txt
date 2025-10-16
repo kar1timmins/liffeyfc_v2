@@ -5,6 +5,8 @@ User-agent: *
 Allow: /
 Disallow: /api/
 Disallow: /welcome
+Disallow: /?q=
+Disallow: /*?q=
 
 # Sitemap location
 Sitemap: https://liffeyfoundersclub.com/sitemap.xml

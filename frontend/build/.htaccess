@@ -32,6 +32,10 @@ Header always set Content-Security-Policy "default-src 'self'; script-src 'self'
 <IfModule mod_rewrite.c>
   RewriteEngine On
 
+  # Block search template URLs to prevent indexing
+  RewriteCond %{QUERY_STRING} ^q=
+  RewriteRule ^/?$ - [F,L]
+
   # Serve Brotli compressed files if available and browser supports them
   RewriteCond %{HTTP:Accept-Encoding} br
   RewriteCond %{REQUEST_FILENAME}.br -f
