@@ -466,8 +466,9 @@ body::before {
 	z-index: -1;
 }
 
-/* ============================================
+/* 
    FIX: Reposition reCAPTCHA badge to avoid FAB overlap
+   Enhanced: Collapse by default, expand on hover
    ============================================ */
 .grecaptcha-badge {
 	/* Move to bottom-left instead of bottom-right */
@@ -475,6 +476,25 @@ body::before {
 	right: auto !important;
 	bottom: 4px !important;
 	z-index: 9998 !important; /* Below FAB (9999) but above content */
+	
+	/* Collapse by default */
+	width: 28px !important;
+	height: 28px !important;
+	overflow: hidden !important;
+	border-radius: 2px !important;
+	transition: width 0.3s ease, height 0.3s ease !important;
+}
+
+/* Expand on hover */
+.grecaptcha-badge:hover {
+	width: 256px !important;
+	height: auto !important;
+}
+
+/* Expand all children on hover for full badge display */
+.grecaptcha-badge:hover > * {
+	opacity: 1 !important;
+	visibility: visible !important;
 }
 
 /* On mobile, ensure reCAPTCHA stays out of the way */
@@ -482,7 +502,16 @@ body::before {
 	.grecaptcha-badge {
 		left: 4px !important;
 		bottom: 4px !important;
-		transform: scale(0.85); /* Make it slightly smaller on mobile */
+		width: 28px !important;
+		height: 28px !important;
+		transform: scale(0.95);
 		transform-origin: bottom left;
 	}
+	
+	.grecaptcha-badge:hover {
+		width: 220px !important;
+		height: auto !important;
+		transform: scale(0.95);
+	}
 }
+
