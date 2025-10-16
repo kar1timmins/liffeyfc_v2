@@ -126,15 +126,7 @@
       "@context": "https://schema.org",
       "@type": "WebSite",
       "name": "Liffey Founders Club",
-      "url": "https://liffeyfoundersclub.com",
-      "potentialAction": {
-        "@type": "SearchAction",
-        "target": {
-          "@type": "EntryPoint",
-          "urlTemplate": "https://liffeyfoundersclub.com/?q={search_term_string}"
-        },
-        "query-input": "required name=search_term_string"
-      }
+      "url": "https://liffeyfoundersclub.com"
     }
   </script>
 </svelte:head>
