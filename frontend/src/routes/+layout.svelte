@@ -91,12 +91,13 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/img/favicon_io/apple-touch-icon.png" />
   <link rel="manifest" href="/img/favicon_io/site.webmanifest" />
   
-  <!-- Organization Structured Data -->
+  <!-- Organization Structured Data - Enhanced for Knowledge Panel -->
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "Organization",
       "name": "Liffey Founders Club",
+      "alternateName": ["Liffey FC", "Liffey Founders"],
       "url": "https://liffeyfoundersclub.com",
       "logo": {
         "@type": "ImageObject",
@@ -107,16 +108,76 @@
       },
       "image": "https://liffeyfoundersclub.com/img/logo/Liffey_Founders_Club_Logo.png",
       "description": "Dublin's premier startup community for founders, entrepreneurs, and investors. Practice your pitch, connect with the community, and grow your business.",
+      "disambiguatingDescription": "Startup community and events platform in Dublin, Ireland for practicing pitches, connecting with investors, and networking with entrepreneurs.",
       "foundingDate": "2024",
+      "foundingLocation": {
+        "@type": "Place",
+        "name": "Dublin",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Dublin",
+          "addressCountry": "IE"
+        }
+      },
+      "areaServed": {
+        "@type": "Place",
+        "name": "Dublin, Ireland"
+      },
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Dublin",
+        "addressCountry": "IE"
+      },
       "sameAs": [
         "https://www.linkedin.com/company/liffey-founders-club/",
         "https://lu.ma/event/evt-Hs6RP2j7Bkc8jGQ"
       ],
-      "contactPoint": {
-        "@type": "ContactPoint",
-        "contactType": "Event Registration",
-        "url": "https://liffeyfoundersclub.com/learnMore"
-      }
+      "contactPoint": [
+        {
+          "@type": "ContactPoint",
+          "contactType": "Event Registration",
+          "url": "https://liffeyfoundersclub.com/learnMore",
+          "name": "Register Interest"
+        },
+        {
+          "@type": "ContactPoint",
+          "contactType": "Information",
+          "url": "https://liffeyfoundersclub.com/",
+          "name": "Learn More"
+        }
+      ],
+      "hasOfferingDescription": [
+        {
+          "@type": "OfferingDescription",
+          "name": "Startup Pitch Events",
+          "description": "Quarterly events for entrepreneurs to practice pitches and connect with investors",
+          "url": "https://liffeyfoundersclub.com/pitch"
+        },
+        {
+          "@type": "OfferingDescription",
+          "name": "Community Networking",
+          "description": "Connect with founders, investors, and startup enthusiasts in Dublin",
+          "url": "https://liffeyfoundersclub.com/"
+        },
+        {
+          "@type": "OfferingDescription",
+          "name": "Event Registration",
+          "description": "Register to attend our upcoming startup events",
+          "url": "https://liffeyfoundersclub.com/learnMore"
+        }
+      ],
+      "knowsAbout": [
+        "Startup Pitching",
+        "Entrepreneurship",
+        "Venture Capital",
+        "Angel Investment",
+        "Business Networking",
+        "Startup Community",
+        "Innovation",
+        "Dublin Startups",
+        "Tech Entrepreneurs",
+        "Startup Events"
+      ]
     }
   </script>
   
