@@ -197,6 +197,39 @@
 
 
 <main class="min-h-screen overflow-hidden">
+  <!-- Sponsors Moving Banner -->
+  <div class="w-full bg-gradient-to-r from-base-100 to-base-200 border-b border-base-300/50 py-4 overflow-hidden">
+    <div class="flex animate-scroll space-x-12 md:space-x-16 lg:space-x-20">
+      {#each [1, 2] as group}
+        <div class="flex space-x-12 md:space-x-16 lg:space-x-20 flex-shrink-0">
+          <!-- Fire and 5th -->
+          <div class="flex flex-col items-center justify-center min-w-[120px] md:min-w-[140px]">
+            <img src="/img/logo/Fire5th-Arrow2_260x.avif" alt="Fire and 5th Logo" class="h-8 md:h-10 mb-2 object-contain" />
+            <div class="text-center">
+              <div class="text-xs font-bold text-primary">Fire and 5th</div>
+            </div>
+          </div>
+          
+          <!-- Avalanche -->
+          <div class="flex flex-col items-center justify-center min-w-[120px] md:min-w-[140px]">
+            <img src="/img/logo/avalanche_logo.png" alt="Avalanche Logo" class="h-8 md:h-10 mb-2 object-contain" />
+            <div class="text-center">
+              <div class="text-xs font-bold text-accent">Avalanche</div>
+            </div>
+          </div>
+          
+          <!-- Baseline -->
+          <div class="flex flex-col items-center justify-center min-w-[120px] md:min-w-[140px]">
+            <img src="/img/logo/baseline.png" alt="Baseline Logo" class="h-8 md:h-10 mb-2 object-contain" />
+            <div class="text-center">
+              <div class="text-xs font-bold text-secondary">Baseline</div>
+            </div>
+          </div>
+        </div>
+      {/each}
+    </div>
+  </div>
+
   {#if showShell}
     <div in:routeOpacity={{ delay: 100, duration: 620 }} out:routeOpacity on:outroend={onShellOutro}>
       <slot />
