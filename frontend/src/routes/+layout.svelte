@@ -246,21 +246,21 @@
   <div bind:this={fabContainer} class="fixed fab-container bottom-6 right-6 md:bottom-8 md:right-8 z-[9999] flex flex-col items-end gap-2">
     {#if fabOpen}
       <div class="fab-menu flex flex-col items-center mb-2 p-2 md:p-3 rounded-2xl glass-subtle animate-fade-in w-44 md:w-48">
-        <button class="btn glass-subtle btn-neon-cool w-full mb-2 flex items-center justify-center gap-2 border-0 hover:scale-105 transition-all duration-300 text-sm md:text-base" on:click={() => navTo('/')}>
-          <Home size={16} class="md:w-[18px] md:h-[18px]"/> 
-          Home
+        <button class="btn glass-subtle btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" on:click={() => navTo('/')}>
+          <Home size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/> 
+          <span class="flex-1 text-center">Home</span>
         </button>
-        <button class="btn glass-subtle btn-neon-cool w-full mb-2 flex items-center justify-center gap-2 border-0 hover:scale-105 transition-all duration-300 text-sm md:text-base" on:click={() => navTo('/pitch')}>
-          <Mic size={16} class="md:w-[18px] md:h-[18px]"/> 
-          Pitch
+        <button class="btn glass-subtle btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" on:click={() => navTo('/pitch')}>
+          <Mic size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/> 
+          <span class="flex-1 text-center">Pitch</span>
         </button>
-        <button class="btn glass-subtle btn-neon-cool w-full mb-2 flex items-center justify-center gap-2 border-0 hover:scale-105 transition-all duration-300 text-sm md:text-base" on:click={() => navTo('/learnMore')}>
-          <Info size={16} class="md:w-[18px] md:h-[18px]"/> 
-          Learn More
+        <button class="btn glass-subtle btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" on:click={() => navTo('/learnMore')}>
+          <Info size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/> 
+          <span class="flex-1 text-center">Learn More</span>
         </button>
-        <button on:click={open} class="btn glass-subtle btn-neon-subtle w-full mb-2 flex items-center justify-center gap-2 border-0 hover:scale-105 transition-all duration-300 text-sm md:text-base">
-          <Wallet size={16} class="md:w-[18px] md:h-[18px]" />
-          Connect Wallet
+        <button on:click={open} class="btn glass-subtle btn-neon-subtle w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base leading-none md:leading-normal">
+          <Wallet size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]" />
+          <span class="flex-1 text-center">Connect </span>
         </button>
         <div class="w-full flex flex-col items-center mt-2">
           <button

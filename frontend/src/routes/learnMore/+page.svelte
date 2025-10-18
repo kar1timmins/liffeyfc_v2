@@ -473,11 +473,11 @@
 					<div class="flex justify-center px-2">
 						<div
 							role="tablist"
-							class="tabs tabs-boxed bg-transparent border-0 backdrop-blur-md rounded-3xl p-2 mb-4 md:mb-6 flex flex-col sm:flex-row gap-2 sm:gap-1 w-full max-w-md sm:max-w-none sm:w-auto"
+							class="tabs tabs-boxed bg-transparent border-0 backdrop-blur-md rounded-3xl p-1 md:p-2 mb-4 md:mb-6 flex flex-col sm:flex-row gap-1 sm:gap-0.5 w-full sm:w-auto justify-center"
 						>
 							<button
 								role="tab"
-								class="tab h-12 sm:h-10 md:h-12 text-sm sm:text-xs md:text-sm lg:text-base font-medium transition-all duration-300 rounded-2xl btn-neon-subtle whitespace-nowrap px-4 sm:px-3 md:px-4 flex-1 sm:flex-initial {view ===
+								class="tab h-10 sm:h-9 md:h-10 text-xs sm:text-xs md:text-sm lg:text-base font-medium transition-all duration-300 rounded-2xl btn-neon-subtle whitespace-nowrap px-3 sm:px-2.5 md:px-4 flex-shrink-0 {view ===
 								'about'
 									? 'glass-subtle text-primary shadow-md'
 									: 'text-base-content/70 hover:text-base-content hover:bg-white/5'}"
@@ -487,7 +487,7 @@
 							</button>
 							<button
 								role="tab"
-								class="tab h-12 sm:h-10 md:h-12 text-sm sm:text-xs md:text-sm lg:text-base font-medium transition-all duration-300 rounded-2xl btn-neon-subtle whitespace-nowrap px-4 sm:px-3 md:px-4 flex-1 sm:flex-initial {view ===
+								class="tab h-10 sm:h-9 md:h-10 text-xs sm:text-xs md:text-sm lg:text-base font-medium transition-all duration-300 rounded-2xl btn-neon-subtle whitespace-nowrap px-3 sm:px-2.5 md:px-4 flex-shrink-0 {view ===
 								'interest'
 									? 'glass-subtle text-primary shadow-md'
 									: 'text-base-content/70 hover:text-base-content hover:bg-white/5'}"
@@ -497,7 +497,7 @@
 							</button>
 							<button
 								role="tab"
-								class="tab h-12 sm:h-10 md:h-12 text-sm sm:text-xs md:text-sm lg:text-base font-medium transition-all duration-300 rounded-2xl btn-neon-subtle whitespace-nowrap px-4 sm:px-3 md:px-4 flex-1 sm:flex-initial {view ===
+								class="tab h-10 sm:h-9 md:h-10 text-xs sm:text-xs md:text-sm lg:text-base font-medium transition-all duration-300 rounded-2xl btn-neon-subtle whitespace-nowrap px-3 sm:px-2.5 md:px-4 flex-shrink-0 {view ===
 								'register'
 									? 'glass-subtle text-primary shadow-md'
 									: 'text-base-content/70 hover:text-base-content hover:bg-white/5'}"
@@ -863,9 +863,9 @@
 											{#if step < 4}
 												<button
 													type="button"
-													class="btn btn-neon-subtle {buttonCanNext
-														? 'btn-primary'
-														: 'btn-disabled'}"
+													class="btn {buttonCanNext
+														? 'btn-primary shadow-lg hover:shadow-xl hover:scale-105'
+														: 'btn-disabled opacity-50 cursor-not-allowed'}"
 													on:click={handleNext}
 													disabled={!buttonCanNext || submitted === 'submitting'}
 												>

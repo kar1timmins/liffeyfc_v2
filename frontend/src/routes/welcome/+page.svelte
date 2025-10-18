@@ -114,8 +114,8 @@
 						</p>
 						<p class="text-base-content">
 							<strong>Questions?</strong> Email us at 
-							<a href="mailto:info@liffeyfoundersclub.com" class="link link-primary">
-								info@liffeyfoundersclub.com
+							<a href="mailto:hello@liffeyfoundersclub.com" class="link link-primary">
+								hello@liffeyfoundersclub.com
 							</a> - we're here to help!
 						</p>
 					</div>

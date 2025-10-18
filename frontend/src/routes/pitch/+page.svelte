@@ -110,13 +110,43 @@
   // --- Lightbox (modal) for mosaic tiles ---
   let lightboxOpen = false;
   let lightboxIndex = 0;
+  let lightboxImageLoaded = false;
+  
   function openLightbox(index: number) {
     lightboxIndex = index;
-    lightboxOpen = true;
+    lightboxImageLoaded = false;
+    // Preload the image before opening lightbox
+    const img = new Image();
+    img.onload = () => {
+      lightboxOpen = true;
+      lightboxImageLoaded = true;
+    };
+    img.src = images[index];
   }
+  
   function closeLightbox() { lightboxOpen = false; }
-  function nextImage() { lightboxIndex = (lightboxIndex + 1) % images.length; }
-  function prevImage() { lightboxIndex = (lightboxIndex - 1 + images.length) % images.length; }
+  
+  function nextImage() { 
+    lightboxImageLoaded = false;
+    const nextIndex = (lightboxIndex + 1) % images.length;
+    const img = new Image();
+    img.onload = () => {
+      lightboxIndex = nextIndex;
+      lightboxImageLoaded = true;
+    };
+    img.src = images[nextIndex];
+  }
+  
+  function prevImage() { 
+    lightboxImageLoaded = false;
+    const prevIndex = (lightboxIndex - 1 + images.length) % images.length;
+    const img = new Image();
+    img.onload = () => {
+      lightboxIndex = prevIndex;
+      lightboxImageLoaded = true;
+    };
+    img.src = images[prevIndex];
+  }
 
   // Dynamic floating circles
   let circles: Circle[] = [];
@@ -418,28 +448,75 @@
 
 {#if lightboxOpen}
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-md"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-lg"
     role="dialog"
     aria-modal="true"
     aria-label="Image viewer"
     tabindex="0"
     on:click={(e) => { if (e.currentTarget === e.target) closeLightbox(); }}
     on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); closeLightbox(); } }}
+    transition:fade={{ duration: 200 }}
   >
-  <div class="relative max-w-5xl w-[94vw] md:w-[92vw] h-[68dvh] md:h-[80vh] glass-subtle rounded-3xl shadow-2xl overflow-hidden flex items-center justify-center p-2 md:p-4 backdrop-blur-xl"
+  <div class="relative w-[94vw] md:w-[90vw] max-w-6xl aspect-video md:max-h-[85vh] glass-elevated rounded-3xl shadow-2xl overflow-hidden flex items-center justify-center backdrop-blur-xl border border-white/20"
       on:touchstart={(e) => { if (e.touches?.length) { touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY; } }}
       on:touchend={(e) => { const t = e.changedTouches?.[0]; if (!t) return; const dx = t.clientX - touchStartX; const dy = t.clientY - touchStartY; if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) { dx < 0 ? nextImage() : prevImage(); } }}
     >
-      <button class="absolute btn btn-sm md:btn-md glass-subtle border-0" style="top:max(env(safe-area-inset-top),0.75rem);right:max(env(safe-area-inset-right),0.75rem)" aria-label="Close" on:click={closeLightbox}>
+      <!-- Loading indicator -->
+      {#if !lightboxImageLoaded}
+        <div class="absolute inset-0 flex items-center justify-center bg-base-200/30 backdrop-blur-sm">
+          <div class="flex flex-col items-center gap-3">
+            <div class="loading loading-spinner loading-lg text-primary"></div>
+            <span class="text-sm text-base-content/70">Loading image...</span>
+          </div>
+        </div>
+      {/if}
+      
+      <!-- Close button -->
+      <button 
+        class="absolute btn btn-sm md:btn-md glass-subtle border-0 hover:bg-base-100/30 z-10" 
+        style="top:max(env(safe-area-inset-top),0.75rem);right:max(env(safe-area-inset-right),0.75rem)" 
+        aria-label="Close" 
+        on:click={closeLightbox}
+        disabled={!lightboxImageLoaded}
+      >
         <CloseIcon class="h-5 w-5" />
       </button>
-      <button class="absolute left-2 md:left-3 top-1/2 -translate-y-1/2 btn btn-circle glass-subtle border-0 shadow-md" aria-label="Previous" on:click|stopPropagation={prevImage}>
+      
+      <!-- Previous button -->
+      <button 
+        class="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 btn btn-circle glass-subtle border-0 shadow-lg hover:bg-base-100/30 z-10 transition-all duration-200" 
+        aria-label="Previous image" 
+        on:click|stopPropagation={prevImage}
+        disabled={!lightboxImageLoaded}
+      >
         <ChevronLeft class="h-7 w-7" />
       </button>
-      <button class="absolute right-2 md:right-3 top-1/2 -translate-y-1/2 btn btn-circle glass-subtle border-0 shadow-md" aria-label="Next" on:click|stopPropagation={nextImage}>
+      
+      <!-- Next button -->
+      <button 
+        class="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 btn btn-circle glass-subtle border-0 shadow-lg hover:bg-base-100/30 z-10 transition-all duration-200" 
+        aria-label="Next image" 
+        on:click|stopPropagation={nextImage}
+        disabled={!lightboxImageLoaded}
+      >
         <ChevronRight class="h-7 w-7" />
       </button>
-      <img src={images[lightboxIndex]} alt={`Image ${lightboxIndex + 1}`} class="max-w-full max-h-full w-auto h-auto object-contain select-none" draggable="false" />
+      
+      <!-- Image counter -->
+      <div class="absolute bottom-3 md:bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/40 backdrop-blur-sm rounded-full text-xs md:text-sm text-white font-medium">
+        {lightboxIndex + 1} / {images.length}
+      </div>
+      
+      <!-- Main image -->
+      {#if lightboxImageLoaded}
+        <img 
+          src={images[lightboxIndex]} 
+          alt={`Image ${lightboxIndex + 1}`} 
+          class="w-full h-full object-contain select-none" 
+          draggable="false"
+          transition:fade={{ duration: 300 }}
+        />
+      {/if}
     </div>
   </div>
 {/if}

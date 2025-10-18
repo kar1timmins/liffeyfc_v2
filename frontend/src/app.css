@@ -406,6 +406,22 @@ body {
   }
 }
 
+/* FAB Menu Buttons - Improved alignment and text positioning */
+.fab-menu .btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: inherit;
+  min-height: 2.75rem;
+}
+
+.fab-menu .btn span {
+  display: inline-block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Enhanced glass mobile visibility */
 @media (max-width: 768px) {
   .glass-learn-more {
@@ -496,6 +512,61 @@ body::before {
 .grecaptcha-badge:hover > * {
 	opacity: 1 !important;
 	visibility: visible !important;
+}
+
+/* Enhanced disabled button styling for better visibility in light mode */
+.btn:disabled,
+.btn[disabled] {
+	cursor: not-allowed;
+	opacity: 0.5;
+	pointer-events: none;
+}
+
+/* Light mode - disabled button styling */
+[data-theme="light"] .btn:disabled,
+[data-theme="light"] .btn[disabled],
+:not([data-theme="dark"]) .btn:disabled,
+:not([data-theme="dark"]) .btn[disabled] {
+	background-color: hsl(var(--b2) / 0.6);
+	border-color: hsl(var(--b3) / 0.4);
+	color: hsl(var(--bc) / 0.4);
+	text-shadow: none;
+	box-shadow: none;
+	opacity: 0.5;
+}
+
+/* Dark mode - disabled button styling */
+[data-theme="dark"] .btn:disabled,
+[data-theme="dark"] .btn[disabled] {
+	background-color: hsl(var(--b2) / 0.3);
+	border-color: hsl(var(--b3) / 0.3);
+	color: hsl(var(--bc) / 0.3);
+	text-shadow: none;
+	box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+	opacity: 0.4;
+}
+
+/* Specific styling for btn-disabled class */
+.btn-disabled,
+.btn.btn-disabled {
+	background-color: hsl(var(--b2) / 0.6);
+	border-color: hsl(var(--b3) / 0.4);
+	color: hsl(var(--bc) / 0.4);
+	cursor: not-allowed;
+	opacity: 0.5;
+	pointer-events: none;
+	text-shadow: none;
+	box-shadow: none;
+	transition: none;
+}
+
+[data-theme="dark"] .btn-disabled,
+[data-theme="dark"] .btn.btn-disabled {
+	background-color: hsl(var(--b2) / 0.3);
+	border-color: hsl(var(--b3) / 0.3);
+	color: hsl(var(--bc) / 0.3);
+	opacity: 0.4;
+	box-shadow: none;
 }
 
 /* On mobile, ensure reCAPTCHA stays out of the way */
