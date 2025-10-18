@@ -1,12 +1,33 @@
 # robots.txt for Liffey Founders Club
-# Allow all crawlers to index the site
+# Comprehensive crawl directives for search engines
 
 User-agent: *
 Allow: /
 Disallow: /api/
 Disallow: /welcome
+
+# Block search template URL pattern - prevents indexing of dynamic search parameters
+# This prevents Google from indexing template URLs like /?q={search_term_string}
+Disallow: /?q=*
+Disallow: /*?q=*
 Disallow: /?q=
-Disallow: /*?q=
+Disallow: /*\?q=
 
 # Sitemap location
 Sitemap: https://liffeyfoundersclub.com/sitemap.xml
+
+# Additional instructions for specific crawlers
+User-agent: Googlebot
+Allow: /
+Disallow: /api/
+Disallow: /welcome
+Disallow: /?q=*
+Disallow: /*?q=*
+
+User-agent: Bingbot
+Allow: /
+Disallow: /api/
+Disallow: /welcome
+Disallow: /?q=*
+Disallow: /*?q=*
+
