@@ -800,27 +800,25 @@
 																Consent & Verification
 															</h3>
 															
-															<!-- Mobile-optimized consent checkbox -->
-															<div class="glass-subtle rounded-2xl p-4 md:p-6 mb-6 text-left">
-																<label class="flex items-start gap-3 cursor-pointer">
-																	<input
-																		type="checkbox"
-																		class="checkbox checkbox-accent flex-shrink-0 mt-1"
-																		bind:checked={consent}
-																		required
-																	/>
-																	<div class="flex-1">
-																		<span class="text-base-content text-sm md:text-base leading-relaxed block">
-																			I agree to be contacted about upcoming quarterly events and startup community updates.
-																		</span>
-																		<span class="text-base-content/60 text-xs mt-2 block">
-																			You can unsubscribe at any time. We respect your privacy.
-																		</span>
-																	</div>
-																</label>
-															</div>
-															
-															<!-- reCAPTCHA info - now optional -->
+														<!-- Mobile-optimized consent checkbox -->
+														<div class="glass-subtle rounded-2xl p-4 md:p-6 mb-6 text-left">
+															<label class="flex items-start gap-2 md:gap-3 cursor-pointer">
+																<input
+																	type="checkbox"
+																	class="checkbox checkbox-accent flex-shrink-0 mt-1"
+																	bind:checked={consent}
+																	required
+																/>
+																<div class="flex-1 min-w-0">
+																	<span class="text-base-content text-xs sm:text-sm md:text-base leading-snug md:leading-relaxed block break-words">
+																		I agree to be contacted about events and updates.
+																	</span>
+																	<span class="text-base-content/60 text-xs mt-1 md:mt-2 block">
+																		Unsubscribe anytime. We respect your privacy.
+																	</span>
+																</div>
+															</label>
+														</div>															<!-- reCAPTCHA info - now optional -->
 															<div class="text-xs text-base-content/50 leading-relaxed px-2">
 																{#if siteKey && recaptchaReady}
 																	<p class="mb-2">🔒 Enhanced with reCAPTCHA protection</p>
