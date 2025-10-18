@@ -411,7 +411,7 @@
       >
         <div class="absolute inset-0 overflow-hidden p-2 md:p-3">
           <!-- Mobile: simple 2-col grid, no spans -->
-          <div class="md:hidden grid grid-cols-2 gap-2 w-full h-full">
+          <div class="md:hidden grid grid-cols-2 gap-2 w-full h-full auto-rows-fr">
             {#each images.slice(0, 9) as src, i}
               <button 
                 class="relative w-full h-full rounded-lg overflow-hidden bg-base-200/60 focus:outline-none hover:shadow-lg transition-shadow" 
@@ -491,7 +491,7 @@
         >
           <div class="absolute inset-0 overflow-hidden p-2 md:p-3">
             <!-- Mobile: simple 2-col grid, no spans -->
-            <div class="md:hidden grid grid-cols-2 gap-2 w-full h-full">
+            <div class="md:hidden grid grid-cols-2 gap-2 w-full h-full auto-rows-fr">
               {#each septemberImages as src, i}
                 <button 
                   class="relative w-full h-full rounded-lg overflow-hidden bg-base-200/60 focus:outline-none hover:shadow-lg transition-shadow" 
