@@ -6,8 +6,8 @@
   import { MoveRight, ChevronLeft, ChevronRight, X as CloseIcon } from 'lucide-svelte';
   import { generateRandomCircles, animateCircles, type Circle } from '$lib/animations';
 
-  // Using 9 images to match the collage layout in the reference photo
-  const images = [
+  // Using images from both June and September events for variety
+  const juneImages = [
     '/img/event_june/image_1.jpg',
     '/img/event_june/image_4.jpg',
     '/img/event_june/image_5.jpg',
@@ -19,7 +19,27 @@
     '/img/event_june/image_11.jpg',
   ];
 
-  // --- Static collage layout classes ---
+  const septemberImages = [
+    '/img/sept_event/image_1.jpg',
+    '/img/sept_event/image_2.jpg',
+    '/img/sept_event/image_3.jpg',
+    '/img/sept_event/image_4.jpg',
+    '/img/sept_event/image_5.jpg',
+    '/img/sept_event/image_6.jpg',
+    '/img/sept_event/image_7.jpg',
+    '/img/sept_event/image_8.jpg',
+    '/img/sept_event/image_9.jpg',
+    '/img/sept_event/image_10.jpg',
+    '/img/sept_event/image_11.jpg',
+    '/img/sept_event/image_12.jpg',
+    '/img/sept_event/image_13.jpg',
+    '/img/sept_event/pitch_1.jpeg',
+  ];
+
+  // Combined for lightbox navigation
+  const images = [...juneImages, ...septemberImages];
+
+  // --- Static collage layout classes for mosaic display (first 9 images) ---
   // Defines the grid-span for each of the 9 images to create the collage effect.
   const gridLayoutClasses = [
     'col-span-2 row-span-1', // Image 1
@@ -31,6 +51,25 @@
     'col-span-1 row-span-1', // Image 7
     'col-span-1 row-span-1', // Image 8
     'col-span-1 row-span-1', // Image 9
+  ];
+
+  // --- Static collage layout classes for September gallery (14 images) ---
+  // Defines the grid-span for each image to create an extended mosaic effect.
+  // Fits perfectly into a 4-column x 4-row grid (16 spaces total for 14 images)
+  const septemberGridLayoutClasses = [
+    'col-span-2 row-span-1', // Image 1 (row 1: cols 1-2)
+    'col-span-1 row-span-1', // Image 2 (row 1: col 3)
+    'col-span-1 row-span-1', // Image 3 (row 1: col 4)
+    'col-span-1 row-span-1', // Image 4 (row 2: col 1)
+    'col-span-1 row-span-1', // Image 5 (row 2: col 2)
+    'col-span-2 row-span-1', // Image 6 (row 2: cols 3-4)
+    'col-span-1 row-span-1', // Image 7 (row 3: col 1)
+    'col-span-2 row-span-1', // Image 8 (row 3: cols 2-3)
+    'col-span-1 row-span-1', // Image 9 (row 3: col 4)
+    'col-span-1 row-span-1', // Image 10 (row 4: col 1)
+    'col-span-1 row-span-1', // Image 11 (row 4: col 2)
+    'col-span-1 row-span-1', // Image 12 (row 4: col 3)
+    'col-span-1 row-span-1', // Image 13 (row 4: col 4)
   ];
 
   // Progressive image loading state
@@ -370,12 +409,12 @@
         role="region"
         aria-label="Pitch image mosaic"
       >
-  <div class="absolute inset-0 overflow-hidden p-2 md:p-3">
+        <div class="absolute inset-0 overflow-hidden p-2 md:p-3">
           <!-- Mobile: simple 2-col grid, no spans -->
           <div class="md:hidden grid grid-cols-2 gap-2 w-full h-full">
-            {#each images as src, i}
+            {#each images.slice(0, 9) as src, i}
               <button 
-                class="relative w-full h-full rounded-lg overflow-hidden bg-base-200/60 focus:outline-none" 
+                class="relative w-full h-full rounded-lg overflow-hidden bg-base-200/60 focus:outline-none hover:shadow-lg transition-shadow" 
                 on:click={() => openLightbox(i)} 
                 aria-label={`Open image ${i+1}`}
               >
@@ -401,11 +440,11 @@
               </button>
             {/each}
           </div>
-          <!-- Desktop/tablet: collage with spans -->
+          <!-- Desktop/tablet: collage with spans - mosaic layout (first 9 images only) -->
           <div class="hidden md:grid grid-cols-4 grid-rows-3 gap-3 w-full h-full">
-            {#each images as src, i}
+            {#each images.slice(0, 9) as src, i}
               <button 
-                class="relative w-full h-full rounded-lg overflow-hidden bg-base-200/60 {gridLayoutClasses[i]} focus:outline-none" 
+                class="relative w-full h-full rounded-lg overflow-hidden bg-base-200/60 {gridLayoutClasses[i]} focus:outline-none hover:shadow-xl transition-shadow" 
                 on:click={() => openLightbox(i)} 
                 aria-label={`Open image ${i+1}`}
               >
@@ -434,7 +473,88 @@
         </div>
       </div>
 
-      <div class="mt-6 flex justify-center">
+      <!-- September Event Gallery Section -->
+      <div class="mt-16 pt-12 border-t border-base-200">
+        <!-- <div class="text-center mb-8 relative z-10">
+          <h2 class="text-4xl md:text-5xl font-extrabold mb-3 text-primary">
+            September Event
+          </h2>
+          <p class="text-lg text-base-content/70 max-w-2xl mx-auto">
+            Highlights from our September pitch event. Explore more photos from this exciting gathering of Dublin's startup ecosystem.
+          </p>
+        </div> -->
+
+        <div
+          class="relative w-full h-[60vh] md:h-[900px]"
+          role="region"
+          aria-label="September event gallery"
+        >
+          <div class="absolute inset-0 overflow-hidden p-2 md:p-3">
+            <!-- Mobile: simple 2-col grid, no spans -->
+            <div class="md:hidden grid grid-cols-2 gap-2 w-full h-full">
+              {#each septemberImages as src, i}
+                <button 
+                  class="relative w-full h-full rounded-lg overflow-hidden bg-base-200/60 focus:outline-none hover:shadow-lg transition-shadow" 
+                  on:click={() => openLightbox(juneImages.length + i)} 
+                  aria-label={`Open September image ${i+1}`}
+                >
+                  <!-- Blur placeholder while loading -->
+                  <div 
+                    class="absolute inset-0 bg-gradient-to-br from-base-300 to-base-200 animate-pulse"
+                    class:opacity-0={loadedImages.has(juneImages.length + i)}
+                    class:opacity-100={!loadedImages.has(juneImages.length + i)}
+                    style="transition: opacity 0.3s ease;"
+                  ></div>
+                  <!-- Actual image -->
+                  <img 
+                    {src} 
+                    alt={`September event photo ${i + 1}`} 
+                    class="absolute inset-0 w-full h-full object-cover transition-opacity duration-300" 
+                    class:opacity-0={!loadedImages.has(juneImages.length + i)}
+                    class:opacity-100={loadedImages.has(juneImages.length + i)}
+                    in:fade={{ duration: 420, delay: Math.min(i * 50, 500), easing: crossEase }} 
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </button>
+              {/each}
+            </div>
+
+            <!-- Desktop/tablet: collage with spans - mosaic layout (September images with extended grid) -->
+            <div class="hidden md:grid grid-cols-4 grid-rows-4 gap-3 w-full h-full">
+              {#each septemberImages as src, i}
+                <button 
+                  class="relative w-full h-full rounded-lg overflow-hidden bg-base-200/60 {septemberGridLayoutClasses[i]} focus:outline-none hover:shadow-xl transition-shadow" 
+                  on:click={() => openLightbox(juneImages.length + i)} 
+                  aria-label={`Open September image ${i+1}`}
+                >
+                  <!-- Blur placeholder while loading -->
+                  <div 
+                    class="absolute inset-0 bg-gradient-to-br from-base-300 to-base-200 animate-pulse"
+                    class:opacity-0={loadedImages.has(juneImages.length + i)}
+                    class:opacity-100={!loadedImages.has(juneImages.length + i)}
+                    style="transition: opacity 0.3s ease;"
+                  ></div>
+                  <!-- Actual image -->
+                  <img 
+                    {src} 
+                    alt={`September event photo ${i + 1}`} 
+                    class="absolute inset-0 w-full h-full object-cover transition-opacity duration-300" 
+                    class:opacity-0={!loadedImages.has(juneImages.length + i)}
+                    class:opacity-100={loadedImages.has(juneImages.length + i)}
+                    in:fade={{ duration: 520, delay: Math.min(i * 60, 600), easing: crossEase }} 
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </button>
+              {/each}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Get Investor Ready Button - Below September Gallery -->
+      <div class="mt-8 mb-12 flex justify-center">
         <button
           class="btn glass-subtle btn-neon-accent px-8 py-3 rounded-full text-lg font-semibold shadow-lg flex items-center gap-2 transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-accent/50"
           on:click={revealStats}
