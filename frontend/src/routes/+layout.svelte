@@ -217,7 +217,7 @@
 </svelte:head>
 
 
-<main class="min-h-screen overflow-hidden pt-20">
+	<main class="pt-28">
   <!-- Sponsors Moving Banner -->
   <div 
     class="fixed top-0 left-0 right-0 w-full py-4 overflow-hidden glass-subtle z-50 transition-transform duration-300 ease-in-out"

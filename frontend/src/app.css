@@ -382,16 +382,61 @@ body {
 
 /* Sponsors banner scroll animation */
 @keyframes scroll {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
 }
 
 .animate-scroll {
   animation: scroll 30s linear infinite;
+}
+
+/* Logo sheen animation - applies highlight sweep to the logo only */
+.logo-sheen {
+  position: relative;
+  overflow: hidden;
+}
+
+.logo-sheen::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 30%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.6) 50%,
+    transparent 100%
+  );
+  animation: logo-sheen-slide 4s ease-in-out 1s infinite;
+  pointer-events: none;
+  z-index: 10;
+}
+
+@keyframes logo-sheen-slide {
+  0% { left: -50%; }
+  50% { left: 150%; }
+  100% { left: 150%; }
+}
+
+@keyframes sheen {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-sheen {
+  animation: sheen 3s ease-in-out infinite;
+}
+
+@keyframes sheen-sweep {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes slide-sheen {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
 }
 
 /* Mobile-optimized FAB positioning and sizing */
