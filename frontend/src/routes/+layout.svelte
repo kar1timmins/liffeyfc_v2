@@ -23,6 +23,8 @@
 
   let mounted = false;
   let fabContainer: HTMLElement;
+  let bannerVisible = true;
+  let lastScrollY = 0;
   
   onMount(() => { 
     mounted = true;
@@ -39,8 +41,27 @@
       document.addEventListener('click', handleClickOutside);
     }, 100);
     
+    // Banner scroll hide/show logic
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      
+      // Show banner when scrolling up or at top
+      if (currentScrollY < lastScrollY || currentScrollY < 100) {
+        bannerVisible = true;
+      } 
+      // Hide banner when scrolling down past threshold
+      else if (currentScrollY > lastScrollY && currentScrollY > 200) {
+        bannerVisible = false;
+      }
+      
+      lastScrollY = currentScrollY;
+    };
+    
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    
     return () => {
       document.removeEventListener('click', handleClickOutside);
+      window.removeEventListener('scroll', handleScroll);
     };
   });
   
@@ -196,35 +217,46 @@
 </svelte:head>
 
 
-<main class="min-h-screen overflow-hidden">
+<main class="min-h-screen overflow-hidden pt-20">
   <!-- Sponsors Moving Banner -->
-  <div class="w-full bg-gradient-to-r from-base-100 to-base-200 border-b border-base-300/50 py-4 overflow-hidden">
+  <div 
+    class="fixed top-0 left-0 right-0 w-full py-4 overflow-hidden glass-subtle z-50 transition-transform duration-300 ease-in-out"
+    class:-translate-y-full={!bannerVisible}
+  >
     <div class="flex animate-scroll space-x-12 md:space-x-16 lg:space-x-20">
-      {#each [1, 2] as group}
+      {#each [1, 2, 3, 4, 5] as group}
         <div class="flex space-x-12 md:space-x-16 lg:space-x-20 flex-shrink-0">
           <!-- Fire and 5th -->
-          <div class="flex flex-col items-center justify-center min-w-[120px] md:min-w-[140px]">
+          <a href="https://fireand5th.com" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center justify-center min-w-[120px] md:min-w-[140px] hover:scale-105 transition-transform duration-200">
             <img src="/img/logo/Fire5th-Arrow2_260x.avif" alt="Fire and 5th Logo" class="h-8 md:h-10 mb-2 object-contain" />
             <div class="text-center">
               <div class="text-xs font-bold text-primary">Fire and 5th</div>
             </div>
-          </div>
+          </a>
           
           <!-- Avalanche -->
-          <div class="flex flex-col items-center justify-center min-w-[120px] md:min-w-[140px]">
+          <a href="https://www.avax.network/" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center justify-center min-w-[120px] md:min-w-[140px] hover:scale-105 transition-transform duration-200">
             <img src="/img/logo/avalanche_logo.png" alt="Avalanche Logo" class="h-8 md:h-10 mb-2 object-contain" />
             <div class="text-center">
               <div class="text-xs font-bold text-accent">Avalanche</div>
             </div>
-          </div>
+          </a>
           
           <!-- Baseline -->
-          <div class="flex flex-col items-center justify-center min-w-[120px] md:min-w-[140px]">
+          <a href="https://www.baseline.community/" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center justify-center min-w-[120px] md:min-w-[140px] hover:scale-105 transition-transform duration-200">
             <img src="/img/logo/baseline.png" alt="Baseline Logo" class="h-8 md:h-10 mb-2 object-contain" />
             <div class="text-center">
               <div class="text-xs font-bold text-secondary">Baseline</div>
             </div>
-          </div>
+          </a>
+
+          <!-- Zingibeer -->
+          <a href="https://zingibeer.ie/" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center justify-center min-w-[120px] md:min-w-[140px] hover:scale-105 transition-transform duration-200">
+            <img src="/img/logo/zingibeer_logo.webp" alt="Zingibeer Logo" class="h-8 md:h-10 mb-2 object-contain" />
+            <div class="text-center">
+              <div class="text-xs font-bold text-secondary">Zingibeer</div>
+            </div>
+          </a>
         </div>
       {/each}
     </div>
