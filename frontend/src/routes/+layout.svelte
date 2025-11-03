@@ -5,29 +5,30 @@
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import { Home, Mic, Info, Sun, Moon, X, Menu, Wallet } from 'lucide-svelte';
+  import Web3Modal from '$lib/components/Web3Modal.svelte';
+  import { walletStore, formattedAddress } from '$lib/stores/walletStore';
   
-  // Simple wallet connect without Web3Modal to avoid build-time dependency issues
-  let account = '';
-  async function open() {
-    try {
-      if (typeof window === 'undefined' || !(window as any).ethereum) {
-        console.warn('No injected wallet found');
-        return;
-      }
-      const accounts: string[] = await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
-      account = accounts?.[0] ?? '';
-    } catch (e) {
-      console.error('Wallet connect failed', e);
-    }
+  // Web3 Modal state
+  let showWeb3Modal = $state(false);
+  
+  function openWeb3Modal() {
+    showWeb3Modal = true;
+    fabOpen = false;
   }
 
   let mounted = false;
   let fabContainer: HTMLElement;
-  let bannerVisible = true;
+  let bannerVisible = $state(true);
   let lastScrollY = 0;
   
   onMount(() => { 
     mounted = true;
+    
+    // Initialize theme
+    if (typeof window !== 'undefined') {
+      const current = document.documentElement.getAttribute('data-theme');
+      if (current !== selectedTheme) setTheme(selectedTheme);
+    }
     
     // Close FAB when clicking outside (with small delay to prevent immediate closure)
     const handleClickOutside = (event: MouseEvent) => {
@@ -65,7 +66,7 @@
     };
   });
   
-  let selectedTheme = typeof window !== 'undefined' && window.localStorage.getItem('theme') || 'light';
+  let selectedTheme = $state(typeof window !== 'undefined' && window.localStorage.getItem('theme') || 'light');
   function setTheme(theme: string) {
     selectedTheme = theme;
     if (typeof document !== 'undefined') {
@@ -73,14 +74,10 @@
       window.localStorage.setItem('theme', theme);
     }
   }
-  if (typeof window !== 'undefined') {
-    // Only apply if missing or different to avoid repaint on hydration
-    const current = document.documentElement.getAttribute('data-theme');
-    if (current !== selectedTheme) setTheme(selectedTheme);
-  }
+  
   // Icons
   // FAB logic
-  let fabOpen = false;
+  let fabOpen = $state(false);
   
   // Toggle FAB with event stopping
   function toggleFab(event: MouseEvent) {
@@ -88,7 +85,7 @@
     fabOpen = !fabOpen;
   }
   
-  let showShell = true;
+  let showShell = $state(true);
   let pendingNav: string | null = null;
   function navTo(path: string) {
     if (pendingNav) return; // ignore double-clicks
@@ -217,44 +214,44 @@
 </svelte:head>
 
 
-	<main class="pt-28">
+	<main class="pt-20 sm:pt-24 md:pt-28">
   <!-- Sponsors Moving Banner -->
   <div 
-    class="fixed top-0 left-0 right-0 w-full py-4 overflow-hidden glass-subtle z-50 transition-transform duration-300 ease-in-out"
+    class="fixed top-0 left-0 right-0 w-full py-3 sm:py-3.5 md:py-4 overflow-hidden glass-subtle z-50 transition-transform duration-300 ease-in-out"
     class:-translate-y-full={!bannerVisible}
   >
-    <div class="flex animate-scroll space-x-12 md:space-x-16 lg:space-x-20">
+    <div class="flex animate-scroll space-x-8 sm:space-x-10 md:space-x-12 lg:space-x-16 xl:space-x-20">
       {#each [1, 2, 3, 4, 5] as group}
-        <div class="flex space-x-12 md:space-x-16 lg:space-x-20 flex-shrink-0">
+        <div class="flex space-x-8 sm:space-x-10 md:space-x-12 lg:space-x-16 xl:space-x-20 flex-shrink-0">
           <!-- Fire and 5th -->
-          <a href="https://fireand5th.com" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center justify-center min-w-[120px] md:min-w-[140px] hover:scale-105 transition-transform duration-200">
-            <img src="/img/logo/Fire5th-Arrow2_260x.avif" alt="Fire and 5th Logo" class="h-8 md:h-10 mb-2 object-contain" />
+          <a href="https://fireand5th.com" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center justify-center min-w-[100px] sm:min-w-[120px] md:min-w-[140px] hover:scale-105 transition-transform duration-200">
+            <img src="/img/logo/Fire5th-Arrow2_260x.avif" alt="Fire and 5th Logo" class="h-6 sm:h-7 md:h-8 lg:h-10 mb-1.5 sm:mb-2 object-contain" />
             <div class="text-center">
-              <div class="text-xs font-bold text-primary">Fire and 5th</div>
+              <div class="text-[10px] sm:text-xs font-bold text-primary">Fire and 5th</div>
             </div>
           </a>
           
           <!-- Avalanche -->
-          <a href="https://www.avax.network/" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center justify-center min-w-[120px] md:min-w-[140px] hover:scale-105 transition-transform duration-200">
-            <img src="/img/logo/avalanche_logo.png" alt="Avalanche Logo" class="h-8 md:h-10 mb-2 object-contain" />
+          <a href="https://www.avax.network/" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center justify-center min-w-[100px] sm:min-w-[120px] md:min-w-[140px] hover:scale-105 transition-transform duration-200">
+            <img src="/img/logo/avalanche_logo.png" alt="Avalanche Logo" class="h-6 sm:h-7 md:h-8 lg:h-10 mb-1.5 sm:mb-2 object-contain" />
             <div class="text-center">
-              <div class="text-xs font-bold text-accent">Avalanche</div>
+              <div class="text-[10px] sm:text-xs font-bold text-accent">Avalanche</div>
             </div>
           </a>
           
           <!-- Baseline -->
-          <a href="https://www.baseline.community/" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center justify-center min-w-[120px] md:min-w-[140px] hover:scale-105 transition-transform duration-200">
-            <img src="/img/logo/baseline.png" alt="Baseline Logo" class="h-8 md:h-10 mb-2 object-contain" />
+          <a href="https://www.baseline.community/" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center justify-center min-w-[100px] sm:min-w-[120px] md:min-w-[140px] hover:scale-105 transition-transform duration-200">
+            <img src="/img/logo/baseline.png" alt="Baseline Logo" class="h-6 sm:h-7 md:h-8 lg:h-10 mb-1.5 sm:mb-2 object-contain" />
             <div class="text-center">
-              <div class="text-xs font-bold text-secondary">Baseline</div>
+              <div class="text-[10px] sm:text-xs font-bold text-secondary">Baseline</div>
             </div>
           </a>
 
           <!-- Zingibeer -->
-          <a href="https://zingibeer.ie/" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center justify-center min-w-[120px] md:min-w-[140px] hover:scale-105 transition-transform duration-200">
-            <img src="/img/logo/zingibeer_logo.webp" alt="Zingibeer Logo" class="h-8 md:h-10 mb-2 object-contain" />
+          <a href="https://zingibeer.ie/" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center justify-center min-w-[100px] sm:min-w-[120px] md:min-w-[140px] hover:scale-105 transition-transform duration-200">
+            <img src="/img/logo/zingibeer_logo.webp" alt="Zingibeer Logo" class="h-6 sm:h-7 md:h-8 lg:h-10 mb-1.5 sm:mb-2 object-contain" />
             <div class="text-center">
-              <div class="text-xs font-bold text-secondary">Zingibeer</div>
+              <div class="text-[10px] sm:text-xs font-bold text-secondary">Zingibeer</div>
             </div>
           </a>
         </div>
@@ -263,7 +260,7 @@
   </div>
 
   {#if showShell}
-    <div in:routeOpacity={{ delay: 100, duration: 620 }} out:routeOpacity on:outroend={onShellOutro}>
+    <div in:routeOpacity={{ delay: 100, duration: 620 }} out:routeOpacity onoutroend={onShellOutro}>
       <slot />
     </div>
   {/if}
@@ -310,28 +307,39 @@
   <!-- Floating Action Button (FAB) Navigation - Mobile Optimized -->
   <div bind:this={fabContainer} class="fixed fab-container bottom-6 right-6 md:bottom-8 md:right-8 z-[9999] flex flex-col items-end gap-2">
     {#if fabOpen}
-      <div class="fab-menu flex flex-col items-center mb-2 p-2 md:p-3 rounded-2xl glass-subtle animate-fade-in w-44 md:w-48">
-        <button class="btn glass-subtle btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" on:click={() => navTo('/')}>
+      <div class="fab-menu flex flex-col items-center mb-2 p-2 md:p-3 rounded-2xl glass-fab animate-fade-in w-44 md:w-48">
+        <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/')}>
           <Home size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/> 
           <span class="flex-1 text-center">Home</span>
         </button>
-        <button class="btn glass-subtle btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" on:click={() => navTo('/pitch')}>
+        <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/pitch')}>
           <Mic size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/> 
           <span class="flex-1 text-center">Pitch</span>
         </button>
-        <button class="btn glass-subtle btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" on:click={() => navTo('/learnMore')}>
+        <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/learnMore')}>
           <Info size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/> 
           <span class="flex-1 text-center">Learn More</span>
         </button>
-        <button on:click={open} class="btn glass-subtle btn-neon-subtle w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base leading-none md:leading-normal">
+        <button 
+          onclick={openWeb3Modal} 
+          class="btn glass-fab w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base leading-none md:leading-normal"
+          class:btn-neon-subtle={!$walletStore.isConnected}
+          class:btn-success={$walletStore.isConnected}
+        >
           <Wallet size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]" />
-          <span class="flex-1 text-center">Connect </span>
+          <span class="flex-1 text-center">
+            {#if $walletStore.isConnected}
+              {$formattedAddress}
+            {:else}
+              Connect
+            {/if}
+          </span>
         </button>
         <div class="w-full flex flex-col items-center mt-2">
           <button
-            class="btn btn-circle glass-subtle border-0 hover:scale-110 transition-all duration-300 w-10 h-10 md:w-12 md:h-12"
+            class="btn btn-circle glass-fab border-0 hover:scale-110 transition-all duration-300 w-10 h-10 md:w-12 md:h-12"
             aria-label="Toggle light/dark theme"
-            on:click={() => setTheme(selectedTheme === 'light' ? 'dark' : 'light')}
+            onclick={() => setTheme(selectedTheme === 'light' ? 'dark' : 'light')}
           >
             {#if selectedTheme === 'light'}
               <Sun class="h-5 w-5 md:h-6 md:w-6" />
@@ -343,10 +351,10 @@
       </div>
     {/if}
     <button
-      class="fab-button btn btn-circle glass-subtle text-base-content shadow-lg hover:scale-110 transition-all duration-300 flex items-center justify-center ring-2 ring-base-content/20 border-0 backdrop-blur-xl w-14 h-14 md:w-[4.5rem] md:h-[4.5rem]"
+      class="fab-button btn btn-circle glass-fab text-base-content shadow-lg hover:scale-110 transition-all duration-300 flex items-center justify-center ring-2 ring-primary/30 border-0 backdrop-blur-xl w-14 h-14 md:w-[4.5rem] md:h-[4.5rem]"
       style="border-radius:50%;"
       aria-label="Open navigation menu"
-      on:click={toggleFab}
+      onclick={toggleFab}
     >
       {#if fabOpen}
         <X class="h-7 w-7 md:h-10 md:w-10" stroke-width={2.5} />
@@ -355,4 +363,7 @@
       {/if}
     </button>
   </div>
+
+  <!-- Web3 Modal -->
+  <Web3Modal bind:isOpen={showWeb3Modal} />
 </main>

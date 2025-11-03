@@ -3,29 +3,50 @@
 FROM node:20-alpine AS dev
 WORKDIR /app
 ENV NODE_ENV=development
-COPY package*.json ./
-RUN npm ci
+
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy package files
+COPY package.json pnpm-lock.yaml ./
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy source code
 COPY . .
+
 EXPOSE 3000
-CMD ["npm", "run", "start:dev"]
+CMD ["pnpm", "run", "start:dev"]
 
 FROM node:20-alpine AS deps
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci --omit=dev
+
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile --prod
 
 FROM node:20-alpine AS builder
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci
+
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
 COPY . .
-RUN npm run build
+RUN pnpm run build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
-COPY package*.json ./
+COPY package.json ./
+
 EXPOSE 3000
 CMD ["node", "dist/main.js"]

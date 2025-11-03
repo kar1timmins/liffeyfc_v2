@@ -165,37 +165,37 @@
 </svelte:head>
 
 {#if show}
-<section class="relative min-h-screen w-full overflow-hidden flex items-center justify-center bg-black text-white -mt-28" out:routeOpacity on:outroend={onOutroEnd}>
+<section class="relative min-h-screen w-full overflow-hidden flex items-center justify-center bg-black text-white -mt-20 sm:-mt-24 md:-mt-28" out:routeOpacity on:outroend={onOutroEnd}>
   <video autoplay muted loop class="absolute w-full h-full object-cover object-center opacity-40 top-0">
     <source src="/videos/encoded_2_1.webm" type="video/webm" />
     <source src="/videos/encoded_2.mp4" type="video/mp4" />
   </video>
-  <div class="relative z-10 text-center px-4 flex flex-col items-center">
-    <div class="glass-homepage rounded-3xl px-6 py-6 md:px-10 md:py-8 backdrop-blur-md">
+  <div class="relative z-10 text-center px-4 flex flex-col items-center pt-20 sm:pt-24 md:pt-0">
+    <div class="glass-homepage rounded-3xl px-4 py-6 sm:px-6 sm:py-6 md:px-10 md:py-8 backdrop-blur-md max-w-4xl w-full">
     <!-- Liffey Founders Club Logo -->
     <div class="mb-4 flex justify-center">
       <img 
         src="/img/logo/Liffey_Founders_Club_Logo.png" 
         alt="Liffey Founders Club Logo" 
-        class="h-60 md:h-50 w-auto object-contain"
+        class="h-40 sm:h-48 md:h-60 w-auto object-contain"
       />
     </div>
-    <h1 class="text-5xl md:text-7xl font-bold animate-fade">
+    <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold animate-fade">
       Practice What You Pitch
     </h1>
-    <h2 class="mt-4 text-lg md:text-xl max-w-xl mx-auto">
+    <h2 class="mt-3 sm:mt-4 text-base sm:text-lg md:text-xl max-w-xl mx-auto px-2">
       Capture attention, showcase your vision, and connect with investors.
     </h2>
     <button
       type="button"
-      class="btn btn-primary btn-neon mt-8 px-8 py-3 rounded-full text-lg font-semibold flex items-center gap-2 transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-primary/50 mx-auto"
+      class="btn btn-primary btn-neon mt-6 sm:mt-8 px-6 sm:px-8 py-2 sm:py-3 rounded-full text-base sm:text-lg font-semibold flex items-center gap-2 transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-primary/50 mx-auto"
       on:click={handleStartNow}
     >
       Start Now
     </button>
     
     <!-- Simple internal navigation links -->
-    <div class="mt-6 flex flex-wrap justify-center gap-4 text-sm opacity-80">
+    <div class="mt-4 sm:mt-6 flex flex-wrap justify-center gap-3 sm:gap-4 text-xs sm:text-sm opacity-80">
       <a href="/pitch" class="hover:text-primary transition-colors">
         View Pitches
       </a>
