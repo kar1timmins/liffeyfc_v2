@@ -354,7 +354,7 @@
       class="fab-button btn btn-circle glass-fab text-base-content shadow-lg hover:scale-110 transition-all duration-300 flex items-center justify-center ring-2 ring-primary/30 border-0 backdrop-blur-xl w-14 h-14 md:w-[4.5rem] md:h-[4.5rem]"
       style="border-radius:50%;"
       aria-label="Open navigation menu"
-      onclick={toggleFab}
+      onclick={(e) => toggleFab(e)}
     >
       {#if fabOpen}
         <X class="h-7 w-7 md:h-10 md:w-10" stroke-width={2.5} />

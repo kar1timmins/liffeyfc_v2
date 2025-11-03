@@ -1,0 +1,27 @@
+# Railway Deployment
+.railway/
+
+# Local env files (Railway uses its own env vars)
+.env.local
+.env.production.local
+
+# Build output (will be built on Railway)
+dist/
+
+# Dependencies
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
