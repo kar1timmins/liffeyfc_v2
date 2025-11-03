@@ -12,7 +12,9 @@ const config = {
 			pages: 'build',
 			assets: 'build',
 			fallback: null,
-			precompress: true
+			precompress: true,
+			// This ensures paths work from root
+			strict: true
 		}),
 		prerender: {
 			entries: ['*', '/pitch', '/learnMore']
