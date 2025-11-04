@@ -58,6 +58,28 @@ liffeyfc_v2/
 - **Deployment**: Railway
 - **Purpose**: Automated welcome emails for new registrations
 
+#### Database & Persistence
+- **ORM**: TypeORM 0.3.x with Postgres (pg driver)
+- **Database**: PostgreSQL 15 (Alpine image for docker-compose)
+- **Migrations**: TypeORM CLI (`pnpm run migration:*` scripts in backend)
+- **Cache/Store**: Redis 7 (Alpine image) for nonce storage & multi-instance deployments
+- **Config**: `.env` file controls `DATABASE_URL`, `POSTGRES_*` vars, `REDIS_URL`, and `TYPEORM_SYNCHRONIZE`
+
+#### Authentication & Authorization
+- **Strategy**: JWT + Passport.js (passport-jwt strategy)
+- **Methods**:
+  - SIWE (Sign In with Ethereum): Web3 wallet signature verification
+  - Email/Password: Traditional registration & login with bcryptjs hashing
+  - Refresh Tokens: Hashed DB-backed tokens with rotation & revocation
+- **Entities**: User, Wallet, RefreshToken (TypeORM entities in `backend/src/entities/`)
+- **Guards**: Passport `AuthGuard('jwt')` protects routes; `CurrentUser` decorator extracts JWT payload
+
+#### Nonce Management (SIWE)
+- **Implementation**: Redis-backed `NonceService` with atomic consume (Lua GET+DEL)
+- **Location**: `backend/src/web3/nonce.redis.service.ts`
+- **Fallback**: In-memory `NonceService` if `REDIS_URL` not set (for single-instance dev)
+- **Rationale**: Prevents replay attacks in multi-instance deployments; atomic consume ensures no race conditions
+
 ## 3. Coding Guidelines
 
 ### Frontend (SvelteKit)
@@ -92,16 +114,41 @@ liffeyfc_v2/
 - **Decorators**: Use NestJS decorators (`@Controller`, `@Get`, `@Post`, etc.)
 - **Dependency Injection**: Constructor-based injection
 
+#### Database & ORM
+- **Location**: TypeORM configuration in `app.module.ts`
+- **Entities**: Define in `src/entities/` (User, Wallet, RefreshToken, etc.)
+- **Repositories**: Use TypeORM repository pattern or inject via `@InjectRepository()`
+- **Migrations**:
+  - Generate: `pnpm run migration:generate -- src/migrations/my-migration-name`
+  - Run: `pnpm run migration:run`
+  - Revert: `pnpm run migration:revert`
+- **Configuration**:
+  - **Development**: `TYPEORM_SYNCHRONIZE=true` (auto-sync schema from entities)
+  - **Production**: `TYPEORM_SYNCHRONIZE=false` (run migrations during deployment)
+  - **Priority**: Parses `DATABASE_URL` first; falls back to `DB_HOST`, `DB_PORT`, etc.
+
+#### Authentication & Services
+- **Auth Module**: Handles SIWE, email/password, JWT, and refresh tokens
+- **Users Module**: User registration, profile, wallet management
+- **Web3 Module**: Signature verification, nonce management, chain information
+- **JWT Strategy**: Configured in `auth/jwt.strategy.ts`; use `@UseGuards(AuthGuard('jwt'))` or global guard
+
 #### API Design
 - **REST**: Follow RESTful conventions
-- **Validation**: Use NestJS validation pipes
+- **Validation**: Use NestJS validation pipes and `class-validator`
 - **Error Handling**: Use `HttpException` with appropriate status codes
-- **CORS**: Configure for frontend origins
+- **CORS**: Configured in `main.ts` for frontend origins
+- **Protected Routes**: Use `AuthGuard('jwt')` and `CurrentUser` decorator to access user payload
 
 #### Type Safety
 - **Interfaces**: Define interfaces for all DTOs
 - **TypeScript**: Strict mode enabled
-- **Validation**: Runtime validation with class-validator
+- **Validation**: Runtime validation with class-validator on DTOs
+
+#### Testing
+- **Unit Tests**: Mock repositories and services; keep tests isolated
+- **E2E Tests**: Test full request/response cycle
+- **Mock Providers**: Use `getRepositoryToken()` for TypeORM repos in test modules
 
 ### General Conventions
 
@@ -137,16 +184,43 @@ liffeyfc_v2/
 
 ## 5. Development Workflow
 
-### Local Development
+### Local Development with Docker Compose
 ```bash
-# Start all services
+# Start all services (postgres, redis, backend, frontend)
 docker-compose up
 
+# View logs for a specific service
+docker-compose logs -f backend
+
+# Stop all services
+docker-compose down
+
+# Rebuild and restart a service
+docker-compose up -d --build backend
+```
+
+**Environment Note**: Shell environment variables may override `.env` values. If services fail to connect, unset shell vars: `unset POSTGRES_HOST POSTGRES_PORT DATABASE_URL` and restart compose.
+
+### Local Development (Manual)
+```bash
 # Frontend only (port 5173)
 cd frontend && pnpm dev
 
-# Backend only (port 3000)
+# Backend only (port 3000) — requires Postgres & Redis running separately
 cd backend && pnpm start:dev
+```
+
+### Database Initialization & Migrations
+```bash
+# Generate a new migration from entity changes
+cd backend
+pnpm run migration:generate -- src/migrations/description-of-change
+
+# Run pending migrations
+pnpm run migration:run
+
+# Revert the last migration
+pnpm run migration:revert
 ```
 
 ### Building
@@ -159,11 +233,72 @@ cd backend && pnpm build
 ```
 
 ### Testing
-- Follow existing test patterns in `*.spec.ts` files
-- Write unit tests for services and utilities
-- Add e2e tests for critical user flows
+```bash
+# Run unit tests
+cd backend && pnpm test
 
-## 6. Security Policies
+# Run tests in watch mode
+pnpm test:watch
+
+# Run e2e tests
+pnpm test:e2e
+
+# Generate coverage report
+pnpm test:cov
+```
+
+## 6. Configuration & Environment
+
+### Environment Variables (`.env`)
+The `.env` file is the single source of truth for docker-compose. Key variables:
+
+**Database Configuration**
+```bash
+POSTGRES_USER=lfc_user
+POSTGRES_PASSWORD=lfc_pass
+POSTGRES_DB=lfc_db
+POSTGRES_HOST=postgres              # Inside docker-compose; use 'localhost' if running Postgres locally
+POSTGRES_PORT=5432
+DATABASE_URL=postgres://...         # Parsed by AppModule (TypeORM); standard convention
+TYPEORM_SYNCHRONIZE=true            # Set to false in production; use migrations instead
+```
+
+**Authentication & Security**
+```bash
+JWT_SECRET=your_jwt_secret_here     # Change to strong secret in production
+RECAPTCHA_SECRET_KEY=...            # reCAPTCHA secret for form validation
+WEB3FORMS_ACCESS_KEY=...            # Web3Forms integration key
+```
+
+**Redis (Nonce & Multi-Instance Cache)**
+```bash
+REDIS_URL=redis://redis:6379        # Inside docker-compose; use 'localhost:6379' if running locally
+```
+
+**Frontend Configuration**
+```bash
+PUBLIC_RECAPTCHA_SITE_KEY=...       # reCAPTCHA site key (visible to browser)
+PUBLIC_API_URL=http://backend:3000  # Inside docker-compose; use http://localhost:3000 for local dev
+```
+
+### AppModule Configuration Priority
+The backend TypeORM configuration (`app.module.ts`) reads from environment variables in this order:
+
+1. **DATABASE_URL** (if set): Parsed to extract host, port, username, password, database
+2. **DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, DB_DATABASE**: Individual env vars (fallback)
+3. **Defaults**: localhost:5432 if neither is set
+
+This allows flexibility:
+- **Local dev with compose**: Use `.env` with `POSTGRES_HOST=postgres`
+- **Local dev without compose**: Use `.env` or local env vars with `POSTGRES_HOST=localhost`
+- **Production/Cloud**: Use `DATABASE_URL` env var (Heroku, Railway, AWS, etc. convention)
+
+### Docker Compose Network
+- **Service Names**: Use `postgres` and `redis` as hostnames inside containers (internal DNS)
+- **Host Access**: Services map to host ports (5433 for Postgres, 6379 for Redis)
+- **External Connections**: Use `localhost:5433` and `localhost:6379` from host machine
+
+## 7. Security Policies
 
 ### Environment Variables
 - **Public**: Prefix with `PUBLIC_` (exposed to frontend)
@@ -180,17 +315,48 @@ cd backend && pnpm build
 - Use Helmet.js for security headers
 - Enable HTTPS in production
 
-## 7. Documentation Standards
+## 8. Deployment
+
+### Production Configuration
+Before deploying to production:
+
+1. **Disable Auto-Sync**: Set `TYPEORM_SYNCHRONIZE=false`
+2. **Run Migrations**: Execute migrations as part of CI/CD pipeline during deployment
+3. **Use Strong Secrets**: Generate secure values for `JWT_SECRET`, `RECAPTCHA_SECRET_KEY`
+4. **Use Managed Services**:
+   - Postgres: AWS RDS, Azure Database, or Cloud SQL
+   - Redis: AWS ElastiCache, Azure Cache, or similar
+5. **Security**:
+   - Use TLS/SSL for all connections
+   - Enable Redis authentication (AUTH)
+   - Use environment-specific secrets (not in `.env`)
+6. **Monitoring**:
+   - Enable query logging on Postgres (audit trail)
+   - Monitor Redis memory usage and eviction policies
+   - Set up alerting for connection failures
+
+### Migration Deployment
+```bash
+# During CI/CD pipeline (before app startup):
+cd backend
+pnpm run migration:run
+
+# Then start the application
+```
+
+## 9. Documentation Standards
 
 ### When to Update Documentation
 - **New Features**: Update relevant README.md when adding features
 - **Architecture Changes**: Update this file for stack/structure changes
 - **API Changes**: Document in backend README and consider API docs
 - **Deployment Changes**: Update deployment scripts and READMEs
+- **Database Schema**: Document entity changes; add migration descriptions
 
 ### Documentation Locations
 - **Project-wide instructions**: This file (`.github/instructions/`)
 - **Frontend setup & features**: `/frontend/README.md`
 - **Backend API & services**: `/backend/README.md`
 - **Email service setup**: `/email-server/README.md`
-- **Root project overview**: `/README.md` (should be created)
+- **Root project overview**: `/README.md` (to be created)
+- **Migrations**: Auto-generated by TypeORM CLI; stored in `backend/src/migrations/`
