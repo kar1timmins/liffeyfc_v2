@@ -32,6 +32,11 @@ export class UsersService {
     return wallet ? wallet.user : null;
   }
 
+  async update(id: string, payload: Partial<User>): Promise<User | null> {
+    await this.usersRepo.update(id, payload as any);
+    return this.findById(id);
+  }
+
   async attachWallet(userId: string, address: string, chainId?: string): Promise<User | null> {
     const user = await this.findById(userId);
     if (!user) return null;

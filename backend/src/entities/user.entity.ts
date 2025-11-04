@@ -16,6 +16,12 @@ export class User {
   @Column({ type: 'varchar', nullable: true })
   name?: string;
 
+  @Column({ type: 'varchar', nullable: true })
+  provider?: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  providerId?: string;
+
   @OneToMany(() => Wallet, (w: Wallet) => w.user, { cascade: true })
   wallets?: Wallet[];
 

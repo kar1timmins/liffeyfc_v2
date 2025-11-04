@@ -1,8 +1,10 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards, Req, Res } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { SiweVerifyDto } from './dto/siwe-verify.dto';
+import { AuthGuard } from '@nestjs/passport';
+import type { Response } from 'express';
 
 @Controller('auth')
 export class AuthController {
@@ -30,6 +32,23 @@ export class AuthController {
   async siweVerify(@Body() body: SiweVerifyDto) {
     const res = await this.authService.verifySiwe(body.address, body.signature);
     return { success: true, data: res };
+  }
+
+  @Get('google')
+  @UseGuards(AuthGuard('google'))
+  async googleAuth(@Req() req) {
+    // The Google strategy will redirect
+  }
+
+  @Get('google/callback')
+  @UseGuards(AuthGuard('google'))
+  async googleAuthRedirect(@Req() req, @Res() res: Response) {
+    const { accessToken, refreshToken } = req.user;
+    // You might want to redirect to a specific frontend route with tokens
+    // For example, redirecting with tokens in query params
+    res.redirect(
+      `${process.env.FRONTEND_URL}/login/callback?accessToken=${accessToken}&refreshToken=${refreshToken}`,
+    );
   }
 
   @Post('refresh')

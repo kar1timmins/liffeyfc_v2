@@ -91,6 +91,30 @@ export class AuthService {
     return { success: true };
   }
 
+  async validateOAuthLogin(email: string, provider: string, providerId: string) {
+    let user = await this.usersService.findByEmail(email);
+    if (!user) {
+      // If user does not exist, create a new one
+      const newUserDto = {
+        email,
+        // You might want to add more details from the provider profile
+        name: email.split('@')[0],
+        provider,
+        providerId,
+      };
+      user = await this.usersService.create(newUserDto);
+    } else {
+      // If user exists, you might want to link the provider account
+      // For simplicity, we'll just ensure the provider info is up-to-date
+      if (!user.provider || user.providerId !== providerId) {
+        await this.usersService.update(user.id, { provider, providerId });
+      }
+    }
+    const accessToken = signJwt({ sub: user.id });
+    const refreshToken = await this.createRefreshTokenForUser(user);
+    return { user, accessToken, refreshToken };
+  }
+
   private async createRefreshTokenForUser(user: any) {
     const secret = uuidv4();
     const hash = await bcrypt.hash(secret, 10);
