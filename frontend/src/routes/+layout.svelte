@@ -261,7 +261,7 @@
 
   {#if showShell}
     <div in:routeOpacity={{ delay: 100, duration: 620 }} out:routeOpacity onoutroend={onShellOutro}>
-      <slot />
+      {@render children?.()}
     </div>
   {/if}
 
