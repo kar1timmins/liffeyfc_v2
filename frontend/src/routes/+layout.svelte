@@ -7,6 +7,15 @@
   import { Home, Mic, Info, Sun, Moon, X, Menu, Wallet } from 'lucide-svelte';
   import Web3Modal from '$lib/components/Web3Modal.svelte';
   import { walletStore, formattedAddress } from '$lib/stores/walletStore';
+  import { authStore } from '$lib/stores/auth';
+  import Toast from '$lib/components/Toast.svelte';
+  import type { Snippet } from 'svelte';
+  
+  interface Props {
+    children: Snippet;
+  }
+  
+  let { children }: Props = $props();
   
   // Web3 Modal state
   let showWeb3Modal = $state(false);
@@ -92,6 +101,14 @@
     pendingNav = path;
     showShell = false; // trigger outro on wrapper
     fabOpen = false;
+  }
+  
+  // Sign out handler for FAB -> calls auth store logout and navigate home
+  function signOut() {
+    // trigger logout (revokes tokens client-side and calls backend revoke if supported)
+    authStore.logout();
+    // reuse nav flow to preserve outro animation
+    navTo('/');
   }
   function onShellOutro() {
     const target = pendingNav;
@@ -320,6 +337,21 @@
           <Info size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/> 
           <span class="flex-1 text-center">Learn More</span>
         </button>
+        {#if $authStore.isAuthenticated}
+          <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/dashboard')}>
+            <span class="flex-1 text-center">{ $authStore.user?.name ? `${$authStore.user.name}` : 'Profile' }</span>
+          </button>
+          <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => signOut()}>
+            <span class="flex-1 text-center">Sign Out</span>
+          </button>
+        {:else}
+          <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/login')}>
+            <span class="flex-1 text-center">Sign In</span>
+          </button>
+          <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/register')}>
+            <span class="flex-1 text-center">Register</span>
+          </button>
+        {/if}
         <button 
           onclick={openWeb3Modal} 
           class="btn glass-fab w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base leading-none md:leading-normal"
@@ -366,4 +398,6 @@
 
   <!-- Web3 Modal -->
   <Web3Modal bind:isOpen={showWeb3Modal} />
+  <!-- Global Toasts -->
+  <Toast />
 </main>

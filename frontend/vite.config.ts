@@ -3,6 +3,10 @@ import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
+// Allow overriding backend target via env when running frontend locally.
+// In Docker Compose we set BACKEND_URL=http://backend:3000 so the proxy works inside containers.
+const backendTarget = process.env.BACKEND_URL || 'http://localhost:3000';
+
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit(), devtoolsJson()],
 	server: {
@@ -14,9 +18,14 @@ export default defineConfig({
 		},
 		proxy: {
 			'/api/interest/submit/': {
-				target: 'http://backend:3000',
+				target: backendTarget,
 				changeOrigin: true,
-				rewrite: (path) => '/contact/interest',
+				rewrite: (path) => path.replace(/^\/api\/interest\/submit\//, '/contact/interest'),
+			},
+			'/api': {
+				target: backendTarget,
+				changeOrigin: true,
+				rewrite: (path) => path.replace(/^\/api/, ''),
 			},
 		},
 	},
