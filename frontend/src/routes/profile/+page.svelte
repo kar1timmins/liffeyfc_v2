@@ -8,7 +8,7 @@
   onMount(async () => {
     const ok = await authStore.verify();
     if (!ok) {
-      goto('/login');
+      goto('/auth');
       return;
     }
     authStore.subscribe((s) => {

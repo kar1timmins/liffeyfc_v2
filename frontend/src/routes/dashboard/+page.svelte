@@ -13,7 +13,7 @@
 		try {
 			walletStore.disconnect();
 		} catch (e) {}
-		goto('/login');
+	goto('/auth');
 	}
 
 	async function connectWallet() {
@@ -27,7 +27,7 @@
 
 	onMount(async () => {
 		const ok = await authStore.verify();
-		if (!ok) goto('/login');
+		if (!ok) goto('/auth');
 		// subscribe to authStore to get user for display
 		authStore.subscribe((s) => (user = s.user))();
 	});
