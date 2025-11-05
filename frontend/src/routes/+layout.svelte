@@ -345,28 +345,18 @@
             <span class="flex-1 text-center">Sign Out</span>
           </button>
         {:else}
-          <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/login')}>
+          <!-- Single sign-in entry point. The /auth page toggles login/register with animation -->
+          <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/auth')}>
             <span class="flex-1 text-center">Sign In</span>
           </button>
-          <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/register')}>
-            <span class="flex-1 text-center">Register</span>
-          </button>
         {/if}
-        <button 
-          onclick={openWeb3Modal} 
-          class="btn glass-fab w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base leading-none md:leading-normal"
-          class:btn-neon-subtle={!$walletStore.isConnected}
-          class:btn-success={$walletStore.isConnected}
-        >
-          <Wallet size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]" />
-          <span class="flex-1 text-center">
-            {#if $walletStore.isConnected}
-              {$formattedAddress}
-            {:else}
-              Connect
-            {/if}
-          </span>
-        </button>
+        <!-- Wallet summary: show balance when connected; removed Connect button from FAB per UI change request -->
+        {#if $walletStore.isConnected}
+          <div class="w-full mb-2 p-2 rounded-md glass-subtle text-sm text-center">
+            <div class="font-medium">{$formattedAddress}</div>
+            <div class="text-xs text-base-content/70">{ $walletStore.balance ?? '—' } { $walletStore.chainName ?? '' }</div>
+          </div>
+        {/if}
         <div class="w-full flex flex-col items-center mt-2">
           <button
             class="btn btn-circle glass-fab border-0 hover:scale-110 transition-all duration-300 w-10 h-10 md:w-12 md:h-12"
