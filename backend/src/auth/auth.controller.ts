@@ -1,5 +1,7 @@
 import { Body, Controller, Get, Param, Post, UseGuards, Req, Res } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { JwtAuthGuard } from './jwt-auth.guard';
+import { UsersService } from '../users/users.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { SiweVerifyDto } from './dto/siwe-verify.dto';
@@ -8,7 +10,8 @@ import type { Response } from 'express';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  // inject UsersService to resolve the current user for /me
+  constructor(private authService: AuthService, private usersService: UsersService) {}
 
   @Post('register')
   async register(@Body() body: RegisterDto) {
@@ -62,5 +65,15 @@ export class AuthController {
     // simple logout: remove refresh token(s) matching provided token
     const res = await this.authService.logout?.(refreshToken);
     return { success: true, data: res };
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  async me(@Req() req) {
+    // JwtAuthGuard attaches payload to req.user with { sub: userId }
+    const userId = req.user?.sub;
+    if (!userId) return { success: false, data: null };
+    const user = await this.usersService.findById(userId);
+    return { success: true, data: user };
   }
 }
