@@ -369,9 +369,11 @@
             onclick={() => setTheme(selectedTheme === 'light' ? 'dark' : 'light')}
           >
             {#if selectedTheme === 'light'}
-              <Sun class="h-5 w-5 md:h-6 md:w-6" />
-            {:else}
+              <!-- when light mode is on, show the moon to indicate switching to dark -->
               <Moon class="h-5 w-5 md:h-6 md:w-6" />
+            {:else}
+              <!-- when dark mode is on, show the sun to indicate switching to light -->
+              <Sun class="h-5 w-5 md:h-6 md:w-6" />
             {/if}
           </button>
         </div>
