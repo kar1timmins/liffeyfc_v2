@@ -3,21 +3,21 @@ import { Wallet } from './wallet.entity';
 import { RefreshToken } from './refresh-token.entity';
 
 /**
- * User Entity (General/Founders)
+ * Investor Entity
  * 
- * Represents general users and founders who can:
- * - Access community features
- * - Submit pitch decks
+ * Represents investors who can:
+ * - View pitch decks
+ * - Access investment opportunities
  * - Connect wallets for Web3 features
- * - Attend events
+ * - Manage investment portfolio
  */
-@Entity({ name: 'users' })
-export class User {
+@Entity({ name: 'investors' })
+export class Investor {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', nullable: true, unique: true })
-  email?: string;
+  @Column({ type: 'varchar', unique: true })
+  email: string;
 
   @Column({ type: 'varchar', nullable: true })
   passwordHash?: string;
@@ -26,13 +26,16 @@ export class User {
   name?: string;
 
   @Column({ type: 'varchar', nullable: true })
-  companyName?: string;
+  company?: string;
 
   @Column({ type: 'varchar', nullable: true })
-  companyWebsite?: string;
+  investmentFocus?: string;
 
   @Column({ type: 'varchar', nullable: true })
-  industry?: string;
+  linkedinUrl?: string;
+
+  @Column({ type: 'boolean', default: false })
+  isAccredited: boolean;
 
   @Column({ type: 'varchar', nullable: true })
   provider?: string; // 'google' | 'siwe' | null (for email/password)
@@ -40,16 +43,15 @@ export class User {
   @Column({ type: 'varchar', nullable: true })
   providerId?: string; // OAuth provider ID
 
-  @OneToMany(() => Wallet, (w: Wallet) => w.user, { cascade: true })
-  wallets?: Wallet[];
-
-  @OneToMany(() => RefreshToken, (r: RefreshToken) => r.user, { cascade: true })
-  refreshTokens?: RefreshToken[];
-
   @CreateDateColumn()
   createdAt: Date;
 
   @UpdateDateColumn()
   updatedAt: Date;
-}
 
+  @OneToMany(() => Wallet, (wallet) => wallet.investor, { cascade: true })
+  wallets: Wallet[];
+
+  @OneToMany(() => RefreshToken, (token) => token.investor, { cascade: true })
+  refreshTokens: RefreshToken[];
+}

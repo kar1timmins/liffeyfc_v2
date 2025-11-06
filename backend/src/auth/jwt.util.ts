@@ -1,19 +1,26 @@
 import { sign, verify, type SignOptions } from 'jsonwebtoken';
 import { JwtConfig } from '../config/jwt.config';
+import { type JwtPayload, UserType } from './types/user-type.interface';
 
 /**
  * Sign a JWT token with secure configuration
- * @param payload - Token payload (should include 'sub' for user ID)
+ * @param userId - User ID
+ * @param userType - Type of user (user, investor, staff)
  * @param expiresIn - Token expiration (default: 15 minutes)
- * @param issuer - Token issuer (optional, for added security)
- * @param audience - Token audience (optional, for added security)
+ * @param options - Optional issuer and audience
  * @returns Signed JWT token
  */
 export function signJwt(
-  payload: object,
+  userId: string,
+  userType: UserType,
   expiresIn: string | number = '15m',
   options?: { issuer?: string; audience?: string }
 ) {
+  const payload: JwtPayload = {
+    sub: userId,
+    userType,
+  };
+
   const opts: SignOptions = {
     expiresIn: expiresIn as SignOptions['expiresIn'],
     ...(options?.issuer && { issuer: options.issuer }),
@@ -32,12 +39,13 @@ export function signJwt(
 export function verifyJwt(
   token: string,
   options?: { issuer?: string; audience?: string }
-) {
+): JwtPayload | null {
   try {
-    return verify(token, JwtConfig.getSecret(), {
+    const decoded = verify(token, JwtConfig.getSecret(), {
       ...(options?.issuer && { issuer: options.issuer }),
       ...(options?.audience && { audience: options.audience }),
     });
+    return decoded as JwtPayload;
   } catch (e) {
     // Log error details for debugging (without exposing to client)
     if (process.env.NODE_ENV !== 'production') {

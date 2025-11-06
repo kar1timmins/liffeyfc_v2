@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Post, UseGuards, Req, Res, HttpException,
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { SecurityMonitoringService, SecurityEventType } from './security-monitoring.service';
+import { TokenCleanupService } from './token-cleanup.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { UsersService } from '../users/users.service';
 import { RegisterDto } from './dto/register.dto';
@@ -17,7 +18,8 @@ export class AuthController {
   constructor(
     private authService: AuthService, 
     private usersService: UsersService,
-    private securityMonitoring: SecurityMonitoringService
+    private securityMonitoring: SecurityMonitoringService,
+    private tokenCleanupService: TokenCleanupService,
   ) {
     // Run cleanup every 10 minutes
     setInterval(() => {
@@ -351,4 +353,42 @@ export class AuthController {
     const user = await this.usersService.findById(userId);
     return { success: true, data: user };
   }
+
+  /**
+   * Manually trigger token cleanup
+   * Useful for testing or emergency cleanup
+   * 
+   * In production, consider protecting this with admin authentication
+   */
+  @Post('admin/cleanup-tokens')
+  @Throttle({ default: { limit: 3, ttl: 60000 } }) // 3 requests per minute
+  async cleanupTokens() {
+    const result = await this.tokenCleanupService.cleanupTokens();
+    return {
+      success: true,
+      data: {
+        message: 'Token cleanup completed',
+        deletedExpired: result.deletedExpired,
+        deletedRevoked: result.deletedRevoked,
+        total: result.deletedExpired + result.deletedRevoked,
+      },
+    };
+  }
+
+  /**
+   * Get token statistics
+   * Useful for monitoring token accumulation
+   * 
+   * In production, consider protecting this with admin authentication
+   */
+  @Get('admin/token-stats')
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute
+  async getTokenStats() {
+    const stats = await this.tokenCleanupService.getTokenStats();
+    return {
+      success: true,
+      data: stats,
+    };
+  }
 }
+

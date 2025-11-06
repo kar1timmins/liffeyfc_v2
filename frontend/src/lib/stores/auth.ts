@@ -6,6 +6,25 @@ type AuthState = {
   isAuthenticated: boolean;
 };
 
+/**
+ * Decode JWT token to extract payload
+ */
+function decodeJwt(token: string): any {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    return null;
+  }
+}
+
 function createAuthStore() {
   const { subscribe, set, update } = writable<AuthState>({
     user: null,
@@ -15,9 +34,12 @@ function createAuthStore() {
 
   /**
    * Set access token in memory only (no persistent storage)
+   * Decode JWT to extract userType
    */
   async function setAccessToken(accessToken: string, user?: any) {
-    update(s => ({ ...s, accessToken, user: user || s.user, isAuthenticated: true }));
+    const decoded = decodeJwt(accessToken);
+    const enrichedUser = user ? { ...user, userType: decoded?.userType || 'user' } : null;
+    update(s => ({ ...s, accessToken, user: enrichedUser || s.user, isAuthenticated: true }));
   }
 
   function clear() {
@@ -66,7 +88,9 @@ function createAuthStore() {
       });
       if (res.ok) {
         const json = await res.json();
-        update(s => ({ ...s, user: json.data || json, isAuthenticated: true }));
+        const decoded = decodeJwt(token);
+        const userData = { ...(json.data || json), userType: decoded?.userType || 'user' };
+        update(s => ({ ...s, user: userData, isAuthenticated: true }));
         ok = true;
       } else if (res.status === 401) {
         // try refresh

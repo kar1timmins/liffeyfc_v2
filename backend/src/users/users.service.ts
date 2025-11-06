@@ -29,7 +29,7 @@ export class UsersService {
 
   async findByWallet(address: string): Promise<User | null> {
     const wallet = await this.walletsRepo.findOne({ where: { address } , relations: ['user']});
-    return wallet ? wallet.user : null;
+    return wallet ? (wallet.user ?? null) : null;
   }
 
   async update(id: string, payload: Partial<User>): Promise<User | null> {

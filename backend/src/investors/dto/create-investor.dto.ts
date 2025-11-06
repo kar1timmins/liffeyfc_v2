@@ -5,34 +5,31 @@ import {
   MaxLength, 
   Matches, 
   IsOptional,
-  IsNotEmpty 
+  IsBoolean,
+  IsUrl,
 } from 'class-validator';
 
 /**
- * Registration DTO with comprehensive validation
+ * Create Investor DTO
  * 
- * Security Requirements:
- * - Email: Valid format, normalized
- * - Password: Strong (12+ chars, uppercase, lowercase, number, special char)
- * - Name: Optional, sanitized
+ * Used for investor registration
  */
-export class RegisterDto {
+export class CreateInvestorDto {
   /**
-   * User email address
+   * Investor email address
    * - Must be valid email format
    * - Will be normalized (lowercase, trimmed)
-   * - Used for login and communication
    */
   @IsEmail({}, { message: 'Invalid email format' })
-  @IsNotEmpty({ message: 'Email is required' })
   email: string;
 
   /**
-   * User password
-   * - Minimum 12 characters (OWASP recommendation)
+   * Investor password (optional for OAuth users)
+   * - Minimum 12 characters
    * - Must contain: uppercase, lowercase, number, special character
-   * - Will be hashed before storage (never stored in plain text)
+   * - Will be hashed before storage
    */
+  @IsOptional()
   @IsString({ message: 'Password must be a string' })
   @MinLength(12, { message: 'Password must be at least 12 characters long' })
   @MaxLength(128, { message: 'Password must not exceed 128 characters' })
@@ -42,11 +39,10 @@ export class RegisterDto {
       message: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)',
     }
   )
-  @IsNotEmpty({ message: 'Password is required' })
-  password: string;
+  password?: string;
 
   /**
-   * User display name (optional)
+   * Investor name
    * - Maximum 100 characters
    * - Will be sanitized to prevent XSS
    */
@@ -57,4 +53,34 @@ export class RegisterDto {
     message: 'Name can only contain letters, numbers, spaces, hyphens, underscores, and periods',
   })
   name?: string;
+
+  /**
+   * Company or investment firm name
+   */
+  @IsOptional()
+  @IsString({ message: 'Company must be a string' })
+  @MaxLength(100, { message: 'Company must not exceed 100 characters' })
+  company?: string;
+
+  /**
+   * Investment focus or thesis
+   */
+  @IsOptional()
+  @IsString({ message: 'Investment focus must be a string' })
+  @MaxLength(255, { message: 'Investment focus must not exceed 255 characters' })
+  investmentFocus?: string;
+
+  /**
+   * LinkedIn profile URL
+   */
+  @IsOptional()
+  @IsUrl({}, { message: 'Invalid LinkedIn URL format' })
+  linkedinUrl?: string;
+
+  /**
+   * Whether the investor is accredited
+   */
+  @IsOptional()
+  @IsBoolean({ message: 'isAccredited must be a boolean' })
+  isAccredited?: boolean;
 }

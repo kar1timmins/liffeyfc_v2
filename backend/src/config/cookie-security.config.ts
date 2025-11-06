@@ -26,7 +26,7 @@ export const CookieSecurityConfig = {
     domain: undefined,  // Same domain only (don't set for localhost)
     
     // Lifetime
-    maxAge: 24 * 60 * 60 * 1000,  // 1 day in milliseconds
+    maxAge: 2 * 60 * 60 * 1000,  // 2 hours (more secure than days)
   },
 
   /**
@@ -121,7 +121,7 @@ export class CsrfTokenGenerator {
  * ✅ SameSite: Lax/Strict (CSRF protection)
  * ✅ Path: Limited to /auth (reduces exposure)
  * ✅ Domain: Not set (same-origin only)
- * ✅ MaxAge: Reasonable expiration (30 days for refresh, 1 hour for CSRF)
+ * ✅ MaxAge: Short expiration (2 hours for refresh, 1 hour for CSRF)
  * ✅ Name: Non-obvious (avoid 'token', 'session')
  * ✅ Rotation: Refresh tokens rotated on use
  * ✅ Revocation: Can be revoked server-side

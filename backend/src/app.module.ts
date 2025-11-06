@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -8,6 +9,8 @@ import { ContactModule } from './contact/contact.module';
 import { Web3Module } from './web3/web3.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { InvestorsModule } from './investors/investors.module';
+import { StaffModule } from './staff/staff.module';
 import { throttlerConfig } from './config/throttler.config';
 
 /**
@@ -37,6 +40,8 @@ function parseDatabaseUrl() {
   imports: [
     // Rate limiting configuration
     ThrottlerModule.forRoot(throttlerConfig),
+    // Schedule module for cron jobs
+    ScheduleModule.forRoot(),
     // Use DATABASE_URL if present; otherwise fall back to individual DB_* env vars
     TypeOrmModule.forRoot({
       type: 'postgres',
@@ -68,6 +73,8 @@ function parseDatabaseUrl() {
     ContactModule,
     Web3Module,
     UsersModule,
+    InvestorsModule,
+    StaffModule,
     AuthModule,
   ],
   controllers: [AppController],
