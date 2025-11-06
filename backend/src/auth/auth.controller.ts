@@ -8,6 +8,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { SiweVerifyDto } from './dto/siwe-verify.dto';
 import { AuthGuard } from '@nestjs/passport';
+import { CookieSecurityConfig } from '../config/cookie-security.config';
 import type { Response, Request } from 'express';
 
 @Controller('auth')
@@ -33,15 +34,17 @@ export class AuthController {
 
   /**
    * Helper method to set refresh token as httpOnly cookie
+   * Uses centralized cookie security configuration
    */
   private setRefreshTokenCookie(res: Response, refreshToken: string) {
-    const isProduction = process.env.NODE_ENV === 'production';
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: isProduction, // HTTPS only in production
-      sameSite: 'lax', // CSRF protection
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days in milliseconds
-      path: '/auth', // Only send cookie to auth routes
+    const config = CookieSecurityConfig.refreshToken;
+    res.cookie(config.name, refreshToken, {
+      httpOnly: config.httpOnly,
+      secure: config.secure,
+      sameSite: config.sameSite,
+      maxAge: config.maxAge,
+      path: config.path,
+      domain: config.domain,
     });
   }
 

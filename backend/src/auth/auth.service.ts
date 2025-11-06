@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { Web3Service } from '../web3/web3.service';
 import { NonceService } from '../web3/nonce.service';
+import { SecurityMonitoringService, SecurityEventType } from './security-monitoring.service';
 import { signJwt } from './jwt.util';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -15,6 +16,7 @@ export class AuthService {
     private usersService: UsersService,
     private web3Service: Web3Service,
     private nonceService: NonceService,
+    private securityMonitoring: SecurityMonitoringService,
     @InjectRepository(RefreshToken)
     private refreshRepo: Repository<RefreshToken>,
   ) {}
@@ -50,7 +52,18 @@ export class AuthService {
 
     const t = await this.refreshRepo.findOne({ where: { id }, relations: ['user'] });
     if (!t) throw new Error('Invalid refresh token');
-    if (t.revoked) throw new Error('Refresh token revoked');
+    
+    // REUSE DETECTION: If token is already revoked, check if it was replaced
+    if (t.revoked) {
+      // If this token was replaced (part of token rotation), this is token reuse
+      // This indicates potential token theft - revoke entire token family
+      if (t.replacedByTokenId) {
+        await this.revokeTokenFamily(t);
+        throw new Error('SECURITY_ALERT: Refresh token reuse detected. All tokens revoked. Please login again.');
+      }
+      throw new Error('Refresh token revoked');
+    }
+    
     if (t.expiresAt <= Date.now()) {
       // expired - revoke
       await this.refreshRepo.update(t.id, { revoked: true, revokedAt: new Date() } as any);
@@ -75,6 +88,76 @@ export class AuthService {
 
     const accessToken = signJwt({ sub: t.user.id });
     return { user: t.user, accessToken, refreshToken: `${newSavedId}.${newRaw}` };
+  }
+
+  /**
+   * Revoke Token Family (Reuse Detection)
+   * 
+   * When a refresh token that was already used (and replaced) is submitted again,
+   * this indicates potential token theft. We revoke the entire token family:
+   * 1. The reused token (already revoked)
+   * 2. All descendant tokens (tokens created from the reused token)
+   * 
+   * This forces the user to re-authenticate, invalidating both the attacker's
+   * and the legitimate user's tokens.
+   * 
+   * Token Family Chain:
+   * TokenA (revoked, replacedBy: TokenB)
+   *   └─> TokenB (revoked, replacedBy: TokenC)
+   *         └─> TokenC (active)
+   * 
+   * If TokenA is reused → revoke TokenB, TokenC, and all descendants
+   */
+  private async revokeTokenFamily(reusedToken: RefreshToken): Promise<void> {
+    const tokensToRevoke: string[] = [];
+    
+    // Start with the token that replaced the reused token
+    let currentTokenId = reusedToken.replacedByTokenId;
+    
+    // Traverse the token family chain
+    while (currentTokenId) {
+      tokensToRevoke.push(currentTokenId);
+      
+      // Find the next token in the chain
+      const nextToken = await this.refreshRepo.findOne({
+        where: { id: currentTokenId },
+        select: ['id', 'replacedByTokenId', 'revoked']
+      });
+      
+      if (!nextToken) break;
+      
+      // Move to the next token in the chain
+      currentTokenId = nextToken.replacedByTokenId;
+      
+      // Safety check: prevent infinite loops (shouldn't happen, but be safe)
+      if (tokensToRevoke.length > 100) {
+        console.error('Token family chain too long (>100). Possible circular reference.');
+        break;
+      }
+    }
+    
+    // Revoke all tokens in the family
+    if (tokensToRevoke.length > 0) {
+      await this.refreshRepo.update(
+        tokensToRevoke,
+        { revoked: true, revokedAt: new Date() } as any
+      );
+      
+      // Log security event
+      this.securityMonitoring.logEvent({
+        type: SecurityEventType.REFRESH_TOKEN_REUSE,
+        userId: reusedToken.user?.id || 'unknown',
+        email: reusedToken.user?.email || 'unknown',
+        ip: 'N/A', // IP not available in service layer
+        timestamp: new Date(),
+        details: {
+          reusedTokenId: reusedToken.id,
+          revokedTokenCount: tokensToRevoke.length,
+          revokedTokenIds: tokensToRevoke,
+          message: `Token reuse detected - revoked ${tokensToRevoke.length} token(s) in family`,
+        }
+      });
+    }
   }
 
   async logout(refreshToken: string) {
