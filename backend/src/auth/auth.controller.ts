@@ -13,16 +13,43 @@ export class AuthController {
   // inject UsersService to resolve the current user for /me
   constructor(private authService: AuthService, private usersService: UsersService) {}
 
+  /**
+   * Helper method to set refresh token as httpOnly cookie
+   */
+  private setRefreshTokenCookie(res: Response, refreshToken: string) {
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: isProduction, // HTTPS only in production
+      sameSite: 'lax', // CSRF protection
+      maxAge: 24 * 60 * 60 * 1000, // 1 day in milliseconds
+      path: '/auth', // Only send cookie to auth routes
+    });
+  }
+
+  /**
+   * Helper method to clear refresh token cookie
+   */
+  private clearRefreshTokenCookie(res: Response) {
+    res.clearCookie('refreshToken', { path: '/auth' });
+  }
+
   @Post('register')
-  async register(@Body() body: RegisterDto) {
-    const res = await this.authService.register(body.email, body.password, body.name);
-    return { success: true, data: res };
+  async register(@Body() body: RegisterDto, @Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.register(body.email, body.password, body.name);
+    // Set refresh token in httpOnly cookie
+    this.setRefreshTokenCookie(res, result.refreshToken);
+    // Return user and access token (not refresh token)
+    return { success: true, data: { user: result.user, accessToken: result.accessToken } };
   }
 
   @Post('login')
-  async login(@Body() body: LoginDto) {
-    const res = await this.authService.login(body.email, body.password);
-    return { success: true, data: res };
+  async login(@Body() body: LoginDto, @Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.login(body.email, body.password);
+    // Set refresh token in httpOnly cookie
+    this.setRefreshTokenCookie(res, result.refreshToken);
+    // Return user and access token (not refresh token)
+    return { success: true, data: { user: result.user, accessToken: result.accessToken } };
   }
 
   @Get('siwe/message/:address')
@@ -32,9 +59,12 @@ export class AuthController {
   }
 
   @Post('siwe/verify')
-  async siweVerify(@Body() body: SiweVerifyDto) {
-    const res = await this.authService.verifySiwe(body.address, body.signature);
-    return { success: true, data: res };
+  async siweVerify(@Body() body: SiweVerifyDto, @Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.verifySiwe(body.address, body.signature);
+    // SIWE currently returns { user, token } without refresh token
+    // For consistency with other auth methods, we should generate a refresh token
+    // For now, just return the token (JWT access token)
+    return { success: true, data: { user: result.user, accessToken: result.token } };
   }
 
   @Get('google')
@@ -47,24 +77,40 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   async googleAuthRedirect(@Req() req, @Res() res: Response) {
     const { accessToken, refreshToken } = req.user;
-    // You might want to redirect to a specific frontend route with tokens
-    // For example, redirecting with tokens in query params
+    // Set refresh token in httpOnly cookie
+    this.setRefreshTokenCookie(res, refreshToken);
+    // Redirect with only access token in URL (temporary, until frontend uses cookie-based refresh)
+    // TODO: Eventually remove accessToken from URL once frontend stores it in memory only
     res.redirect(
-      `${process.env.FRONTEND_URL}/login/callback?accessToken=${accessToken}&refreshToken=${refreshToken}`,
+      `${process.env.FRONTEND_URL}/login/callback?accessToken=${accessToken}`,
     );
   }
 
   @Post('refresh')
-  async refresh(@Body('refreshToken') refreshToken: string) {
-    const res = await this.authService.refresh(refreshToken);
-    return { success: true, data: res };
+  async refresh(@Req() req, @Res({ passthrough: true }) res: Response) {
+    // Read refresh token from httpOnly cookie
+    const refreshToken = req.cookies?.refreshToken;
+    if (!refreshToken) {
+      throw new Error('No refresh token provided');
+    }
+    const result = await this.authService.refresh(refreshToken);
+    // Set new refresh token in cookie (token rotation)
+    this.setRefreshTokenCookie(res, result.refreshToken);
+    // Return new access token
+    return { success: true, data: { accessToken: result.accessToken } };
   }
 
   @Post('logout')
-  async logout(@Body('refreshToken') refreshToken: string) {
-    // simple logout: remove refresh token(s) matching provided token
-    const res = await this.authService.logout?.(refreshToken);
-    return { success: true, data: res };
+  async logout(@Req() req, @Res({ passthrough: true }) res: Response) {
+    // Read refresh token from httpOnly cookie
+    const refreshToken = req.cookies?.refreshToken;
+    if (refreshToken) {
+      // Revoke the refresh token in the database
+      await this.authService.logout?.(refreshToken);
+    }
+    // Clear the refresh token cookie
+    this.clearRefreshTokenCookie(res);
+    return { success: true, data: { message: 'Logged out successfully' } };
   }
 
   @Get('me')
