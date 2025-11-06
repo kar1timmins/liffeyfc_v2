@@ -1,8 +1,18 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
+import { JwtConfig } from './config/jwt.config';
 
 async function bootstrap() {
+  // Validate critical security configurations before starting
+  console.log('🔐 Validating security configuration...');
+  try {
+    JwtConfig.validate();
+  } catch (error) {
+    console.error('\n❌ FATAL: Security validation failed. Application cannot start.\n');
+    process.exit(1);
+  }
+
   const app = await NestFactory.create(AppModule);
   
   // Enable cookie parsing

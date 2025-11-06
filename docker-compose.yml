@@ -9,6 +9,9 @@ services:
     environment:
       - PORT=3000
       - NODE_ENV=development
+      # JWT Configuration (required for authentication)
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-15m}
       # Database / TypeORM — read from root .env; prefer DATABASE_URL; fall back to DB_* vars
       - DATABASE_URL=${DATABASE_URL}
       - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
