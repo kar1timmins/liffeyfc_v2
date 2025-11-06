@@ -14,6 +14,13 @@ export class AuthController {
   constructor(private authService: AuthService, private usersService: UsersService) {}
 
   /**
+   * Temporary storage for OAuth tokens (one-time use codes)
+   * Key: random code, Value: { accessToken, expiresAt }
+   * In production, use Redis for multi-instance deployments
+   */
+  private oauthTokenExchange = new Map<string, { accessToken: string; expiresAt: number }>();
+
+  /**
    * Helper method to set refresh token as httpOnly cookie
    */
   private setRefreshTokenCookie(res: Response, refreshToken: string) {
@@ -22,7 +29,7 @@ export class AuthController {
       httpOnly: true,
       secure: isProduction, // HTTPS only in production
       sameSite: 'lax', // CSRF protection
-      maxAge: 24 * 60 * 60 * 1000, // 1 day in milliseconds
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days in milliseconds
       path: '/auth', // Only send cookie to auth routes
     });
   }
@@ -32,6 +39,40 @@ export class AuthController {
    */
   private clearRefreshTokenCookie(res: Response) {
     res.clearCookie('refreshToken', { path: '/auth' });
+  }
+
+  /**
+   * Generate a one-time code for OAuth token exchange
+   */
+  private generateOAuthCode(accessToken: string): string {
+    const crypto = require('crypto');
+    const code = crypto.randomBytes(32).toString('hex');
+    const expiresAt = Date.now() + 60000; // 60 seconds expiry
+    this.oauthTokenExchange.set(code, { accessToken, expiresAt });
+    
+    // Clean up expired codes (simple cleanup on each generation)
+    for (const [key, value] of this.oauthTokenExchange.entries()) {
+      if (value.expiresAt < Date.now()) {
+        this.oauthTokenExchange.delete(key);
+      }
+    }
+    
+    return code;
+  }
+
+  /**
+   * Exchange one-time code for access token (used by OAuth callback)
+   */
+  private consumeOAuthCode(code: string): string | null {
+    const entry = this.oauthTokenExchange.get(code);
+    if (!entry) return null;
+    if (entry.expiresAt < Date.now()) {
+      this.oauthTokenExchange.delete(code);
+      return null;
+    }
+    // One-time use: delete after consuming
+    this.oauthTokenExchange.delete(code);
+    return entry.accessToken;
   }
 
   @Post('register')
@@ -79,11 +120,28 @@ export class AuthController {
     const { accessToken, refreshToken } = req.user;
     // Set refresh token in httpOnly cookie
     this.setRefreshTokenCookie(res, refreshToken);
-    // Redirect with only access token in URL (temporary, until frontend uses cookie-based refresh)
-    // TODO: Eventually remove accessToken from URL once frontend stores it in memory only
+    // Generate one-time code for access token exchange (valid for 60 seconds)
+    const code = this.generateOAuthCode(accessToken);
+    // Redirect with only the one-time code (no tokens in URL)
     res.redirect(
-      `${process.env.FRONTEND_URL}/login/callback?accessToken=${accessToken}`,
+      `${process.env.FRONTEND_URL}/login/callback?code=${code}`,
     );
+  }
+
+  /**
+   * Exchange OAuth one-time code for access token
+   * Called by frontend after OAuth redirect
+   */
+  @Post('oauth/exchange')
+  async exchangeOAuthCode(@Body('code') code: string) {
+    if (!code) {
+      throw new Error('No code provided');
+    }
+    const accessToken = this.consumeOAuthCode(code);
+    if (!accessToken) {
+      throw new Error('Invalid or expired code');
+    }
+    return { success: true, data: { accessToken } };
   }
 
   @Post('refresh')
