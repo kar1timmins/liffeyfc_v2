@@ -1,11 +1,14 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ContactModule } from './contact/contact.module';
 import { Web3Module } from './web3/web3.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { throttlerConfig } from './config/throttler.config';
 
 /**
  * Parse DATABASE_URL if present (format: postgres://user:password@host:port/database)
@@ -32,6 +35,8 @@ function parseDatabaseUrl() {
 
 @Module({
   imports: [
+    // Rate limiting configuration
+    ThrottlerModule.forRoot(throttlerConfig),
     // Use DATABASE_URL if present; otherwise fall back to individual DB_* env vars
     TypeOrmModule.forRoot({
       type: 'postgres',
@@ -66,6 +71,13 @@ function parseDatabaseUrl() {
     AuthModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    // Enable throttler guard globally
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}
