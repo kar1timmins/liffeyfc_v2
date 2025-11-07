@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User } from '../entities/user.entity';
+import { User, UserRole } from '../entities/user.entity';
 import { Wallet } from '../entities/wallet.entity';
 
 @Injectable()
@@ -49,5 +49,72 @@ export class UsersService {
       await this.walletsRepo.save(existing);
     }
     return this.findById(userId);
+  }
+
+  /**
+   * Upgrade user to investor role
+   * Updates role and investor-specific fields
+   */
+  async upgradeToInvestor(userId: string, investorData: {
+    investorCompany: string;
+    investmentFocus: string;
+    linkedinUrl?: string;
+    isAccredited?: boolean;
+  }): Promise<User | null> {
+    const user = await this.findById(userId);
+    if (!user) throw new Error('User not found');
+    
+    // Update role and investor-specific fields
+    await this.usersRepo.update(userId, {
+      role: UserRole.INVESTOR,
+      investorCompany: investorData.investorCompany,
+      investmentFocus: investorData.investmentFocus,
+      linkedinUrl: investorData.linkedinUrl,
+      isAccredited: investorData.isAccredited ?? false,
+    } as any);
+    
+    return this.findById(userId);
+  }
+
+  /**
+   * Create staff user
+   * Creates user with staff role and staff-specific fields
+   */
+  async createStaff(staffData: {
+    email: string;
+    passwordHash: string;
+    name: string;
+    department: string;
+    phoneNumber?: string;
+  }): Promise<User> {
+    const user = this.usersRepo.create({
+      ...staffData,
+      role: UserRole.STAFF,
+      isActive: true,
+    } as any);
+    
+    const saved = await this.usersRepo.save(user as any);
+    return Array.isArray(saved) ? (saved[0] as User) : (saved as User);
+  }
+
+  /**
+   * Find users by role
+   */
+  async findByRole(role: UserRole): Promise<User[]> {
+    return this.usersRepo.find({ where: { role } });
+  }
+
+  /**
+   * Find all investors
+   */
+  async findInvestors(): Promise<User[]> {
+    return this.findByRole(UserRole.INVESTOR);
+  }
+
+  /**
+   * Find all staff
+   */
+  async findStaff(): Promise<User[]> {
+    return this.findByRole(UserRole.STAFF);
   }
 }

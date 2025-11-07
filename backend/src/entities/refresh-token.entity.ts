@@ -1,13 +1,11 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn } from 'typeorm';
 import { User } from './user.entity';
-import { Investor } from './investor.entity';
-import { Staff } from './staff.entity';
 
 /**
  * RefreshToken Entity
  * 
- * Stores refresh tokens for all user types (users, investors, staff)
- * Uses polymorphic relationship - token belongs to one of the three types
+ * Stores refresh tokens for all users (regardless of role)
+ * Simple one-to-many relationship with User entity
  */
 @Entity({ name: 'refresh_tokens' })
 export class RefreshToken {
@@ -20,19 +18,9 @@ export class RefreshToken {
   @Column({ type: 'bigint' })
   expiresAt: number;
 
-  // Polymorphic relationship: token can belong to User, Investor, or Staff
-  @ManyToOne(() => User, (u) => u.refreshTokens, { onDelete: 'CASCADE', nullable: true })
-  user?: User;
-
-  @ManyToOne(() => Investor, (i) => i.refreshTokens, { onDelete: 'CASCADE', nullable: true })
-  investor?: Investor;
-
-  @ManyToOne(() => Staff, (s) => s.refreshTokens, { onDelete: 'CASCADE', nullable: true })
-  staff?: Staff;
-
-  // User type discriminator for easier queries
-  @Column({ type: 'varchar' })
-  userType: 'user' | 'investor' | 'staff';
+  // Simple relationship: token belongs to a user (any role)
+  @ManyToOne(() => User, (u) => u.refreshTokens, { onDelete: 'CASCADE' })
+  user: User;
 
   @CreateDateColumn()
   createdAt: Date;

@@ -9,8 +9,6 @@ import { ContactModule } from './contact/contact.module';
 import { Web3Module } from './web3/web3.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
-import { InvestorsModule } from './investors/investors.module';
-import { StaffModule } from './staff/staff.module';
 import { throttlerConfig } from './config/throttler.config';
 
 /**
@@ -73,8 +71,6 @@ function parseDatabaseUrl() {
     ContactModule,
     Web3Module,
     UsersModule,
-    InvestorsModule,
-    StaffModule,
     AuthModule,
   ],
   controllers: [AppController],

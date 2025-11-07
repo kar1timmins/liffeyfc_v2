@@ -1,11 +1,11 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
 import { User } from './user.entity';
-import { Investor } from './investor.entity';
 
 /**
  * Wallet Entity
  * 
- * Stores Web3 wallet addresses for users and investors
+ * Stores Web3 wallet addresses for users
+ * Users with role 'user' or 'investor' can connect wallets
  * Staff members typically don't need wallet connections
  */
 @Entity({ name: 'wallets' })
@@ -19,10 +19,7 @@ export class Wallet {
   @Column({ type: 'varchar', nullable: true })
   chainId?: string;
 
-  // Polymorphic relationship: wallet can belong to either User or Investor
-  @ManyToOne(() => User, (u) => u.wallets, { onDelete: 'CASCADE', nullable: true })
-  user?: User;
-
-  @ManyToOne(() => Investor, (i) => i.wallets, { onDelete: 'CASCADE', nullable: true })
-  investor?: Investor;
+  // Simple relationship: wallet belongs to a user (any role)
+  @ManyToOne(() => User, (u) => u.wallets, { onDelete: 'CASCADE' })
+  user: User;
 }

@@ -347,11 +347,28 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @SkipThrottle() // Authenticated requests, no need for strict rate limiting
   async me(@Req() req) {
-    // JwtAuthGuard attaches payload to req.user with { sub: userId }
+    // JwtAuthGuard attaches payload to req.user with { sub: userId, userType }
     const userId = req.user?.sub;
+    const userType = req.user?.userType || 'user';
+    
     if (!userId) return { success: false, data: null };
+    
+    // Query unified users table (single table with roles)
     const user = await this.usersService.findById(userId);
-    return { success: true, data: user };
+    
+    if (!user) {
+      return { 
+        success: false, 
+        data: null, 
+        message: 'User not found. Your account may have been upgraded. Please log in again.' 
+      };
+    }
+    
+    // Remove sensitive data
+    const { passwordHash, ...userData } = user;
+    
+    // Add userType to the response (from user.role for consistency)
+    return { success: true, data: { ...userData, userType: user.role } };
   }
 
   /**

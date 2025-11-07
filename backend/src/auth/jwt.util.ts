@@ -1,24 +1,24 @@
 import { sign, verify, type SignOptions } from 'jsonwebtoken';
 import { JwtConfig } from '../config/jwt.config';
-import { type JwtPayload, UserType } from './types/user-type.interface';
+import { type JwtPayload, UserRole } from './types/user-type.interface';
 
 /**
  * Sign a JWT token with secure configuration
  * @param userId - User ID
- * @param userType - Type of user (user, investor, staff)
+ * @param userRole - Role of user (user, investor, staff)
  * @param expiresIn - Token expiration (default: 15 minutes)
  * @param options - Optional issuer and audience
  * @returns Signed JWT token
  */
 export function signJwt(
   userId: string,
-  userType: UserType,
+  userRole: UserRole,
   expiresIn: string | number = '15m',
   options?: { issuer?: string; audience?: string }
 ) {
   const payload: JwtPayload = {
     sub: userId,
-    userType,
+    userType: userRole,
   };
 
   const opts: SignOptions = {

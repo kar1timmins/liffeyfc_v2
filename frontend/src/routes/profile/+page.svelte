@@ -45,14 +45,14 @@
 
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${PUBLIC_API_URL}/investors/upgrade`, {
+      const response = await fetch(`${PUBLIC_API_URL}/users/upgrade-to-investor`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          company,
+          investorCompany: company,
           investmentFocus,
           linkedinUrl: linkedinUrl || undefined,
           isAccredited,
@@ -67,13 +67,16 @@
 
       if (data.success) {
         upgradeSuccess = true;
-        // Refresh auth to get new token with investor userType
+        
+        // Update the access token with the new investor token
+        if (data.data?.accessToken) {
+          await authStore.setAccessToken(data.data.accessToken, data.data.user);
+        }
+        
+        // Redirect to profile or dashboard after a short delay
         setTimeout(() => {
-          // Force logout and redirect to login to get new investor token
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-          goto('/login?message=Please sign in with your new investor account');
-        }, 2000);
+          goto('/dashboard');
+        }, 1500);
       } else {
         upgradeError = data.message || 'Failed to upgrade to investor';
       }
@@ -182,7 +185,7 @@
 
                 {#if upgradeSuccess}
                   <div class="alert alert-success">
-                    <span>Successfully upgraded to investor! Redirecting to login...</span>
+                    <span>Successfully upgraded to investor! Redirecting to dashboard...</span>
                   </div>
                 {/if}
 

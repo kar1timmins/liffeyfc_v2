@@ -1,12 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
-import { InvestorsService } from '../investors/investors.service';
-import { StaffService } from '../staff/staff.service';
 import { Web3Service } from '../web3/web3.service';
 import { NonceService } from '../web3/nonce.service';
 import { SecurityMonitoringService, SecurityEventType } from './security-monitoring.service';
 import { signJwt } from './jwt.util';
-import { UserType } from './types/user-type.interface';
+import { UserRole } from '../entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { RefreshToken } from '../entities/refresh-token.entity';
@@ -17,8 +15,6 @@ import { v4 as uuidv4 } from 'uuid';
 export class AuthService {
   constructor(
     private usersService: UsersService,
-    private investorsService: InvestorsService,
-    private staffService: StaffService,
     private web3Service: Web3Service,
     private nonceService: NonceService,
     private securityMonitoring: SecurityMonitoringService,
@@ -32,34 +28,23 @@ export class AuthService {
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await this.usersService.create({ email, passwordHash, name });
-    const accessToken = signJwt(user.id, UserType.USER);
+    const accessToken = signJwt(user.id, user.role);
     // create refresh token
-    const refresh = await this.createRefreshTokenForUser(user as any, UserType.USER);
+    const refresh = await this.createRefreshTokenForUser(user);
     return { user, accessToken, refreshToken: refresh };
   }
 
   async login(email: string, password: string) {
-    // Try to find user in all three tables
-    let user: any = await this.usersService.findByEmail(email);
-    let userType: UserType = UserType.USER;
-    
-    if (!user) {
-      user = await this.investorsService.findByEmail(email);
-      userType = UserType.INVESTOR;
-    }
-    
-    if (!user) {
-      user = await this.staffService.findByEmail(email);
-      userType = UserType.STAFF;
-    }
+    // Find user by email (single table with roles)
+    const user = await this.usersService.findByEmail(email);
     
     if (!user) throw new Error('Invalid credentials');
     
     const ok = await bcrypt.compare(password, user.passwordHash || '');
     if (!ok) throw new Error('Invalid credentials');
     
-    const accessToken = signJwt(user.id, userType);
-    const refresh = await this.createRefreshTokenForUser(user as any, userType);
+    const accessToken = signJwt(user.id, user.role);
+    const refresh = await this.createRefreshTokenForUser(user);
     return { user, accessToken, refreshToken: refresh };
   }
 
@@ -72,7 +57,7 @@ export class AuthService {
 
     const t = await this.refreshRepo.findOne({ 
       where: { id }, 
-      relations: ['user', 'investor', 'staff'] 
+      relations: ['user'] 
     });
     if (!t) throw new Error('Invalid refresh token');
     
@@ -96,9 +81,8 @@ export class AuthService {
     const match = await bcrypt.compare(secret, t.tokenHash);
     if (!match) throw new Error('Invalid refresh token');
 
-    // Determine which user type and get the entity
-    const userEntity = t.user || t.investor || t.staff;
-    const userType = t.userType;
+    // Get the user entity
+    const userEntity = t.user;
     
     if (!userEntity) throw new Error('Invalid token: no user associated');
 
@@ -111,18 +95,15 @@ export class AuthService {
     await this.refreshRepo.manager.transaction(async (manager) => {
       const newRt = manager.create(RefreshToken as any, { 
         tokenHash: newHash, 
-        expiresAt, 
-        userType,
+        expiresAt,
         user: t.user,
-        investor: t.investor,
-        staff: t.staff,
       } as any);
       const saved: any = await manager.save(newRt as any);
       newSavedId = saved.id;
       await manager.update(RefreshToken as any, t.id, { revoked: true, revokedAt: new Date(), replacedByTokenId: saved.id } as any);
     });
 
-    const accessToken = signJwt(userEntity.id, userType as UserType);
+    const accessToken = signJwt(userEntity.id, userEntity.role);
     return { user: userEntity, accessToken, refreshToken: `${newSavedId}.${newRaw}` };
   }
 
@@ -229,31 +210,22 @@ export class AuthService {
         await this.usersService.update(user.id, { provider, providerId });
       }
     }
-    const accessToken = signJwt(user.id, UserType.USER);
-    const refreshToken = await this.createRefreshTokenForUser(user, UserType.USER);
+    const accessToken = signJwt(user.id, user.role);
+    const refreshToken = await this.createRefreshTokenForUser(user);
     return { user, accessToken, refreshToken };
   }
 
-  private async createRefreshTokenForUser(user: any, userType: UserType) {
+  private async createRefreshTokenForUser(user: any) {
     const secret = uuidv4();
     const hash = await bcrypt.hash(secret, 10);
     const expiresAt = Date.now() + 2 * 60 * 60 * 1000; // 2 hours (more secure than days)
     
-    // Create token with appropriate user relationship based on type
+    // Create token with user relationship (simplified from polymorphic)
     const tokenData: any = { 
       tokenHash: hash, 
       expiresAt,
-      userType,
+      user,
     };
-    
-    // Set the appropriate user relationship
-    if (userType === UserType.USER) {
-      tokenData.user = user;
-    } else if (userType === UserType.INVESTOR) {
-      tokenData.investor = user;
-    } else if (userType === UserType.STAFF) {
-      tokenData.staff = user;
-    }
     
     const rt = this.refreshRepo.create(tokenData);
     const saved = await this.refreshRepo.save(rt as any);
@@ -290,7 +262,7 @@ export class AuthService {
       user = await this.usersService.attachWallet(user.id, address);
     }
     if (!user) throw new Error('Failed to create or attach wallet to user');
-    const token = signJwt(user.id, UserType.USER);
+    const token = signJwt(user.id, user.role);
     return { user, token };
   }
 }
