@@ -17,12 +17,14 @@
   let linkedinUrl = $state('');
   let isAccredited = $state(false);
 
-  onMount(async () => {
-    const ok = await authStore.verify();
-    if (!ok) {
-      goto('/auth');
-      return;
-    }
+  onMount(() => {
+    // Handle async verification without making onMount async
+    authStore.verify().then((ok) => {
+      if (!ok) {
+        goto('/auth');
+        return;
+      }
+    });
     
     // Subscribe to auth store to get user data
     const unsubscribe = authStore.subscribe((s) => {
@@ -125,11 +127,12 @@
             {#if showInvestorForm}
               <form onsubmit={(e) => { e.preventDefault(); handleUpgradeToInvestor(); }} class="mt-6 space-y-4">
                 <div>
-                  <label class="label">
+                  <label class="label" for="company">
                     <span class="label-text">Company/Fund Name *</span>
                   </label>
                   <input
                     type="text"
+                    id="company"
                     bind:value={company}
                     class="input input-bordered w-full"
                     placeholder="e.g., Acme Ventures"
@@ -137,12 +140,12 @@
                     disabled={isUpgrading}
                   />
                 </div>
-
                 <div>
-                  <label class="label">
+                  <label class="label" for="investmentFocus">
                     <span class="label-text">Investment Focus *</span>
                   </label>
                   <textarea
+                    id="investmentFocus"
                     bind:value={investmentFocus}
                     class="textarea textarea-bordered w-full"
                     placeholder="Describe your investment thesis, sectors of interest, stage preferences..."
@@ -151,13 +154,13 @@
                     disabled={isUpgrading}
                   ></textarea>
                 </div>
-
                 <div>
-                  <label class="label">
+                  <label class="label" for="linkedinUrl">
                     <span class="label-text">LinkedIn Profile URL</span>
                   </label>
                   <input
                     type="url"
+                    id="linkedinUrl"
                     bind:value={linkedinUrl}
                     class="input input-bordered w-full"
                     placeholder="https://linkedin.com/in/yourprofile"
