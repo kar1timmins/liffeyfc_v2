@@ -2,14 +2,19 @@
 .railway/
 
 # Local env files (Railway uses its own env vars)
+.env
 .env.local
 .env.production.local
+.env.development
 
 # Build output (will be built on Railway)
 dist/
 
-# Dependencies
+# Dependencies (Railway will install these)
 node_modules/
+.pnpm-store/
+.npm/
+.yarn/
 
 # IDE
 .vscode/
@@ -25,3 +30,22 @@ npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Test files
+test/
+*.spec.ts
+*.test.ts
+__tests__/
+__mocks__/
+
+# Documentation
+docs/
+README.md
+*.md
+
+# Git
+.git/
+.gitignore
+
+# CI/CD
+.github/

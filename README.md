@@ -255,10 +255,10 @@ railway init
 railway up
 
 # Set environment variables
-railway variables set RECAPTCHA_SECRET_KEY="your_key"
-railway variables set WEB3FORMS_ACCESS_KEY="your_key"
-railway variables set NODE_ENV="production"
-railway variables set FRONTEND_URL="https://liffeyfoundersclub.com"
+railway variables --set "RECAPTCHA_SECRET_KEY=your_key"
+railway variables --set "WEB3FORMS_ACCESS_KEY=your_key"
+railway variables --set "NODE_ENV=production"
+railway variables --set "FRONTEND_URL=https://liffeyfoundersclub.com"
 
 # Generate domain
 railway domain
@@ -274,6 +274,44 @@ Use the provided script:
 cd backend
 ./railway-deploy.sh
 ```
+
+#### Option C: Railway MCP Agent (Advanced) 🤖
+
+For automated deployment with intelligent workflows, use the Railway MCP (Model Context Protocol) Agent:
+
+```bash
+# Run automated setup
+./.github/mcp/railway-setup.sh
+```
+
+**Features:**
+- 🚀 Automated deployment workflows
+- 📊 Health monitoring and alerts
+- 🔄 One-command rollbacks
+- 🔐 Environment management
+- 📝 Database migration automation
+- 🐛 Built-in troubleshooting
+
+**Quick Commands:**
+```bash
+# Deploy all services
+railway up
+
+# View real-time logs
+railway logs --service backend --follow
+
+# Check service status
+railway status
+
+# Run database migrations
+railway run -- pnpm run migration:run
+```
+
+**Complete Documentation:**
+- [MCP Agent Overview](./.github/mcp/README.md)
+- [Quick Reference](./.github/mcp/RAILWAY_QUICK_REF.md)
+- [Full Documentation](./.github/mcp/railway-agent.md)
+- [Setup Guide](./.github/mcp/SETUP_SUMMARY.md)
 
 ---
 

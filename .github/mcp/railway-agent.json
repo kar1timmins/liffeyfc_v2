@@ -1,0 +1,307 @@
+{
+  "name": "Railway Deployment Agent",
+  "description": "MCP agent for managing Railway deployments for Liffey Founders Club",
+  "version": "1.0.0",
+  "servers": {
+    "railway": {
+      "command": "npx",
+      "args": ["-y", "@railway/cli"],
+      "env": {
+        "RAILWAY_TOKEN": "${RAILWAY_TOKEN}"
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "railway_login",
+      "description": "Authenticate with Railway CLI",
+      "command": "railway login"
+    },
+    {
+      "name": "railway_status",
+      "description": "Check Railway project status and deployments",
+      "command": "railway status"
+    },
+    {
+      "name": "railway_list_services",
+      "description": "List all services in the Railway project",
+      "command": "railway service list"
+    },
+    {
+      "name": "railway_logs",
+      "description": "View logs for a Railway service",
+      "command": "railway logs",
+      "parameters": {
+        "service": {
+          "type": "string",
+          "description": "Service name (backend, frontend, email-server, postgres, redis)",
+          "required": false
+        },
+        "follow": {
+          "type": "boolean",
+          "description": "Follow log output",
+          "default": false
+        }
+      }
+    },
+    {
+      "name": "railway_deploy_backend",
+      "description": "Deploy backend service to Railway",
+      "command": "cd backend && railway up",
+      "pre_checks": [
+        "test -f backend/package.json",
+        "test -f backend/railway.json"
+      ]
+    },
+    {
+      "name": "railway_deploy_email_server",
+      "description": "Deploy email server to Railway",
+      "command": "cd email-server && railway up",
+      "pre_checks": [
+        "test -f email-server/package.json",
+        "test -f email-server/railway.json"
+      ]
+    },
+    {
+      "name": "railway_set_env",
+      "description": "Set environment variable for Railway service",
+      "command": "railway variables --set",
+      "parameters": {
+        "key": {
+          "type": "string",
+          "description": "Environment variable key",
+          "required": true
+        },
+        "value": {
+          "type": "string",
+          "description": "Environment variable value",
+          "required": true
+        },
+        "service": {
+          "type": "string",
+          "description": "Service name",
+          "required": false
+        }
+      },
+      "note": "Use format: railway variables --set \"KEY=value\" --service backend"
+    },
+    {
+      "name": "railway_get_env",
+      "description": "Get environment variables for Railway service",
+      "command": "railway variables"
+    },
+    {
+      "name": "railway_link_project",
+      "description": "Link local directory to Railway project",
+      "command": "railway link",
+      "parameters": {
+        "project_id": {
+          "type": "string",
+          "description": "Railway project ID",
+          "required": false
+        }
+      }
+    },
+    {
+      "name": "railway_unlink_project",
+      "description": "Unlink current directory from Railway project",
+      "command": "railway unlink"
+    },
+    {
+      "name": "railway_create_service",
+      "description": "Create a new service in Railway project",
+      "command": "railway service create",
+      "parameters": {
+        "name": {
+          "type": "string",
+          "description": "Service name",
+          "required": true
+        }
+      }
+    },
+    {
+      "name": "railway_delete_service",
+      "description": "Delete a service from Railway project",
+      "command": "railway service delete",
+      "parameters": {
+        "name": {
+          "type": "string",
+          "description": "Service name",
+          "required": true
+        }
+      }
+    },
+    {
+      "name": "railway_domain",
+      "description": "Generate or list domains for Railway service",
+      "command": "railway domain"
+    },
+    {
+      "name": "railway_restart",
+      "description": "Restart a Railway service",
+      "command": "railway service restart",
+      "parameters": {
+        "service": {
+          "type": "string",
+          "description": "Service name",
+          "required": false
+        }
+      }
+    }
+  ],
+  "workflows": {
+    "full_deployment": {
+      "name": "Full Stack Deployment",
+      "description": "Deploy all services (backend, email-server, database, redis)",
+      "steps": [
+        {
+          "name": "Check Railway CLI",
+          "tool": "railway_status",
+          "continue_on_error": false
+        },
+        {
+          "name": "Deploy Backend",
+          "tool": "railway_deploy_backend",
+          "continue_on_error": false
+        },
+        {
+          "name": "Deploy Email Server",
+          "tool": "railway_deploy_email_server",
+          "continue_on_error": false
+        },
+        {
+          "name": "Check Deployment Status",
+          "tool": "railway_status",
+          "continue_on_error": true
+        },
+        {
+          "name": "View Logs",
+          "tool": "railway_logs",
+          "parameters": {
+            "follow": false
+          },
+          "continue_on_error": true
+        }
+      ]
+    },
+    "backend_only": {
+      "name": "Backend Deployment",
+      "description": "Deploy only the backend service",
+      "steps": [
+        {
+          "name": "Build Backend",
+          "command": "cd backend && pnpm install && pnpm build"
+        },
+        {
+          "name": "Deploy Backend",
+          "tool": "railway_deploy_backend"
+        },
+        {
+          "name": "Check Backend Logs",
+          "tool": "railway_logs",
+          "parameters": {
+            "service": "backend"
+          }
+        }
+      ]
+    },
+    "setup_environment": {
+      "name": "Setup Railway Environment",
+      "description": "Configure environment variables for all services",
+      "steps": [
+        {
+          "name": "Set JWT Secret",
+          "tool": "railway_set_env",
+          "parameters": {
+            "key": "JWT_SECRET",
+            "value": "${JWT_SECRET}",
+            "service": "backend"
+          }
+        },
+        {
+          "name": "Set Database URL",
+          "tool": "railway_set_env",
+          "parameters": {
+            "key": "DATABASE_URL",
+            "value": "${DATABASE_URL}",
+            "service": "backend"
+          }
+        },
+        {
+          "name": "Set Redis URL",
+          "tool": "railway_set_env",
+          "parameters": {
+            "key": "REDIS_URL",
+            "value": "${REDIS_URL}",
+            "service": "backend"
+          }
+        },
+        {
+          "name": "Set reCAPTCHA Secret",
+          "tool": "railway_set_env",
+          "parameters": {
+            "key": "RECAPTCHA_SECRET_KEY",
+            "value": "${RECAPTCHA_SECRET_KEY}",
+            "service": "backend"
+          }
+        },
+        {
+          "name": "Set Web3Forms Key",
+          "tool": "railway_set_env",
+          "parameters": {
+            "key": "WEB3FORMS_ACCESS_KEY",
+            "value": "${WEB3FORMS_ACCESS_KEY}",
+            "service": "backend"
+          }
+        },
+        {
+          "name": "Verify Environment",
+          "tool": "railway_get_env"
+        }
+      ]
+    },
+    "rollback": {
+      "name": "Rollback Deployment",
+      "description": "Rollback to previous deployment",
+      "steps": [
+        {
+          "name": "View Recent Deployments",
+          "tool": "railway_status"
+        },
+        {
+          "name": "Restart Services",
+          "tool": "railway_restart"
+        }
+      ]
+    }
+  },
+  "monitoring": {
+    "health_check": {
+      "backend": {
+        "endpoint": "/health",
+        "interval": 60,
+        "timeout": 30
+      },
+      "email_server": {
+        "endpoint": "/health",
+        "interval": 60,
+        "timeout": 30
+      }
+    },
+    "alerts": {
+      "deployment_failed": {
+        "severity": "critical",
+        "notify": ["email", "slack"]
+      },
+      "service_down": {
+        "severity": "critical",
+        "notify": ["email", "slack"]
+      },
+      "high_error_rate": {
+        "severity": "warning",
+        "threshold": "5%",
+        "notify": ["slack"]
+      }
+    }
+  }
+}

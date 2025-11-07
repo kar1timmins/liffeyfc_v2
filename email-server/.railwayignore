@@ -1,0 +1,41 @@
+# Railway Ignore File
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+README.md
+
+# Test files
+test/
+tests/
+__tests__/
+
+# CI/CD
+.github/
+
+# Misc
+.cache
+.temp/
+tmp/
