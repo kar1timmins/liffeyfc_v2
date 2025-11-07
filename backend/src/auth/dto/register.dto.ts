@@ -29,12 +29,12 @@ export class RegisterDto {
 
   /**
    * User password
-   * - Minimum 12 characters (OWASP recommendation)
+   * - Minimum 8 characters (balanced security and usability)
    * - Must contain: uppercase, lowercase, number, special character
    * - Will be hashed before storage (never stored in plain text)
    */
   @IsString({ message: 'Password must be a string' })
-  @MinLength(12, { message: 'Password must be at least 12 characters long' })
+  @MinLength(8, { message: 'Password must be at least 8 characters long' })
   @MaxLength(128, { message: 'Password must not exceed 128 characters' })
   @Matches(
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,

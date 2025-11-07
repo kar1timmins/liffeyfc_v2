@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import { JwtConfig } from './config/jwt.config';
+import { ThrottlerExceptionFilter } from './common/filters/throttler-exception.filter';
 
 async function bootstrap() {
   // Validate critical security configurations before starting
@@ -27,6 +28,9 @@ async function bootstrap() {
       },
     }),
   );
+  
+  // Enable custom throttler exception filter for user-friendly rate limit messages
+  app.useGlobalFilters(new ThrottlerExceptionFilter());
   
   // Enable cookie parsing
   app.use(cookieParser());

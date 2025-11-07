@@ -3,6 +3,7 @@
   import { authStore } from '$lib/stores/auth';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
+  import { Check, X } from 'lucide-svelte';
 
   let mode: 'login' | 'register' = 'login';
   let email = '';
@@ -10,6 +11,17 @@
   let name = '';
   let error = '';
   let loading = false;
+
+  // Password requirements state
+  $: passwordRequirements = {
+    minLength: password.length >= 8,
+    hasUppercase: /[A-Z]/.test(password),
+    hasLowercase: /[a-z]/.test(password),
+    hasNumber: /\d/.test(password),
+    hasSpecial: /[@$!%*?&]/.test(password),
+  };
+
+  $: allRequirementsMet = Object.values(passwordRequirements).every(r => r);
 
   function switchTo(m: 'login' | 'register') {
     mode = m;
@@ -22,7 +34,11 @@
       error = 'Please enter a valid email address.';
       return;
     }
-    if (password.length < 6) {
+    if (mode === 'register' && !allRequirementsMet) {
+      error = 'Please meet all password requirements.';
+      return;
+    }
+    if (mode === 'login' && password.length < 6) {
       error = 'Password must be at least 6 characters.';
       return;
     }
@@ -80,6 +96,62 @@
 
         <label class="label" for="password"><span class="label-text">Password</span></label>
         <input id="password" type="password" class="input input-bordered w-full mb-3" bind:value={password} />
+        
+        {#if mode === 'register' && password.length > 0}
+          <div class="bg-base-200 rounded-lg p-3 mb-3 space-y-1.5" in:fly={{y:10, duration:200}}>
+            <p class="text-xs font-semibold text-base-content/70 mb-2">Password Requirements:</p>
+            
+            <div class="flex items-center gap-2 text-xs">
+              {#if passwordRequirements.minLength}
+                <Check class="w-4 h-4 text-success flex-shrink-0" />
+                <span class="text-success">At least 8 characters</span>
+              {:else}
+                <X class="w-4 h-4 text-error flex-shrink-0" />
+                <span class="text-base-content/60">At least 8 characters</span>
+              {/if}
+            </div>
+            
+            <div class="flex items-center gap-2 text-xs">
+              {#if passwordRequirements.hasUppercase}
+                <Check class="w-4 h-4 text-success flex-shrink-0" />
+                <span class="text-success">One uppercase letter (A-Z)</span>
+              {:else}
+                <X class="w-4 h-4 text-error flex-shrink-0" />
+                <span class="text-base-content/60">One uppercase letter (A-Z)</span>
+              {/if}
+            </div>
+            
+            <div class="flex items-center gap-2 text-xs">
+              {#if passwordRequirements.hasLowercase}
+                <Check class="w-4 h-4 text-success flex-shrink-0" />
+                <span class="text-success">One lowercase letter (a-z)</span>
+              {:else}
+                <X class="w-4 h-4 text-error flex-shrink-0" />
+                <span class="text-base-content/60">One lowercase letter (a-z)</span>
+              {/if}
+            </div>
+            
+            <div class="flex items-center gap-2 text-xs">
+              {#if passwordRequirements.hasNumber}
+                <Check class="w-4 h-4 text-success flex-shrink-0" />
+                <span class="text-success">One number (0-9)</span>
+              {:else}
+                <X class="w-4 h-4 text-error flex-shrink-0" />
+                <span class="text-base-content/60">One number (0-9)</span>
+              {/if}
+            </div>
+            
+            <div class="flex items-center gap-2 text-xs">
+              {#if passwordRequirements.hasSpecial}
+                <Check class="w-4 h-4 text-success flex-shrink-0" />
+                <span class="text-success">One special character (@$!%*?&)</span>
+              {:else}
+                <X class="w-4 h-4 text-error flex-shrink-0" />
+                <span class="text-base-content/60">One special character (@$!%*?&)</span>
+              {/if}
+            </div>
+          </div>
+        {/if}
       </div>
 
       <div class="flex items-center gap-3 mt-4">
