@@ -4,7 +4,8 @@
   import { goto } from '$app/navigation';
   import { PUBLIC_API_URL } from '$env/static/public';
 
-  let user: any = null;
+  let user: any = $state(null);
+  let isLoading = $state(true);
   let showInvestorForm = $state(false);
   let isUpgrading = $state(false);
   let upgradeError = $state('');
@@ -22,9 +23,15 @@
       goto('/auth');
       return;
     }
-    authStore.subscribe((s) => {
+    
+    // Subscribe to auth store to get user data
+    const unsubscribe = authStore.subscribe((s) => {
       user = s.user;
-    })();
+      isLoading = false;
+    });
+    
+    // Return cleanup function
+    return unsubscribe;
   });
 
   async function handleUpgradeToInvestor() {
@@ -201,8 +208,15 @@
           </div>
         {/if}
       </div>
+    {:else if isLoading}
+      <div class="flex items-center justify-center py-8">
+        <span class="loading loading-spinner loading-lg"></span>
+        <span class="ml-2">Loading profile…</span>
+      </div>
     {:else}
-      <p>Loading profile…</p>
+      <div class="alert alert-warning">
+        <span>Unable to load profile data. Please try logging in again.</span>
+      </div>
     {/if}
   </div>
 </div>

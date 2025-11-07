@@ -26,23 +26,47 @@ function decodeJwt(token: string): any {
 }
 
 function createAuthStore() {
-  const { subscribe, set, update } = writable<AuthState>({
+  // Initialize from localStorage if available
+  let initialState: AuthState = {
     user: null,
     accessToken: null,
     isAuthenticated: false,
-  });
+  };
+
+  if (typeof window !== 'undefined') {
+    const storedToken = localStorage.getItem('accessToken');
+    if (storedToken) {
+      initialState.accessToken = storedToken;
+      const decoded = decodeJwt(storedToken);
+      if (decoded) {
+        initialState.isAuthenticated = true;
+      }
+    }
+  }
+
+  const { subscribe, set, update } = writable<AuthState>(initialState);
 
   /**
-   * Set access token in memory only (no persistent storage)
+   * Set access token and persist to localStorage
    * Decode JWT to extract userType
    */
   async function setAccessToken(accessToken: string, user?: any) {
     const decoded = decodeJwt(accessToken);
     const enrichedUser = user ? { ...user, userType: decoded?.userType || 'user' } : null;
+    
+    // Store in localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('accessToken', accessToken);
+    }
+    
     update(s => ({ ...s, accessToken, user: enrichedUser || s.user, isAuthenticated: true }));
   }
 
   function clear() {
+    // Clear localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('accessToken');
+    }
     set({ user: null, accessToken: null, isAuthenticated: false });
   }
 
@@ -79,8 +103,19 @@ function createAuthStore() {
   async function verify() {
     let ok = false;
     let token: string | null = null;
-    update(s => { token = s.accessToken; return s; });
+    
+    // Try to get token from store first, then localStorage
+    update(s => { 
+      token = s.accessToken; 
+      return s; 
+    });
+    
+    if (!token && typeof window !== 'undefined') {
+      token = localStorage.getItem('accessToken');
+    }
+    
     if (!token) return false;
+    
     try {
       const res = await fetch('/api/auth/me', {
         headers: { Authorization: `Bearer ${token}` },
@@ -90,7 +125,7 @@ function createAuthStore() {
         const json = await res.json();
         const decoded = decodeJwt(token);
         const userData = { ...(json.data || json), userType: decoded?.userType || 'user' };
-        update(s => ({ ...s, user: userData, isAuthenticated: true }));
+        update(s => ({ ...s, accessToken: token, user: userData, isAuthenticated: true }));
         ok = true;
       } else if (res.status === 401) {
         // try refresh
