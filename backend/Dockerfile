@@ -42,8 +42,12 @@ COPY --from=builder /app/src/entities ./src/entities
 COPY --from=builder /app/src/data-source.ts ./src/data-source.ts
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
 
+# Copy startup script
+COPY start.sh ./
+RUN chmod +x start.sh
+
 # Expose port
 EXPOSE 3000
 
-# Run migrations then start app (use ts-node for migrations, node for app)
-CMD ["sh", "-c", "npx ts-node --transpile-only ./node_modules/typeorm/cli.js migration:run -d src/data-source.ts && node dist/main.js"]
+# Run migrations then start app
+CMD ["./start.sh"]
