@@ -2,7 +2,18 @@
 set -e
 
 echo "🔄 Starting migration process..."
-echo "📊 Database URL: ${DATABASE_URL:0:30}..."
+echo "📊 Database URL: ${DATABASE_URL:0:50}..."
+echo "📁 Current directory: $(pwd)"
+echo "📂 Contents of /app:"
+ls -la /app
+echo "📂 Contents of /app/src:"
+ls -la /app/src || echo "❌ /app/src does not exist"
+echo "📂 Contents of /app/src/migrations:"
+ls -la /app/src/migrations || echo "❌ /app/src/migrations does not exist"
+echo "📂 Checking if data-source.ts exists:"
+ls -la /app/src/data-source.ts || echo "❌ /app/src/data-source.ts does not exist"
+echo "📦 Checking TypeORM CLI:"
+ls -la ./node_modules/typeorm/cli.js || echo "❌ TypeORM CLI not found"
 
 # Run migrations
 echo "🚀 Running TypeORM migrations..."
