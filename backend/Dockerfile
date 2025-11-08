@@ -9,7 +9,9 @@ FROM base AS deps
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --prod
+# Install prod dependencies + typeorm/ts-node for migrations
+RUN pnpm install --frozen-lockfile --prod && \
+    pnpm add -D typeorm ts-node @types/node typescript
 
 # Build stage
 FROM base AS builder
@@ -34,13 +36,14 @@ COPY --from=deps /app/package.json ./package.json
 # Copy built application
 COPY --from=builder /app/dist ./dist
 
-# Copy source files needed for migrations
+# Copy source files needed for migrations (TypeORM CLI needs these)
 COPY --from=builder /app/src/migrations ./src/migrations
 COPY --from=builder /app/src/entities ./src/entities
 COPY --from=builder /app/src/data-source.ts ./src/data-source.ts
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
 
 # Expose port
 EXPOSE 3000
 
-# Run migrations then start app
-CMD ["sh", "-c", "pnpm run migration:run && node dist/main.js"]
+# Run migrations then start app (use ts-node for migrations, node for app)
+CMD ["sh", "-c", "npx ts-node --transpile-only ./node_modules/typeorm/cli.js migration:run -d src/data-source.ts && node dist/main.js"]
