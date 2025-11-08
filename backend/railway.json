@@ -1,10 +1,10 @@
 {
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
-    "builder": "DOCKERFILE",
-    "dockerfilePath": "./Dockerfile"
+    "builder": "DOCKERFILE"
   },
   "deploy": {
+    "startCommand": "sh -c 'pnpm run migration:run && node dist/main.js'",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10,
     "healthcheckPath": "/health",
