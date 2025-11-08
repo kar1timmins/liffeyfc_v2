@@ -1,5 +1,7 @@
 // API Configuration
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import { PUBLIC_API_URL } from '$env/static/public';
+
+export const API_BASE_URL = PUBLIC_API_URL || 'http://localhost:3000';
 
 // Web3 Configuration
 export const SUPPORTED_CHAINS = {

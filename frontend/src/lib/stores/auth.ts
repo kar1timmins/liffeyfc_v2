@@ -1,4 +1,5 @@
 import { writable } from 'svelte/store';
+import { PUBLIC_API_URL } from '$env/static/public';
 
 type AuthState = {
   user: any | null;
@@ -71,7 +72,7 @@ function createAuthStore() {
   }
 
   async function login(email: string, password: string) {
-    const res = await fetch('/api/auth/login', {
+    const res = await fetch(`${PUBLIC_API_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include', // Send cookies
@@ -86,7 +87,7 @@ function createAuthStore() {
   }
 
   async function register(email: string, password: string, name?: string) {
-    const res = await fetch('/api/auth/register', {
+    const res = await fetch(`${PUBLIC_API_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include', // Send cookies
@@ -117,7 +118,7 @@ function createAuthStore() {
     if (!token) return false;
     
     try {
-      const res = await fetch('/api/auth/me', {
+      const res = await fetch(`${PUBLIC_API_URL}/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
         credentials: 'include',
       });
@@ -145,7 +146,7 @@ function createAuthStore() {
    */
   async function tryRefresh() {
     try {
-      const res = await fetch('/api/auth/refresh', {
+      const res = await fetch(`${PUBLIC_API_URL}/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include', // Send refresh token cookie
@@ -164,7 +165,7 @@ function createAuthStore() {
   async function logout() {
     try {
       // Tell backend to revoke refresh token and clear cookie
-      await fetch('/api/auth/logout', {
+      await fetch(`${PUBLIC_API_URL}/auth/logout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include', // Send refresh token cookie for revocation

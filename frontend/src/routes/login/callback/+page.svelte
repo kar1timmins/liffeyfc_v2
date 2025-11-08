@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { authStore } from '$lib/stores/auth';
+	import { PUBLIC_API_URL } from '$env/static/public';
 
 	let success = false;
 	let error = '';
@@ -13,7 +14,7 @@
 		if (code) {
 			try {
 				// Exchange one-time code for access token
-				const res = await fetch('/api/auth/oauth/exchange', {
+				const res = await fetch(`${PUBLIC_API_URL}/auth/oauth/exchange`, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					credentials: 'include', // Send refresh token cookie
