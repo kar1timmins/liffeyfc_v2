@@ -9,9 +9,9 @@ FROM base AS deps
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
-# Install prod dependencies + typeorm/ts-node for migrations
+# Install prod dependencies + typeorm/ts-node for migrations (as prod deps, not dev)
 RUN pnpm install --frozen-lockfile --prod && \
-    pnpm add -D typeorm ts-node @types/node typescript
+    pnpm add typeorm ts-node @types/node typescript tslib
 
 # Build stage
 FROM base AS builder
