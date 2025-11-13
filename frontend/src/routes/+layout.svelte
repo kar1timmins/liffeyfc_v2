@@ -231,7 +231,7 @@
 </svelte:head>
 
 
-	<main class="pt-20 sm:pt-24 md:pt-28">
+	<main class="pt-20 sm:pt-24 md:pt-28 flex flex-col min-h-screen">
   <!-- Sponsors Moving Banner -->
   <div 
     class="fixed top-0 left-0 right-0 w-full py-3 sm:py-3.5 md:py-4 overflow-hidden glass-subtle z-50 transition-transform duration-300 ease-in-out"
@@ -277,25 +277,23 @@
   </div>
 
   {#if showShell}
-    <div in:routeOpacity={{ delay: 100, duration: 620 }} out:routeOpacity onoutroend={onShellOutro}>
-      {@render children?.()}
+    <div in:routeOpacity={{ delay: 100, duration: 620 }} out:routeOpacity onoutroend={onShellOutro} class="flex-1">
+      {@render children()}
     </div>
   {/if}
 
-  <!-- Footer with internal navigation for SEO -->
-  <footer class="bg-base-200/50 backdrop-blur-sm mt-auto py-8 px-4 border-t border-base-300">
-    <div class="max-w-6xl mx-auto">
+  <!-- Footer - now within flex container, will push to bottom -->
+  <footer class="bg-base-200 text-base-content py-10 mt-auto">
+    <div class="container mx-auto px-4">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-6">
-        <!-- About Section -->
-        <div class="text-center md:text-left">
-          <h3 class="text-lg font-semibold mb-3">Liffey Founders Club</h3>
-          <p class="text-sm text-base-content/80">
-            Liffey Founders Club is a premier, public, open to all community for visionary founders and innovators in Ireland, dedicated to fostering collaboration and driving success.
-          </p>
+        <!-- About -->
+        <div>
+          <h3 class="text-lg font-semibold mb-3">About Liffey Founders Club</h3>
+          <p class="text-sm text-base-content/70">Dublin's premier startup community for founders, entrepreneurs, and investors.</p>
         </div>
         
         <!-- Quick Links -->
-        <div class="text-center">
+        <div>
           <h3 class="text-lg font-semibold mb-3">Quick Links</h3>
           <ul class="space-y-2">
             <li><a href="/" class="hover:text-primary transition-colors" data-sveltekit-prefetch aria-label="Home">Home</a></li>

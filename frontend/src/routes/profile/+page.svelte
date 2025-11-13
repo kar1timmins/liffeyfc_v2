@@ -3,6 +3,7 @@
   import { authStore } from '$lib/stores/auth';
   import { goto } from '$app/navigation';
   import { PUBLIC_API_URL } from '$env/static/public';
+  import { User, Mail, Briefcase, Building, Globe, Linkedin, CheckCircle, ArrowUpCircle, ArrowLeft } from 'lucide-svelte';
 
   let user: any = $state(null);
   let isLoading = $state(true);
@@ -93,136 +94,281 @@
     showInvestorForm = !showInvestorForm;
     upgradeError = '';
   }
+
+  function getRoleBadgeClass(role: string) {
+    switch(role) {
+      case 'investor': return 'badge-accent';
+      case 'staff': return 'badge-secondary';
+      default: return 'badge-primary';
+    }
+  }
+
+  function getRoleDisplayName(role: string) {
+    switch(role) {
+      case 'investor': return 'Investor';
+      case 'staff': return 'Staff';
+      default: return 'Founder';
+    }
+  }
 </script>
 
-<div class="container mx-auto p-6">
-  <div class="card bg-base-100 shadow-md p-6 max-w-2xl mx-auto">
-    <h2 class="text-2xl font-bold mb-4">Your Profile</h2>
-    {#if user}
-      <div class="space-y-4">
-        <div><strong>Name:</strong> {user.name || '—'}</div>
-        <div><strong>Email:</strong> {user.email || '—'}</div>
-        <div><strong>Account Type:</strong> <span class="badge badge-primary">{user.userType || 'user'}</span></div>
-        {#if user.provider}
-          <div><strong>Signed in with:</strong> {user.provider}</div>
-        {/if}
+<!-- Min height ensures footer stays at bottom -->
+<div class="min-h-[calc(100vh-20rem)] container mx-auto px-4 py-8 max-w-4xl">
+  <!-- Back Button -->
+  <button class="btn btn-ghost btn-sm gap-2 mb-6" on:click={() => goto('/dashboard')}>
+    <ArrowLeft size={18} />
+    Back to Dashboard
+  </button>
 
-        <!-- Investor Upgrade Section (only show for users, not investors or staff) -->
-        {#if user.userType === 'user'}
+  <!-- Page Header -->
+  <div class="mb-8">
+    <h1 class="text-4xl font-bold mb-2">Your Profile</h1>
+    <p class="text-base-content/70">Manage your account information and preferences</p>
+  </div>
+
+  {#if isLoading}
+    <!-- Loading State -->
+    <div class="card bg-base-100 shadow-lg">
+      <div class="card-body">
+        <div class="flex flex-col items-center justify-center py-12">
+          <span class="loading loading-spinner loading-lg text-primary"></span>
+          <span class="mt-4 text-base-content/70">Loading profile…</span>
+        </div>
+      </div>
+    </div>
+  {:else if user}
+    <!-- Profile Information Card -->
+    <div class="card bg-base-100 shadow-lg mb-6 border border-base-300">
+      <div class="card-body">
+        <div class="flex items-start gap-6 mb-6">
+          <!-- Avatar -->
+          <div class="avatar placeholder">
+            <div class="bg-primary text-primary-content rounded-full w-24 h-24">
+              <span class="text-3xl">{user.name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase()}</span>
+            </div>
+          </div>
+          
+          <!-- User Info -->
+          <div class="flex-1">
+            <h2 class="text-3xl font-bold mb-2">{user.name || 'User'}</h2>
+            <div class="flex flex-wrap gap-2 mb-4">
+              <span class="badge {getRoleBadgeClass(user.role)} badge-lg gap-2">
+                {#if user.role === 'investor'}
+                  <Briefcase size={14} />
+                {:else}
+                  <User size={14} />
+                {/if}
+                {getRoleDisplayName(user.role)}
+              </span>
+              {#if user.isActive !== false}
+                <span class="badge badge-success badge-lg gap-2">
+                  <CheckCircle size={14} />
+                  Active
+                </span>
+              {/if}
+            </div>
+          </div>
+        </div>
+
+        <!-- Details Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Email -->
+          <div class="flex items-start gap-3 p-4 rounded-lg bg-base-200/50">
+            <Mail size={20} class="text-primary mt-1" />
+            <div>
+              <div class="text-sm text-base-content/60 mb-1">Email</div>
+              <div class="font-medium">{user.email || '—'}</div>
+            </div>
+          </div>
+
+          <!-- Provider -->
+          {#if user.provider}
+            <div class="flex items-start gap-3 p-4 rounded-lg bg-base-200/50">
+              <User size={20} class="text-secondary mt-1" />
+              <div>
+                <div class="text-sm text-base-content/60 mb-1">Sign-in Method</div>
+                <div class="font-medium capitalize">{user.provider}</div>
+              </div>
+            </div>
+          {/if}
+
+          <!-- Company (if investor) -->
+          {#if user.role === 'investor' && user.investorCompany}
+            <div class="flex items-start gap-3 p-4 rounded-lg bg-base-200/50">
+              <Building size={20} class="text-accent mt-1" />
+              <div>
+                <div class="text-sm text-base-content/60 mb-1">Company/Fund</div>
+                <div class="font-medium">{user.investorCompany}</div>
+              </div>
+            </div>
+          {/if}
+
+          <!-- LinkedIn -->
+          {#if user.linkedinUrl}
+            <div class="flex items-start gap-3 p-4 rounded-lg bg-base-200/50">
+              <Linkedin size={20} class="text-info mt-1" />
+              <div>
+                <div class="text-sm text-base-content/60 mb-1">LinkedIn</div>
+                <a href={user.linkedinUrl} target="_blank" rel="noopener" class="font-medium link link-primary">
+                  View Profile
+                </a>
+              </div>
+            </div>
+          {/if}
+        </div>
+
+        <!-- Investment Focus (if investor) -->
+        {#if user.role === 'investor' && user.investmentFocus}
           <div class="divider"></div>
-          <div class="bg-base-200 p-4 rounded-lg">
-            <h3 class="text-xl font-semibold mb-2">Upgrade to Investor Account</h3>
-            <p class="text-sm mb-4">
-              Are you an investor or VC? Upgrade your account to access investor-specific features and connect with founders.
-            </p>
-            
-            <button
-              class="btn btn-primary"
-              onclick={toggleInvestorForm}
-              disabled={upgradeSuccess}
-            >
-              {showInvestorForm ? 'Cancel' : 'Become an Investor'}
-            </button>
-
-            {#if showInvestorForm}
-              <form onsubmit={(e) => { e.preventDefault(); handleUpgradeToInvestor(); }} class="mt-6 space-y-4">
-                <div>
-                  <label class="label" for="company">
-                    <span class="label-text">Company/Fund Name *</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="company"
-                    bind:value={company}
-                    class="input input-bordered w-full"
-                    placeholder="e.g., Acme Ventures"
-                    required
-                    disabled={isUpgrading}
-                  />
-                </div>
-                <div>
-                  <label class="label" for="investmentFocus">
-                    <span class="label-text">Investment Focus *</span>
-                  </label>
-                  <textarea
-                    id="investmentFocus"
-                    bind:value={investmentFocus}
-                    class="textarea textarea-bordered w-full"
-                    placeholder="Describe your investment thesis, sectors of interest, stage preferences..."
-                    rows="3"
-                    required
-                    disabled={isUpgrading}
-                  ></textarea>
-                </div>
-                <div>
-                  <label class="label" for="linkedinUrl">
-                    <span class="label-text">LinkedIn Profile URL</span>
-                  </label>
-                  <input
-                    type="url"
-                    id="linkedinUrl"
-                    bind:value={linkedinUrl}
-                    class="input input-bordered w-full"
-                    placeholder="https://linkedin.com/in/yourprofile"
-                    disabled={isUpgrading}
-                  />
-                </div>
-
-                <div class="form-control">
-                  <label class="label cursor-pointer justify-start gap-4">
-                    <input
-                      type="checkbox"
-                      bind:checked={isAccredited}
-                      class="checkbox"
-                      disabled={isUpgrading}
-                    />
-                    <span class="label-text">I am an accredited investor</span>
-                  </label>
-                </div>
-
-                {#if upgradeError}
-                  <div class="alert alert-error">
-                    <span>{upgradeError}</span>
-                  </div>
-                {/if}
-
-                {#if upgradeSuccess}
-                  <div class="alert alert-success">
-                    <span>Successfully upgraded to investor! Redirecting to dashboard...</span>
-                  </div>
-                {/if}
-
-                <div class="flex gap-2">
-                  <button
-                    type="submit"
-                    class="btn btn-primary"
-                    disabled={isUpgrading || upgradeSuccess}
-                  >
-                    {isUpgrading ? 'Upgrading...' : 'Complete Upgrade'}
-                  </button>
-                  <button
-                    type="button"
-                    class="btn btn-ghost"
-                    onclick={toggleInvestorForm}
-                    disabled={isUpgrading || upgradeSuccess}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            {/if}
+          <div>
+            <h3 class="text-lg font-semibold mb-2 flex items-center gap-2">
+              <Globe size={18} class="text-accent" />
+              Investment Focus
+            </h3>
+            <p class="text-base-content/80 leading-relaxed">{user.investmentFocus}</p>
           </div>
         {/if}
       </div>
-    {:else if isLoading}
-      <div class="flex items-center justify-center py-8">
-        <span class="loading loading-spinner loading-lg"></span>
-        <span class="ml-2">Loading profile…</span>
-      </div>
-    {:else}
-      <div class="alert alert-warning">
-        <span>Unable to load profile data. Please try logging in again.</span>
+    </div>
+
+    <!-- Investor Upgrade Section (only show for regular users) -->
+    {#if user.role === 'user'}
+      <div class="card bg-gradient-to-br from-accent/10 to-primary/10 shadow-lg border border-accent/20">
+        <div class="card-body">
+          <div class="flex items-start gap-4 mb-4">
+            <div class="p-3 rounded-lg bg-accent/20">
+              <ArrowUpCircle size={32} class="text-accent" />
+            </div>
+            <div>
+              <h3 class="text-2xl font-bold mb-2">Upgrade to Investor Account</h3>
+              <p class="text-base-content/70 leading-relaxed">
+                Are you an investor or VC? Upgrade your account to access investor-specific features and connect with founders.
+              </p>
+            </div>
+          </div>
+          
+          {#if !showInvestorForm}
+            <button
+              class="btn btn-accent btn-lg gap-2"
+              onclick={toggleInvestorForm}
+              disabled={upgradeSuccess}
+            >
+              <Briefcase size={20} />
+              Become an Investor
+            </button>
+          {/if}
+
+          {#if showInvestorForm}
+            <div class="divider"></div>
+            <form onsubmit={(e) => { e.preventDefault(); handleUpgradeToInvestor(); }} class="space-y-4">
+              <div>
+                <label class="label" for="company">
+                  <span class="label-text font-semibold">Company/Fund Name *</span>
+                </label>
+                <input
+                  type="text"
+                  id="company"
+                  bind:value={company}
+                  class="input input-bordered w-full"
+                  placeholder="e.g., Acme Ventures"
+                  required
+                  disabled={isUpgrading}
+                />
+              </div>
+              
+              <div>
+                <label class="label" for="investmentFocus">
+                  <span class="label-text font-semibold">Investment Focus *</span>
+                </label>
+                <textarea
+                  id="investmentFocus"
+                  bind:value={investmentFocus}
+                  class="textarea textarea-bordered w-full"
+                  placeholder="Describe your investment thesis, sectors of interest, stage preferences..."
+                  rows="4"
+                  required
+                  disabled={isUpgrading}
+                ></textarea>
+              </div>
+              
+              <div>
+                <label class="label" for="linkedinUrl">
+                  <span class="label-text font-semibold">LinkedIn Profile URL</span>
+                </label>
+                <input
+                  type="url"
+                  id="linkedinUrl"
+                  bind:value={linkedinUrl}
+                  class="input input-bordered w-full"
+                  placeholder="https://linkedin.com/in/yourprofile"
+                  disabled={isUpgrading}
+                />
+              </div>
+
+              <div class="form-control">
+                <label class="label cursor-pointer justify-start gap-4">
+                  <input
+                    type="checkbox"
+                    bind:checked={isAccredited}
+                    class="checkbox checkbox-accent"
+                    disabled={isUpgrading}
+                  />
+                  <span class="label-text font-semibold">I am an accredited investor</span>
+                </label>
+              </div>
+
+              {#if upgradeError}
+                <div class="alert alert-error">
+                  <span>{upgradeError}</span>
+                </div>
+              {/if}
+
+              {#if upgradeSuccess}
+                <div class="alert alert-success">
+                  <CheckCircle size={20} />
+                  <span>Successfully upgraded to investor! Redirecting to dashboard...</span>
+                </div>
+              {/if}
+
+              <div class="flex gap-3">
+                <button
+                  type="submit"
+                  class="btn btn-accent flex-1"
+                  disabled={isUpgrading || upgradeSuccess}
+                >
+                  {#if isUpgrading}
+                    <span class="loading loading-spinner loading-sm"></span>
+                    Upgrading...
+                  {:else}
+                    <Briefcase size={18} />
+                    Complete Upgrade
+                  {/if}
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-ghost"
+                  onclick={toggleInvestorForm}
+                  disabled={isUpgrading || upgradeSuccess}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          {/if}
+        </div>
       </div>
     {/if}
-  </div>
+  {:else}
+    <!-- Error State -->
+    <div class="card bg-base-100 shadow-lg">
+      <div class="card-body">
+        <div class="alert alert-warning">
+          <span>Unable to load profile data. Please try logging in again.</span>
+        </div>
+        <button class="btn btn-primary mt-4" on:click={() => goto('/auth')}>
+          Go to Login
+        </button>
+      </div>
+    </div>
+  {/if}
 </div>
