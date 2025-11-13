@@ -642,7 +642,7 @@
 {/if}
 
 {#if showStats}
-  <div out:send={{ key: 'pitch-sect' }} in:receive={{ key: 'pitch-sect' }} on:outroend={() => { if (navigating && navTarget) goto(navTarget); }} class="min-h-[100dvh] md:min-h-screen flex items-center justify-center relative overflow-hidden">
+  <div out:send={{ key: 'pitch-sect' }} in:receive={{ key: 'pitch-sect' }} on:outroend={() => { if (navigating && navTarget) goto(navTarget); }} class="min-h-[100dvh] md:min-h-screen flex items-center justify-center relative overflow-hidden -mt-20 sm:-mt-24 md:-mt-28 pt-20 sm:pt-24 md:pt-28">
     <div class="absolute inset-0 w-full h-full flex items-stretch justify-stretch pointer-events-none select-none z-0">
       {#each videoNames as name, i}
         <video
