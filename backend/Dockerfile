@@ -23,6 +23,25 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm run build
 
+# Development stage (for docker-compose)
+FROM base AS dev
+WORKDIR /app
+
+# Install all dependencies (including dev dependencies)
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+# Copy source code
+COPY . .
+
+ENV NODE_ENV=development
+
+# Expose port
+EXPOSE 3000
+
+# Run in watch mode for development
+CMD ["pnpm", "run", "start:dev"]
+
 # Production stage
 FROM base AS runner
 WORKDIR /app

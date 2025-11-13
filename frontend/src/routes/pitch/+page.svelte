@@ -370,7 +370,7 @@
 
 {#if showCarousel}
   <div out:send={{ key: 'pitch-sect' }} in:receive={{ key: 'pitch-sect' }}>
-    <section class="py-16 px-4 max-w-6xl mx-auto relative overflow-hidden">
+    <section class="pb-16 px-4 max-w-6xl mx-auto relative overflow-hidden">
       <!-- Floating background elements for depth -->
       {#if !showStats}
         <div class="absolute inset-0 pointer-events-none">
@@ -392,8 +392,8 @@
       {/if}
 
       <!-- SEO-optimized heading structure -->
-      <div class="text-center mb-10 relative z-10">
-        <h1 class="text-5xl md:text-6xl font-extrabold mb-4 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent drop-shadow-lg">
+      <div class="text-center mb-10 pt-6 relative z-10">
+        <h1 class="text-5xl md:text-6xl font-extrabold mb-4 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-primary to accent drop-shadow-lg">
           Dublin Startup Pitches
         </h1>
         <h2 class="text-2xl md:text-3xl font-bold text-base-content/80">

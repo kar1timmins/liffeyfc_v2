@@ -293,7 +293,7 @@
         </div>
         
         <!-- Quick Links -->
-        <div>
+        <div class="text-center md:text-left">
           <h3 class="text-lg font-semibold mb-3">Quick Links</h3>
           <ul class="space-y-2">
             <li><a href="/" class="hover:text-primary transition-colors" data-sveltekit-prefetch aria-label="Home">Home</a></li>
