@@ -4,6 +4,7 @@
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import { Check, X } from 'lucide-svelte';
+  import { PUBLIC_API_URL } from '$env/static/public';
 
   let mode: 'login' | 'register' = 'login';
   let email = '';
@@ -60,7 +61,7 @@
   }
 
   function handleGoogle() {
-    window.location.href = '/api/auth/google';
+    window.location.href = `${PUBLIC_API_URL}/auth/google`;
   }
 
   onMount(()=>{
