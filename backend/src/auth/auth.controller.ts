@@ -250,15 +250,31 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 OAuth callbacks per minute
   async googleAuthRedirect(@Req() req, @Res() res: Response, @Ip() ip: string) {
-    const { accessToken, refreshToken } = req.user;
-    // Set refresh token in httpOnly cookie
-    this.setRefreshTokenCookie(res, refreshToken);
-    // Generate one-time code for access token exchange (valid for 60 seconds)
-    const code = this.generateOAuthCode(accessToken);
-    // Redirect with only the one-time code (no tokens in URL)
-    res.redirect(
-      `${process.env.FRONTEND_URL}/login/callback?code=${code}`,
-    );
+    try {
+      const { accessToken, refreshToken } = req.user;
+      
+      if (!accessToken || !refreshToken) {
+        throw new Error('Missing tokens from OAuth provider');
+      }
+      
+      // Set refresh token in httpOnly cookie
+      this.setRefreshTokenCookie(res, refreshToken);
+      
+      // Generate one-time code for access token exchange (valid for 60 seconds)
+      const code = this.generateOAuthCode(accessToken);
+      
+      // Get frontend URL with fallback
+      const frontendUrl = process.env.FRONTEND_URL || 'https://www.liffeyfoundersclub.com';
+      
+      // Redirect with only the one-time code (no tokens in URL)
+      res.redirect(
+        `${frontendUrl}/login/callback?code=${code}`,
+      );
+    } catch (error) {
+      console.error('❌ Google OAuth callback error:', error);
+      const frontendUrl = process.env.FRONTEND_URL || 'https://www.liffeyfoundersclub.com';
+      res.redirect(`${frontendUrl}/auth?error=oauth_failed`);
+    }
   }
 
   /**
