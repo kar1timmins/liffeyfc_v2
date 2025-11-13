@@ -69,7 +69,7 @@
   });
 </script>
 
-<div class="min-h-screen flex items-center justify-center bg-base-200">
+<div class="min-h-screen flex items-center justify-center bg-base-200 -mt-20 sm:-mt-24 md:-mt-28 pt-20 sm:pt-24 md:pt-28">
   <div class="card w-full max-w-md shadow-xl bg-base-100 p-6">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-xl font-semibold">{mode === 'login' ? 'Sign in' : 'Create account'}</h2>
