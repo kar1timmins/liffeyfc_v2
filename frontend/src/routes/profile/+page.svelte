@@ -115,7 +115,7 @@
 <!-- Min height ensures footer stays at bottom -->
 <div class="min-h-[calc(100vh-20rem)] container mx-auto px-4 py-8 max-w-4xl">
   <!-- Back Button -->
-  <button class="btn btn-ghost btn-sm gap-2 mb-6" on:click={() => goto('/dashboard')}>
+  <button class="btn btn-ghost btn-sm gap-2 mb-6" onclick={() => goto('/dashboard')}>
     <ArrowLeft size={18} />
     Back to Dashboard
   </button>
@@ -365,7 +365,7 @@
         <div class="alert alert-warning">
           <span>Unable to load profile data. Please try logging in again.</span>
         </div>
-        <button class="btn btn-primary mt-4" on:click={() => goto('/auth')}>
+        <button class="btn btn-primary mt-4" onclick={() => goto('/auth')}>
           Go to Login
         </button>
       </div>
