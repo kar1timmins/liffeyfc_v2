@@ -295,7 +295,7 @@
         <!-- Quick Links -->
         <div class="text-center md:text-left">
           <h3 class="text-lg font-semibold mb-3">Quick Links</h3>
-          <ul class="space-y-2">
+          <ul class="space-y-2 flex flex-col items-center md:items-start">
             <li><a href="/" class="hover:text-primary transition-colors" data-sveltekit-prefetch aria-label="Home">Home</a></li>
             <li><a href="/pitch" class="hover:text-primary transition-colors" data-sveltekit-prefetch aria-label="Pitch">Pitch</a></li>
             <li><a href="/learnMore" class="hover:text-primary transition-colors" data-sveltekit-prefetch aria-label="Learn More">Learn More</a></li>

@@ -642,8 +642,8 @@
 {/if}
 
 {#if showStats}
-  <div out:send={{ key: 'pitch-sect' }} in:receive={{ key: 'pitch-sect' }} on:outroend={() => { if (navigating && navTarget) goto(navTarget); }} class="min-h-[100dvh] md:min-h-screen flex items-center justify-center relative overflow-hidden -mt-20 sm:-mt-24 md:-mt-28 pt-20 sm:pt-24 md:pt-28">
-    <div class="absolute inset-0 w-full h-full flex items-stretch justify-stretch pointer-events-none select-none z-0">
+  <div out:send={{ key: 'pitch-sect' }} in:receive={{ key: 'pitch-sect' }} on:outroend={() => { if (navigating && navTarget) goto(navTarget); }} class="min-h-[100dvh] md:min-h-screen flex items-center justify-center relative overflow-hidden -mt-20 sm:-mt-24 md:-mt-28">
+    <div class="absolute inset-0 w-full h-full flex items-stretch justify-stretch pointer-events-none select-none z-0 pt-20 sm:pt-24 md:pt-28">
       {#each videoNames as name, i}
         <video
           autoplay
@@ -658,7 +658,7 @@
         </video>
       {/each}
     </div>
-  <section id="event-stats" class="py-10 md:py-16 px-4 max-w-3xl w-full glass-subtle rounded-3xl flex flex-col items-center relative z-10 text-base-content">
+  <section id="event-stats" class="py-10 md:py-16 px-4 max-w-3xl w-full glass-subtle rounded-3xl flex flex-col items-center relative z-10 text-base-content mt-20 sm:mt-24 md:mt-28">
       <h3 class="text-xl md:text-3xl font-bold mb-6 md:mb-8 text-center">Event Highlights</h3>
       <div class="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-8 w-full">
         <div class="flex flex-col items-center">
