@@ -42,13 +42,21 @@ export class UsersController {
         cb(null, `${randomName}${extname(file.originalname)}`);
       },
     }),
+    fileFilter: (req, file, cb) => {
+      // Validate file type
+      const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (allowedMimeTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error(`Invalid file type. Only JPEG, PNG, and WebP images are allowed.`), false);
+      }
+    },
   }))
   async uploadAvatar(
     @UploadedFile(
       new ParseFilePipe({
         validators: [
           new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5MB
-          new FileTypeValidator({ fileType: '.(png|jpeg|jpg|webp)' }),
         ],
       }),
     ) file: Express.Multer.File,
