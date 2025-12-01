@@ -33,6 +33,9 @@ export class User {
   @Column({ type: 'varchar', nullable: true })
   name?: string;
 
+  @Column({ type: 'varchar', nullable: true })
+  profilePhotoUrl?: string;
+
   // Role determines user type and permissions
   @Column({ 
     type: 'enum', 

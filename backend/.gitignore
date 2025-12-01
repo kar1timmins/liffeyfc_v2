@@ -1,7 +1,14 @@
 # compiled output
 /dist
+/dist_backup
+/dist_trash
 /node_modules
 /build
+*.tsbuildinfo
+
+# Uploads
+/uploads/*
+!/uploads/.gitkeep
 
 # Logs
 logs

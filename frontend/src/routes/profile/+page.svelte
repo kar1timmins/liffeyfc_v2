@@ -3,7 +3,7 @@
   import { authStore } from '$lib/stores/auth';
   import { goto } from '$app/navigation';
   import { PUBLIC_API_URL } from '$env/static/public';
-  import { User, Mail, Briefcase, Building, Globe, Linkedin, CheckCircle, ArrowUpCircle, ArrowLeft } from 'lucide-svelte';
+  import { User, Mail, Briefcase, Building, Globe, Linkedin, CheckCircle, ArrowUpCircle, ArrowLeft, Camera } from 'lucide-svelte';
 
   let user: any = $state(null);
   let isLoading = $state(true);
@@ -11,6 +11,11 @@
   let isUpgrading = $state(false);
   let upgradeError = $state('');
   let upgradeSuccess = $state(false);
+
+  // Avatar upload
+  let fileInput: HTMLInputElement | undefined = $state();
+  let isUploading = $state(false);
+  let uploadError = $state('');
 
   // Investor form fields
   let company = $state('');
@@ -36,6 +41,57 @@
     // Return cleanup function
     return unsubscribe;
   });
+
+  async function handleFileSelect(event: Event) {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0];
+    
+    if (!file) return;
+    
+    // Validate file type and size
+    if (!file.type.startsWith('image/')) {
+      uploadError = 'Please select an image file';
+      return;
+    }
+    
+    if (file.size > 5 * 1024 * 1024) {
+      uploadError = 'Image size must be less than 5MB';
+      return;
+    }
+
+    isUploading = true;
+    uploadError = '';
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${PUBLIC_API_URL}/users/upload-avatar`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to upload image');
+      }
+      
+      if (data.success) {
+        user = { ...user, profilePhotoUrl: data.data.photoUrl };
+        authStore.setAccessToken(token!, user);
+      }
+    } catch (error: any) {
+      uploadError = error.message || 'Failed to upload image';
+    } finally {
+      isUploading = false;
+      if (fileInput) fileInput.value = '';
+    }
+  }
 
   async function handleUpgradeToInvestor() {
     if (!company || !investmentFocus) {
@@ -142,10 +198,42 @@
       <div class="card-body">
         <div class="flex items-start gap-6 mb-6">
           <!-- Avatar -->
-          <div class="avatar placeholder">
-            <div class="bg-primary text-primary-content rounded-full w-24 h-24">
-              <span class="text-3xl">{user.name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase()}</span>
+          <div class="relative group">
+            <div class="avatar placeholder">
+              <div class="bg-primary text-primary-content rounded-full w-24 h-24 overflow-hidden">
+                {#if user.profilePhotoUrl}
+                  <img src={`${PUBLIC_API_URL}${user.profilePhotoUrl}`} alt={user.name} class="w-full h-full object-cover" />
+                {:else}
+                  <span class="text-3xl">{user.name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase()}</span>
+                {/if}
+              </div>
             </div>
+            
+            <!-- Upload Overlay -->
+            <button 
+              class="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer border-none w-24 h-24"
+              onclick={() => fileInput?.click()}
+              disabled={isUploading}
+              aria-label="Change profile photo"
+            >
+              {#if isUploading}
+                <span class="loading loading-spinner text-white"></span>
+              {:else}
+                <Camera class="text-white" size={24} />
+              {/if}
+            </button>
+            
+            <input 
+              type="file" 
+              accept="image/*" 
+              class="hidden" 
+              bind:this={fileInput}
+              onchange={handleFileSelect}
+            />
+            
+            {#if uploadError}
+              <div class="text-error text-xs mt-1 absolute top-full left-0 w-32 text-center">{uploadError}</div>
+            {/if}
           </div>
           
           <!-- User Info -->

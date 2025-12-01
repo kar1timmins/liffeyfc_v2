@@ -1,4 +1,8 @@
-import { Body, Controller, Get, Param, Post, Patch, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Patch, UseGuards, UseInterceptors, UploadedFile, ParseFilePipe, MaxFileSizeValidator, FileTypeValidator } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
+import { v4 as uuidv4 } from 'uuid';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { AuthGuard } from '@nestjs/passport';
@@ -26,6 +30,46 @@ export class UsersController {
     }
     const user = await this.usersService.findById(id);
     return { success: !!user, data: user };
+  }
+
+  @Post('upload-avatar')
+  @UseGuards(AuthGuard('jwt'))
+  @UseInterceptors(FileInterceptor('file', {
+    storage: diskStorage({
+      destination: './uploads/avatars',
+      filename: (req, file, cb) => {
+        const randomName = uuidv4();
+        cb(null, `${randomName}${extname(file.originalname)}`);
+      },
+    }),
+  }))
+  async uploadAvatar(
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5MB
+          new FileTypeValidator({ fileType: '.(png|jpeg|jpg|webp)' }),
+        ],
+      }),
+    ) file: Express.Multer.File,
+    @CurrentUser() currentUser: any,
+  ) {
+    if (!currentUser) {
+      return { success: false, message: 'Unauthorized' };
+    }
+    
+    // Construct the URL (assuming static serving is set up at /uploads)
+    const photoUrl = `/uploads/avatars/${file.filename}`;
+    
+    const updatedUser = await this.usersService.updateProfilePhoto(currentUser.sub, photoUrl);
+    
+    return {
+      success: true,
+      data: {
+        user: updatedUser,
+        photoUrl,
+      },
+    };
   }
 
   @Patch('upgrade-to-investor')

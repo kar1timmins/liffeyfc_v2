@@ -37,6 +37,11 @@ export class UsersService {
     return this.findById(id);
   }
 
+  async updateProfilePhoto(userId: string, photoUrl: string): Promise<User | null> {
+    await this.usersRepo.update(userId, { profilePhotoUrl: photoUrl } as any);
+    return this.findById(userId);
+  }
+
   async attachWallet(userId: string, address: string, chainId?: string): Promise<User | null> {
     const user = await this.findById(userId);
     if (!user) return null;

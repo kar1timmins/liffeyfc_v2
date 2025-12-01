@@ -26,8 +26,15 @@ pids
 
 # Build outputs
 dist/
+dist_backup/
+dist_trash/
 .output/
-/build
+build/
+.svelte-kit/
+*.tsbuildinfo
+
+# Uploads
+uploads/
 
 # Cache directories
 .cache/
