@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -10,6 +11,7 @@ import { Web3Module } from './web3/web3.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { throttlerConfig } from './config/throttler.config';
+import { GcpStorageService } from './common/gcp-storage.service';
 
 /**
  * Parse DATABASE_URL if present (format: postgres://user:password@host:port/database)
@@ -36,6 +38,8 @@ function parseDatabaseUrl() {
 
 @Module({
   imports: [
+    // Configuration module
+    ConfigModule.forRoot(),
     // Rate limiting configuration
     ThrottlerModule.forRoot(throttlerConfig),
     // Schedule module for cron jobs
@@ -45,23 +49,23 @@ function parseDatabaseUrl() {
       type: 'postgres',
       host: (() => {
         const dbFromUrl = parseDatabaseUrl();
-        return dbFromUrl?.host || process.env.DB_HOST || 'localhost';
+        return dbFromUrl?.host || process.env.POSTGRES_HOST || 'localhost';
       })(),
       port: (() => {
         const dbFromUrl = parseDatabaseUrl();
-        return dbFromUrl?.port || Number(process.env.DB_PORT || 5432);
+        return dbFromUrl?.port || Number(process.env.POSTGRES_PORT || 5432);
       })(),
       username: (() => {
         const dbFromUrl = parseDatabaseUrl();
-        return dbFromUrl?.username || process.env.DB_USERNAME;
+        return dbFromUrl?.username || process.env.POSTGRES_USER;
       })(),
       password: (() => {
         const dbFromUrl = parseDatabaseUrl();
-        return dbFromUrl?.password || process.env.DB_PASSWORD;
+        return dbFromUrl?.password || process.env.POSTGRES_PASSWORD;
       })(),
       database: (() => {
         const dbFromUrl = parseDatabaseUrl();
-        return dbFromUrl?.database || process.env.DB_DATABASE;
+        return dbFromUrl?.database || process.env.POSTGRES_DB;
       })(),
       entities: [__dirname + '/**/*.entity.{ts,js}'],
       // Prefer explicit TYPEORM_SYNCHRONIZE env var; otherwise enable synchronize for non-production
@@ -76,11 +80,13 @@ function parseDatabaseUrl() {
   controllers: [AppController],
   providers: [
     AppService,
+    GcpStorageService,
     // Enable throttler guard globally
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
   ],
+  exports: [GcpStorageService],
 })
 export class AppModule {}

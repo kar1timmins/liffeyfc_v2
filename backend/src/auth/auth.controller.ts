@@ -5,6 +5,7 @@ import { SecurityMonitoringService, SecurityEventType } from './security-monitor
 import { TokenCleanupService } from './token-cleanup.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { UsersService } from '../users/users.service';
+import { GcpStorageService } from '../common/gcp-storage.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { SiweVerifyDto } from './dto/siwe-verify.dto';
@@ -18,6 +19,7 @@ export class AuthController {
   constructor(
     private authService: AuthService, 
     private usersService: UsersService,
+    private gcpStorageService: GcpStorageService,
     private securityMonitoring: SecurityMonitoringService,
     private tokenCleanupService: TokenCleanupService,
   ) {
@@ -378,6 +380,17 @@ export class AuthController {
         data: null, 
         message: 'User not found. Your account may have been upgraded. Please log in again.' 
       };
+    }
+    
+    // Generate fresh signed URL for profile photo if it exists
+    if (user.profilePhotoUrl && !user.profilePhotoUrl.startsWith('http')) {
+      try {
+        const freshUrl = await this.gcpStorageService.generateSignedUrl(user.profilePhotoUrl);
+        user.profilePhotoUrl = freshUrl;
+      } catch (error) {
+        console.error('Failed to generate fresh signed URL:', error);
+        // Keep the existing URL if regeneration fails
+      }
     }
     
     // Remove sensitive data

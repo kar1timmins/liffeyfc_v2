@@ -33,6 +33,9 @@ build/
 .svelte-kit/
 *.tsbuildinfo
 
+# Secrets
+lfc_key_gcp_bucket.json
+
 # Uploads
 uploads/
 

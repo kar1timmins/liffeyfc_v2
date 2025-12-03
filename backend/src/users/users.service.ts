@@ -122,4 +122,28 @@ export class UsersService {
   async findStaff(): Promise<User[]> {
     return this.findByRole(UserRole.STAFF);
   }
+
+  /**
+   * Find users with local profile photos (for migration)
+   */
+  async findUsersWithLocalPhotos(): Promise<User[]> {
+    return this.usersRepo
+      .createQueryBuilder('user')
+      .where('user.profilePhotoUrl IS NOT NULL')
+      .andWhere('user.profilePhotoUrl LIKE :prefix', { prefix: '/uploads/avatars/%' })
+      .getMany();
+  }
+
+  /**
+   * Get user with fresh signed URL for profile photo
+   */
+  async findByIdWithFreshSignedUrl(id: string): Promise<User | null> {
+    const user = await this.findById(id);
+    if (user && user.profilePhotoUrl && !user.profilePhotoUrl.startsWith('http')) {
+      // This is a file path, not a signed URL - we need to generate one
+      // But we can't access GcpStorageService from here
+      // This method should be called from the controller where GcpStorageService is available
+    }
+    return user;
+  }
 }

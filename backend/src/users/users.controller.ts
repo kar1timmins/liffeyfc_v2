@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Post, Patch, UseGuards, UseInterceptors, UploadedFile, ParseFilePipe, MaxFileSizeValidator, FileTypeValidator } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
+import { memoryStorage } from 'multer';
 import { extname } from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { UsersService } from './users.service';
@@ -8,10 +8,14 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { signJwt } from '../auth/jwt.util';
+import { GcpStorageService } from '../common/gcp-storage.service';
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly gcpStorageService: GcpStorageService,
+  ) {}
 
   @Post('register')
   async register(@Body() body: CreateUserDto) {
@@ -29,19 +33,25 @@ export class UsersController {
       return { success: false, message: 'Unauthorized' };
     }
     const user = await this.usersService.findById(id);
+    
+    // Generate fresh signed URL for profile photo if it exists
+    if (user && user.profilePhotoUrl && !user.profilePhotoUrl.startsWith('http')) {
+      try {
+        const freshUrl = await this.gcpStorageService.generateSignedUrl(user.profilePhotoUrl);
+        user.profilePhotoUrl = freshUrl;
+      } catch (error) {
+        console.error('Failed to generate fresh signed URL:', error);
+        // Keep the existing URL if regeneration fails
+      }
+    }
+    
     return { success: !!user, data: user };
   }
 
   @Post('upload-avatar')
   @UseGuards(AuthGuard('jwt'))
   @UseInterceptors(FileInterceptor('file', {
-    storage: diskStorage({
-      destination: './uploads/avatars',
-      filename: (req, file, cb) => {
-        const randomName = uuidv4();
-        cb(null, `${randomName}${extname(file.originalname)}`);
-      },
-    }),
+    storage: memoryStorage(),
     fileFilter: (req, file, cb) => {
       // Validate file type
       const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
@@ -65,19 +75,54 @@ export class UsersController {
     if (!currentUser) {
       return { success: false, message: 'Unauthorized' };
     }
-    
-    // Construct the URL (assuming static serving is set up at /uploads)
-    const photoUrl = `/uploads/avatars/${file.filename}`;
-    
-    const updatedUser = await this.usersService.updateProfilePhoto(currentUser.sub, photoUrl);
-    
-    return {
-      success: true,
-      data: {
-        user: updatedUser,
-        photoUrl,
-      },
-    };
+
+    try {
+      // Get current user to check for existing photo
+      const currentUserData = await this.usersService.findById(currentUser.sub);
+      if (!currentUserData) {
+        return { success: false, message: 'User not found' };
+      }
+
+      // Delete old photo from GCP if it exists and is a file path (not signed URL)
+      if (currentUserData.profilePhotoUrl && !currentUserData.profilePhotoUrl.startsWith('http')) {
+        await this.gcpStorageService.deleteFile(currentUserData.profilePhotoUrl);
+      }
+
+      // Generate unique filename
+      const randomName = uuidv4();
+      const filename = `${randomName}${extname(file.originalname)}`;
+
+      // Upload to GCP
+      await this.gcpStorageService.uploadFile(file, `profiles_users/avatars/${filename}`);
+
+      // Store the file path (not signed URL) in database
+      const filePath = `profiles_users/avatars/${filename}`;
+      
+      // Generate signed URL for immediate response
+      const photoUrl = await this.gcpStorageService.generateSignedUrl(filePath);
+
+      // Update user profile with file path
+      const updatedUser = await this.usersService.updateProfilePhoto(currentUser.sub, filePath);
+      
+      if (!updatedUser) {
+        throw new Error('Failed to update user profile');
+      }
+      
+      // Return fresh signed URL to user
+      updatedUser.profilePhotoUrl = photoUrl;
+
+      return {
+        success: true,
+        data: {
+          profilePhotoUrl: photoUrl,
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || 'Failed to upload avatar',
+      };
+    }
   }
 
   @Patch('upgrade-to-investor')

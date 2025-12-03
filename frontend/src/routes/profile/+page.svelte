@@ -82,8 +82,15 @@
       }
       
       if (data.success) {
-        user = { ...user, profilePhotoUrl: data.data.photoUrl };
-        authStore.setAccessToken(token!, user);
+        // Update the user's profile photo URL in the auth store
+        let currentUser: any = null;
+        const unsubscribe = authStore.subscribe(s => currentUser = s.user);
+        unsubscribe(); // Get current value and unsubscribe immediately
+        
+        if (currentUser) {
+          const updatedUser = { ...currentUser, profilePhotoUrl: data.data.profilePhotoUrl };
+          await authStore.setAccessToken(token!, updatedUser);
+        }
       }
     } catch (error: any) {
       uploadError = error.message || 'Failed to upload image';
@@ -202,7 +209,7 @@
             <div class="avatar placeholder">
               <div class="bg-primary text-primary-content rounded-full w-24 h-24 overflow-hidden">
                 {#if user.profilePhotoUrl}
-                  <img src={`${PUBLIC_API_URL}${user.profilePhotoUrl}`} alt={user.name} class="w-full h-full object-cover" />
+                  <img src={user.profilePhotoUrl} alt={user.name} class="w-full h-full object-cover" />
                 {:else}
                   <span class="text-3xl">{user.name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase()}</span>
                 {/if}
