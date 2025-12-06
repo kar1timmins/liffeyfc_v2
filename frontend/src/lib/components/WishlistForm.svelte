@@ -160,55 +160,54 @@
         </button>
       </div>
 
-      <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="space-y-4">
-        <!-- Title & Description Section -->
-        <div class="space-y-3">
-          <div class="form-control">
-            <label class="label p-1" for="wishlist-title">
-              <span class="label-text font-semibold text-sm">What are you looking for? *</span>
-            </label>
-            <input
-              id="wishlist-title"
-              type="text"
-              bind:value={formData.title}
-              placeholder="e.g., Seed funding round"
-              class="input input-bordered input-sm focus:ring-2 focus:ring-primary"
-              required
-              disabled={isSubmitting}
-            />
-          </div>
-
-          <div class="form-control">
-            <label class="label p-1" for="wishlist-description">
-              <span class="label-text font-semibold text-sm">Details</span>
-              <span class="label-text-alt text-xs opacity-60">Provide context or specifics</span>
-            </label>
-            <textarea
-              id="wishlist-description"
-              bind:value={formData.description}
-              placeholder="Describe what you need in detail..."
-              class="textarea textarea-bordered textarea-sm h-16 resize-none focus:ring-2 focus:ring-primary"
-              disabled={isSubmitting}
-            ></textarea>
-          </div>
+      <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="space-y-5">
+        <!-- What are you looking for? - Full width -->
+        <div class="form-control w-full">
+          <label class="label px-0 pb-2" for="wishlist-title">
+            <span class="label-text font-semibold text-sm">What are you looking for? *</span>
+          </label>
+          <input
+            id="wishlist-title"
+            type="text"
+            bind:value={formData.title}
+            placeholder="e.g., Seed funding round"
+            class="input input-bordered input-sm focus:ring-2 focus:ring-primary w-full"
+            required
+            disabled={isSubmitting}
+          />
         </div>
 
-        <!-- Category & Priority Section -->
-        <div class="divider my-3"></div>
-        
-        <div class="space-y-3">
-          <h5 class="text-sm font-semibold">Category & Priority</h5>
-          
-          <div class="grid grid-cols-2 gap-3">
+        <!-- Details - Full width -->
+        <div class="form-control w-full">
+          <label class="label px-0 pb-2" for="wishlist-description">
+            <span class="label-text font-semibold text-sm">Details</span>
+            <span class="label-text-alt text-xs opacity-60">Provide context or specifics</span>
+          </label>
+          <textarea
+            id="wishlist-description"
+            bind:value={formData.description}
+            placeholder="Describe what you need in detail..."
+            class="textarea textarea-bordered textarea-sm h-20 resize-none focus:ring-2 focus:ring-primary w-full"
+            disabled={isSubmitting}
+          ></textarea>
+        </div>
+
+        <!-- Section Divider -->
+        <div class="divider my-2"></div>
+
+        <!-- Category & Priority Section - Responsive Grid -->
+        <div class="space-y-2">
+          <h5 class="text-xs font-semibold uppercase opacity-70">Category & Priority</h5>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <!-- Category -->
-            <div class="form-control">
-              <label class="label p-1" for="wishlist-category">
-                <span class="label-text text-xs opacity-70">Type</span>
+            <div class="form-control w-full">
+              <label class="label px-0 pb-2" for="wishlist-category">
+                <span class="label-text text-xs font-medium">Type</span>
               </label>
               <select
                 id="wishlist-category"
                 bind:value={formData.category}
-                class="select select-bordered select-sm focus:ring-2 focus:ring-primary"
+                class="select select-bordered select-sm focus:ring-2 focus:ring-primary w-full"
                 disabled={isSubmitting}
               >
                 {#each categories as cat}
@@ -218,14 +217,14 @@
             </div>
 
             <!-- Priority -->
-            <div class="form-control">
-              <label class="label p-1" for="wishlist-priority">
-                <span class="label-text text-xs opacity-70">Priority</span>
+            <div class="form-control w-full">
+              <label class="label px-0 pb-2" for="wishlist-priority">
+                <span class="label-text text-xs font-medium">Priority</span>
               </label>
               <select
                 id="wishlist-priority"
                 bind:value={formData.priority}
-                class="select select-bordered select-sm focus:ring-2 focus:ring-primary"
+                class="select select-bordered select-sm focus:ring-2 focus:ring-primary w-full"
                 disabled={isSubmitting}
               >
                 {#each priorities as pri}
@@ -236,19 +235,20 @@
           </div>
         </div>
 
-        <!-- Value Section -->
-        <div class="divider my-3"></div>
-        
-        <div class="form-control">
-          <label class="label p-1" for="wishlist-value">
+        <!-- Section Divider -->
+        <div class="divider my-2"></div>
+
+        <!-- Target Value - Full width -->
+        <div class="form-control w-full">
+          <label class="label px-0 pb-2" for="wishlist-value">
             <span class="label-text font-semibold text-sm flex items-center gap-1">
               <Euro class="w-4 h-4 text-success" />
               Target Value
             </span>
-            <span class="label-text-alt text-xs opacity-60">Amount needed in EUR</span>
+            <span class="label-text-alt text-xs opacity-60">Amount needed in EUR (optional)</span>
           </label>
           <div class="relative">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-lg opacity-60">€</span>
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-base opacity-60">€</span>
             <input
               id="wishlist-value"
               type="number"
@@ -261,19 +261,20 @@
             />
           </div>
           {#if formData.value}
-            <p class="text-xs opacity-60 mt-1">
-              €{parseFloat(formData.value).toLocaleString('de-DE')}
+            <p class="text-xs opacity-60 mt-2">
+              Amount: €{parseFloat(formData.value).toLocaleString('de-DE')}
             </p>
           {/if}
         </div>
 
-        <!-- Action Buttons -->
-        <div class="divider my-3"></div>
-        
-        <div class="flex gap-2 justify-end">
+        <!-- Section Divider -->
+        <div class="divider my-2"></div>
+
+        <!-- Action Buttons - Responsive -->
+        <div class="flex flex-col-reverse sm:flex-row gap-2 justify-end">
           <button
             type="button"
-            class="btn btn-ghost btn-sm"
+            class="btn btn-ghost btn-sm w-full sm:w-auto"
             onclick={toggleForm}
             disabled={isSubmitting}
           >
@@ -281,7 +282,7 @@
           </button>
           <button
             type="submit"
-            class="btn btn-primary btn-sm gap-1"
+            class="btn btn-primary btn-sm gap-2 w-full sm:w-auto"
             disabled={isSubmitting || !formData.title.trim()}
           >
             {#if isSubmitting}
