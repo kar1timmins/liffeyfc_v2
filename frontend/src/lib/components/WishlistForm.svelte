@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { Plus, X } from 'lucide-svelte';
+  import { Plus, X, Target, AlertCircle, Euro } from 'lucide-svelte';
   import { PUBLIC_API_URL } from '$env/static/public';
   import { authStore } from '$lib/stores/auth';
+  import { toastStore } from '$lib/stores/toast';
 
   let {
     companyId,
@@ -13,33 +14,31 @@
 
   let isFormOpen = $state(false);
   let isSubmitting = $state(false);
-  let error = $state<string | null>(null);
-  let success = $state(false);
 
   let formData = $state({
     title: '',
     description: '',
     value: '',
-    category: 'other',
+    category: 'funding',
     priority: 'medium'
   });
 
   const categories = [
-    { value: 'funding', label: 'Funding' },
-    { value: 'talent', label: 'Talent' },
-    { value: 'mentorship', label: 'Mentorship' },
-    { value: 'partnerships', label: 'Partnerships' },
-    { value: 'resources', label: 'Resources' },
-    { value: 'technology', label: 'Technology' },
-    { value: 'marketing', label: 'Marketing' },
-    { value: 'other', label: 'Other' }
+    { value: 'funding', label: '💰 Funding', icon: 'Funding' },
+    { value: 'talent', label: '👥 Talent', icon: 'Talent' },
+    { value: 'mentorship', label: '🎓 Mentorship', icon: 'Mentorship' },
+    { value: 'partnerships', label: '🤝 Partnerships', icon: 'Partnerships' },
+    { value: 'resources', label: '🛠️ Resources', icon: 'Resources' },
+    { value: 'technology', label: '⚙️ Technology', icon: 'Technology' },
+    { value: 'marketing', label: '📢 Marketing', icon: 'Marketing' },
+    { value: 'other', label: '✨ Other', icon: 'Other' }
   ];
 
   const priorities = [
-    { value: 'low', label: 'Low' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'high', label: 'High' },
-    { value: 'critical', label: 'Critical' }
+    { value: 'low', label: 'Low', color: 'badge-ghost' },
+    { value: 'medium', label: 'Medium', color: 'badge-info' },
+    { value: 'high', label: 'High', color: 'badge-warning' },
+    { value: 'critical', label: 'Critical', color: 'badge-error' }
   ];
 
   function resetForm() {
@@ -47,11 +46,9 @@
       title: '',
       description: '',
       value: '',
-      category: 'other',
+      category: 'funding',
       priority: 'medium'
     };
-    error = null;
-    success = false;
   }
 
   function toggleForm() {
@@ -63,13 +60,11 @@
 
   async function handleSubmit() {
     if (!formData.title.trim()) {
-      error = 'Title is required';
+      toastStore.add({ message: 'Title is required', type: 'error' });
       return;
     }
 
     isSubmitting = true;
-    error = null;
-    success = false;
 
     try {
       const verified = await authStore.verify();
@@ -108,136 +103,173 @@
       const result = await response.json();
 
       if (result.success) {
-        success = true;
-        setTimeout(() => {
-          resetForm();
-          isFormOpen = false;
-          onItemAdded();
-        }, 1500);
+        toastStore.add({ 
+          message: '✨ Wishlist item added successfully!', 
+          type: 'success',
+          ttl: 3000 
+        });
+        resetForm();
+        isFormOpen = false;
+        onItemAdded();
       } else {
-        error = result.message || 'Failed to add wishlist item';
+        toastStore.add({ 
+          message: result.message || 'Failed to add wishlist item', 
+          type: 'error' 
+        });
       }
     } catch (err: any) {
-      error = err.message || 'An error occurred';
+      toastStore.add({ 
+        message: err.message || 'An error occurred', 
+        type: 'error' 
+      });
     } finally {
       isSubmitting = false;
     }
   }
+
+  function getCategoryLabel(value: string) {
+    return categories.find(c => c.value === value)?.label || value;
+  }
 </script>
 
-<div class="my-4">
+<div class="w-full">
   {#if !isFormOpen}
     <button
-      class="btn btn-primary btn-sm gap-2"
+      class="btn btn-sm btn-outline gap-2 w-full"
       onclick={toggleForm}
     >
       <Plus class="w-4 h-4" />
       Add Wishlist Item
     </button>
   {:else}
-    <div class="bg-base-200/50 rounded-lg p-4">
-      <div class="flex items-center justify-between mb-3">
-        <h4 class="font-semibold text-sm">Add Wishlist Item</h4>
+    <div class="bg-gradient-to-br from-base-100 to-base-200 rounded-xl p-5 border border-base-300 shadow-md">
+      <!-- Header -->
+      <div class="flex items-center justify-between mb-5">
+        <div class="flex items-center gap-2">
+          <div class="p-2 bg-primary/20 rounded-lg">
+            <Target class="w-4 h-4 text-primary" />
+          </div>
+          <h4 class="font-bold text-base">Add to Wishlist</h4>
+        </div>
         <button
           class="btn btn-ghost btn-xs btn-circle"
           onclick={toggleForm}
+          aria-label="Close form"
         >
-          <X class="w-3 h-3" />
+          <X class="w-4 h-4" />
         </button>
       </div>
 
-      <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="space-y-3">
-        <!-- Title -->
-        <div class="form-control">
-          <label class="label py-1" for="wishlist-title">
-            <span class="label-text text-xs">Title *</span>
-          </label>
-          <input
-            id="wishlist-title"
-            type="text"
-            bind:value={formData.title}
-            placeholder="e.g., Looking for seed funding"
-            class="input input-bordered input-sm w-full"
-            required
-          />
-        </div>
-
-        <!-- Description -->
-        <div class="form-control">
-          <label class="label py-1" for="wishlist-description">
-            <span class="label-text text-xs">Description</span>
-          </label>
-          <textarea
-            id="wishlist-description"
-            bind:value={formData.description}
-            placeholder="Provide more details..."
-            class="textarea textarea-bordered textarea-sm h-20 text-sm"
-          ></textarea>
-        </div>
-
-        <!-- Category, Priority, and Value in grid -->
-        <div class="grid grid-cols-3 gap-2">
+      <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="space-y-4">
+        <!-- Title & Description Section -->
+        <div class="space-y-3">
           <div class="form-control">
-            <label class="label py-1" for="wishlist-category">
-              <span class="label-text text-xs">Category</span>
+            <label class="label p-1" for="wishlist-title">
+              <span class="label-text font-semibold text-sm">What are you looking for? *</span>
             </label>
-            <select
-              id="wishlist-category"
-              bind:value={formData.category}
-              class="select select-bordered select-sm w-full text-sm"
-            >
-              {#each categories as cat}
-                <option value={cat.value}>{cat.label}</option>
-              {/each}
-            </select>
+            <input
+              id="wishlist-title"
+              type="text"
+              bind:value={formData.title}
+              placeholder="e.g., Seed funding round"
+              class="input input-bordered input-sm focus:ring-2 focus:ring-primary"
+              required
+              disabled={isSubmitting}
+            />
           </div>
 
           <div class="form-control">
-            <label class="label py-1" for="wishlist-priority">
-              <span class="label-text text-xs">Priority</span>
+            <label class="label p-1" for="wishlist-description">
+              <span class="label-text font-semibold text-sm">Details (optional)</span>
+              <span class="label-text-alt text-xs opacity-60">Provide context or specifics</span>
             </label>
-            <select
-              id="wishlist-priority"
-              bind:value={formData.priority}
-              class="select select-bordered select-sm w-full text-sm"
-            >
-              {#each priorities as pri}
-                <option value={pri.value}>{pri.label}</option>
-              {/each}
-            </select>
+            <textarea
+              id="wishlist-description"
+              bind:value={formData.description}
+              placeholder="Describe what you need in detail..."
+              class="textarea textarea-bordered textarea-sm h-16 resize-none focus:ring-2 focus:ring-primary"
+              disabled={isSubmitting}
+            ></textarea>
           </div>
+        </div>
 
-          <div class="form-control">
-            <label class="label py-1" for="wishlist-value">
-              <span class="label-text text-xs">Value ($)</span>
-            </label>
+        <!-- Category & Priority Section -->
+        <div class="divider my-3"></div>
+        
+        <div class="space-y-3">
+          <label class="text-sm font-semibold">Category & Priority</label>
+          
+          <div class="grid grid-cols-2 gap-3">
+            <!-- Category -->
+            <div class="form-control">
+              <label class="label p-1" for="wishlist-category">
+                <span class="label-text text-xs opacity-70">Type</span>
+              </label>
+              <select
+                id="wishlist-category"
+                bind:value={formData.category}
+                class="select select-bordered select-sm focus:ring-2 focus:ring-primary"
+                disabled={isSubmitting}
+              >
+                {#each categories as cat}
+                  <option value={cat.value}>{cat.label}</option>
+                {/each}
+              </select>
+            </div>
+
+            <!-- Priority -->
+            <div class="form-control">
+              <label class="label p-1" for="wishlist-priority">
+                <span class="label-text text-xs opacity-70">Priority</span>
+              </label>
+              <select
+                id="wishlist-priority"
+                bind:value={formData.priority}
+                class="select select-bordered select-sm focus:ring-2 focus:ring-primary"
+                disabled={isSubmitting}
+              >
+                {#each priorities as pri}
+                  <option value={pri.value}>{pri.label}</option>
+                {/each}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Value Section -->
+        <div class="divider my-3"></div>
+        
+        <div class="form-control">
+          <label class="label p-1" for="wishlist-value">
+            <span class="label-text font-semibold text-sm flex items-center gap-1">
+              <Euro class="w-4 h-4 text-success" />
+              Target Value (optional)
+            </span>
+            <span class="label-text-alt text-xs opacity-60">Amount needed in EUR</span>
+          </label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-lg opacity-60">€</span>
             <input
               id="wishlist-value"
               type="number"
               bind:value={formData.value}
               placeholder="50000"
-              step="0.01"
+              step="1000"
               min="0"
-              class="input input-bordered input-sm w-full"
+              class="input input-bordered input-sm pl-8 focus:ring-2 focus:ring-primary w-full"
+              disabled={isSubmitting}
             />
           </div>
+          {#if formData.value}
+            <p class="text-xs opacity-60 mt-1">
+              €{parseFloat(formData.value).toLocaleString('de-DE')}
+            </p>
+          {/if}
         </div>
 
-        <!-- Error Message -->
-        {#if error}
-          <div class="alert alert-error py-2">
-            <span class="text-xs">{error}</span>
-          </div>
-        {/if}
-
-        <!-- Success Message -->
-        {#if success}
-          <div class="alert alert-success py-2">
-            <span class="text-xs">Wishlist item added successfully!</span>
-          </div>
-        {/if}
-
-        <!-- Submit Button -->
+        <!-- Action Buttons -->
+        <div class="divider my-3"></div>
+        
         <div class="flex gap-2 justify-end">
           <button
             type="button"
@@ -249,15 +281,16 @@
           </button>
           <button
             type="submit"
-            class="btn btn-primary btn-sm"
+            class="btn btn-primary btn-sm gap-1"
             disabled={isSubmitting || !formData.title.trim()}
           >
             {#if isSubmitting}
               <span class="loading loading-spinner loading-xs"></span>
+              Adding...
             {:else}
-              <Plus class="w-3 h-3" />
+              <Plus class="w-4 h-4" />
+              Add Item
             {/if}
-            Add
           </button>
         </div>
       </form>
