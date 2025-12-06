@@ -19,6 +19,7 @@
   let sendError = $state<string | null>(null);
 
   const companyId = $derived($page.params.id);
+  const isInvestor = $derived($authStore.user?.role === 'investor');
 
   const stageLabels: Record<string, string> = {
     idea: 'Idea',
@@ -293,9 +294,26 @@
             <h2 class="text-2xl font-bold">Support This Company</h2>
           </div>
 
-          <p class="opacity-80 mb-6">
-            Send cryptocurrency directly to this company's wallet. All transactions are processed securely through MetaMask.
-          </p>
+          {#if !$authStore.isAuthenticated}
+            <div class="alert alert-info">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              <div>
+                <h3 class="font-bold">Sign in as an investor to support this company</h3>
+                <p class="text-sm">You need to be registered as an investor to view wallet addresses and send donations.</p>
+              </div>
+            </div>
+          {:else if !isInvestor}
+            <div class="alert alert-warning">
+              <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+              <div>
+                <h3 class="font-bold">Investor access required</h3>
+                <p class="text-sm">You need to switch to an investor account to view wallet addresses and send donations. Visit your profile to upgrade your account.</p>
+              </div>
+            </div>
+          {:else}
+            <p class="opacity-80 mb-6">
+              Send cryptocurrency directly to this company's wallet. All transactions are processed securely through MetaMask.
+            </p>
 
           <div class="space-y-4">
             <!-- Ethereum Address -->
@@ -479,14 +497,6 @@
               <span class="text-sm">{sendError}</span>
             </div>
           {/if}
-
-          {#if !$authStore.isAuthenticated}
-            <div class="alert alert-info mt-4">
-              <div class="flex flex-col gap-2">
-                <span class="font-semibold">Want to send funds?</span>
-                <span class="text-sm">You can copy the wallet address above and send funds using any crypto wallet, or sign in to send directly through MetaMask.</span>
-              </div>
-            </div>
           {/if}
         </div>
       {/if}
