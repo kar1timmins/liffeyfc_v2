@@ -24,7 +24,7 @@ In your Railway backend service, add these environment variables:
 
 ```bash
 SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
+SMTP_PORT=465
 SMTP_USER=your-gmail@gmail.com
 SMTP_PASS=paste_the_16_char_app_password_here
 FRONTEND_URL=https://liffeyfoundersclub.com
@@ -34,6 +34,7 @@ FRONTEND_URL=https://liffeyfoundersclub.com
 - Use the **16-character app password**, not your regular Gmail password!
 - Make sure 2-Factor Authentication is enabled on your Google account
 - The app password has no spaces (remove them if copying)
+- **Port 465** uses SSL (more reliable on Railway than port 587)
 
 ### 3. Deploy
 
@@ -43,7 +44,7 @@ Railway will automatically redeploy when you push to GitHub. The changes are alr
 
 After deployment, check Railway logs for:
 ```
-[EmailService] SMTP configured: smtp.gmail.com:587 (your-gmail@gmail.com)
+[EmailService] SMTP configured: smtp.gmail.com:465 (your-gmail@gmail.com) [secure=true]
 ```
 
 If you see `SMTP configuration incomplete - email sending disabled`, double-check the environment variables.
@@ -83,9 +84,11 @@ If you see `SMTP configuration incomplete - email sending disabled`, double-chec
 - Generate a new app password at https://myaccount.google.com/apppasswords
 - Remove any spaces from the app password
 
-### "Connection timeout"
-- Railway might be blocking port 587
-- Try `SMTP_PORT=465` and update email.service.ts to use `secure: true`
+### "Connection timeout" (ETIMEDOUT)
+- **Railway blocks port 587** - use port 465 instead
+- Update Railway env var: `SMTP_PORT=465`
+- Port 465 uses SSL and is more reliable on cloud platforms
+- If 465 is also blocked, you may need to use a different email provider (SendGrid, Mailgun, etc.)
 
 ### "Less secure app access"
 - This error means you need to use an App Password, not your regular password

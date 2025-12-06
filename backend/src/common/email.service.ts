@@ -1,74 +1,56 @@
 import { Injectable, Logger } from '@nestjs/common';
-import * as nodemailer from 'nodemailer';
-import { Transporter } from 'nodemailer';
 
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private transporter: Transporter | null = null;
 
   constructor() {
-    this.initializeTransporter();
-  }
-
-  private initializeTransporter() {
-    const smtpHost = process.env.SMTP_HOST;
-    const smtpPort = process.env.SMTP_PORT;
-    const smtpUser = process.env.SMTP_USER;
-    const smtpPass = process.env.SMTP_PASS;
-
-    if (!smtpHost || !smtpPort || !smtpUser || !smtpPass) {
-      this.logger.warn(
-        'SMTP configuration incomplete - email sending disabled. ' +
-        'Set SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS environment variables.',
-      );
-      return;
-    }
-
-    try {
-      this.transporter = nodemailer.createTransport({
-        host: smtpHost,
-        port: parseInt(smtpPort, 10),
-        secure: parseInt(smtpPort, 10) === 465, // true for 465, false for other ports
-        auth: {
-          user: smtpUser,
-          pass: smtpPass,
-        },
-        tls: {
-          // For Gmail, reject unauthorized connections for security
-          rejectUnauthorized: true,
-        },
-      });
-
-      this.logger.log(`SMTP configured: ${smtpHost}:${smtpPort} (${smtpUser})`);
-    } catch (error) {
-      this.logger.error('Failed to initialize SMTP transporter:', error);
-      this.transporter = null;
+    const accessKey = process.env.WEB3FORMS_ACCESS_KEY;
+    if (!accessKey) {
+      this.logger.warn('WEB3FORMS_ACCESS_KEY not configured - email sending disabled');
+    } else {
+      this.logger.log('Email service configured with Web3Forms');
     }
   }
 
   /**
-   * Send password reset email
+   * Send password reset email via Web3Forms
    */
   async sendPasswordResetEmail(to: string, resetUrl: string): Promise<boolean> {
-    if (!this.transporter) {
-      this.logger.error('Cannot send email: SMTP not configured');
+    const accessKey = process.env.WEB3FORMS_ACCESS_KEY;
+    if (!accessKey) {
+      this.logger.error('Cannot send email: WEB3FORMS_ACCESS_KEY not configured');
       return false;
     }
 
-    const fromEmail = process.env.SMTP_USER || 'noreply@example.com';
-    const fromName = 'Liffey Founders Club';
-
-    const mailOptions = {
-      from: `"${fromName}" <${fromEmail}>`,
-      to,
-      subject: '🔐 Password Reset Request - Liffey Founders Club',
-      html: this.getPasswordResetEmailTemplate(resetUrl),
-    };
+    const fromEmail = process.env.SMTP_USER || 'noreply@liffeyfoundersclub.com';
 
     try {
-      const info = await this.transporter.sendMail(mailOptions);
-      this.logger.log(`Password reset email sent to ${to}: ${info.messageId}`);
+      const payload = {
+        access_key: accessKey,
+        to: to,
+        from: fromEmail,
+        subject: '🔐 Password Reset Request - Liffey Founders Club',
+        html: this.getPasswordResetEmailTemplate(resetUrl),
+      };
+
+      const response = await fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok || !result.success) {
+        this.logger.error(`Web3Forms submission failed for ${to}:`, result);
+        return false;
+      }
+
+      this.logger.log(`Password reset email sent to ${to} via Web3Forms`);
       return true;
     } catch (error) {
       this.logger.error(`Failed to send password reset email to ${to}:`, error);
@@ -77,27 +59,43 @@ export class EmailService {
   }
 
   /**
-   * Send welcome email (for new user registration)
+   * Send welcome email via Web3Forms
    */
   async sendWelcomeEmail(to: string, name: string): Promise<boolean> {
-    if (!this.transporter) {
-      this.logger.error('Cannot send email: SMTP not configured');
+    const accessKey = process.env.WEB3FORMS_ACCESS_KEY;
+    if (!accessKey) {
+      this.logger.error('Cannot send email: WEB3FORMS_ACCESS_KEY not configured');
       return false;
     }
 
-    const fromEmail = process.env.SMTP_USER || 'noreply@example.com';
-    const fromName = 'Liffey Founders Club';
-
-    const mailOptions = {
-      from: `"${fromName}" <${fromEmail}>`,
-      to,
-      subject: '🎉 Welcome to Liffey Founders Club!',
-      html: this.getWelcomeEmailTemplate(name),
-    };
+    const fromEmail = process.env.SMTP_USER || 'noreply@liffeyfoundersclub.com';
 
     try {
-      const info = await this.transporter.sendMail(mailOptions);
-      this.logger.log(`Welcome email sent to ${to}: ${info.messageId}`);
+      const payload = {
+        access_key: accessKey,
+        to: to,
+        from: fromEmail,
+        subject: '🎉 Welcome to Liffey Founders Club!',
+        html: this.getWelcomeEmailTemplate(name),
+      };
+
+      const response = await fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok || !result.success) {
+        this.logger.error(`Web3Forms submission failed for ${to}:`, result);
+        return false;
+      }
+
+      this.logger.log(`Welcome email sent to ${to} via Web3Forms`);
       return true;
     } catch (error) {
       this.logger.error(`Failed to send welcome email to ${to}:`, error);
