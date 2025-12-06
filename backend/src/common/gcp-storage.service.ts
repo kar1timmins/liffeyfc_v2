@@ -26,9 +26,16 @@ export class GcpStorageService {
       this.bucketName = bucketName;
 
       // Priority: JSON credentials > key file > Application Default Credentials
-      if (credentialsJson) {
+      // Check if keyFilename is actually JSON (misconfiguration detection)
+      let jsonCredentials = credentialsJson;
+      if (!jsonCredentials && keyFilename?.startsWith('{')) {
+        this.logger.warn('Detected JSON in GCP_KEY_FILE_PATH - using as credentials instead of file path');
+        jsonCredentials = keyFilename;
+      }
+
+      if (jsonCredentials) {
         try {
-          const credentials = JSON.parse(credentialsJson);
+          const credentials = JSON.parse(jsonCredentials);
           this.logger.log('Using JSON credentials from environment variable');
           this.storage = new Storage({
             projectId: credentials.project_id || projectId,
