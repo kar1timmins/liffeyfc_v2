@@ -5,6 +5,7 @@
 	import { walletStore, isConnected, formattedAddress } from '$lib/stores/walletStore';
 	import { toastStore } from '$lib/stores/toast';
 	import { User, Settings, Wallet, LogOut, UserCircle, Briefcase } from 'lucide-svelte';
+	import { PUBLIC_API_URL } from '$env/static/public';
 
 	let user = $state<any>(null);
 	let avatarUrl = $state<string | null>(null);
@@ -27,15 +28,41 @@
 		}
 	}
 
+	async function fetchUserProfile() {
+		try {
+			const token = $authStore.accessToken;
+			if (!token || !$authStore.user?.id) return;
+
+			const response = await fetch(`${PUBLIC_API_URL}/users/${$authStore.user.id}`, {
+				headers: {
+					'Authorization': `Bearer ${token}`
+				}
+			});
+
+			const result = await response.json();
+			if (result.success && result.data) {
+				user = result.data;
+				// Set avatar URL from GCP Storage with fresh signed URL
+				if (result.data.profilePhotoUrl) {
+					avatarUrl = result.data.profilePhotoUrl;
+				}
+			}
+		} catch (error) {
+			console.error('Failed to fetch user profile:', error);
+		}
+	}
+
 	onMount(async () => {
 		const ok = await authStore.verify();
 		if (!ok) goto('/auth');
-		// subscribe to authStore to get user for display
+		
+		// Fetch full user profile with GCP avatar
+		await fetchUserProfile();
+		
+		// Subscribe to auth store for updates
 		authStore.subscribe((s) => {
-			user = s.user;
-			// Set avatar URL if user has one
-			if (s.user?.avatarUrl) {
-				avatarUrl = s.user.avatarUrl;
+			if (s.user && !user) {
+				fetchUserProfile();
 			}
 		})();
 	});

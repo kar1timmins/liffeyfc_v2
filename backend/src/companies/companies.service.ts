@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Company, CompanyStage, FundingStage } from '../entities/company.entity';
 import { WishlistItem, WishlistCategory, WishlistPriority } from '../entities/wishlist-item.entity';
 import { User } from '../entities/user.entity';
+import { UsersService } from '../users/users.service';
 
 export interface CreateCompanyDto {
   name: string;
@@ -42,7 +43,26 @@ export class CompaniesService {
     private wishlistRepo: Repository<WishlistItem>,
     @InjectRepository(User)
     private usersRepo: Repository<User>,
+    private usersService: UsersService,
   ) {}
+
+  /**
+   * Sanitize company data by removing sensitive owner information
+   */
+  private sanitizeCompany(company: Company): Company {
+    if (company.owner) {
+      // Replace full user object with sanitized version
+      company.owner = this.usersService.sanitizeUser(company.owner) as any;
+    }
+    return company;
+  }
+
+  /**
+   * Sanitize array of companies
+   */
+  private sanitizeCompanies(companies: Company[]): Company[] {
+    return companies.map(c => this.sanitizeCompany(c));
+  }
 
   async createCompany(userId: string, data: CreateCompanyDto): Promise<Company> {
     const user = await this.usersRepo.findOne({ where: { id: userId } });
@@ -74,10 +94,15 @@ export class CompaniesService {
 
   async getCompanyById(id: string, includeWishlist = false): Promise<Company | null> {
     const relations = includeWishlist ? ['wishlistItems', 'owner'] : ['owner'];
-    return this.companiesRepo.findOne({ 
+    const company = await this.companiesRepo.findOne({ 
       where: { id, isActive: true },
       relations 
     });
+    
+    if (!company) return null;
+    
+    // Sanitize owner data before returning
+    return this.sanitizeCompany(company);
   }
 
   async getCompaniesByUser(userId: string): Promise<Company[]> {
@@ -117,7 +142,10 @@ export class CompaniesService {
       query.andWhere('company.tags && :tags', { tags: filters.tags });
     }
 
-    return query.orderBy('company.createdAt', 'DESC').getMany();
+    const companies = await query.orderBy('company.createdAt', 'DESC').getMany();
+    
+    // Sanitize owner data for all companies
+    return this.sanitizeCompanies(companies);
   }
 
   async deleteCompany(companyId: string, userId: string): Promise<boolean> {

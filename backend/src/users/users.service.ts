@@ -4,6 +4,33 @@ import { Repository } from 'typeorm';
 import { User, UserRole } from '../entities/user.entity';
 import { Wallet } from '../entities/wallet.entity';
 
+/**
+ * Sanitized user data for public/limited access
+ * Only includes safe, non-sensitive fields
+ */
+export interface SanitizedUser {
+  id: string;
+  name: string | null;
+  profilePhotoUrl?: string;
+  role: UserRole;
+  linkedinUrl?: string;
+  createdAt: Date;
+}
+
+/**
+ * Full user profile data (only for authenticated user accessing their own profile)
+ */
+export interface FullUserProfile extends SanitizedUser {
+  email: string | null;
+  investorCompany?: string;
+  investmentFocus?: string;
+  isAccredited: boolean | null;
+  phoneNumber?: string;
+  wallets: any[];
+  updatedAt: Date;
+  userType: string;
+}
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -12,6 +39,44 @@ export class UsersService {
     @InjectRepository(Wallet)
     private walletsRepo: Repository<Wallet>,
   ) {}
+
+  /**
+   * Sanitize user data for public consumption
+   * Removes sensitive fields like email, provider info, phone, etc.
+   */
+  sanitizeUser(user: User): SanitizedUser {
+    return {
+      id: user.id,
+      name: user.name ?? null,
+      profilePhotoUrl: user.profilePhotoUrl,
+      role: user.role,
+      linkedinUrl: user.linkedinUrl,
+      createdAt: user.createdAt,
+    };
+  }
+
+  /**
+   * Get full user profile (for authenticated user accessing their own data)
+   * Includes email, wallets, and other private information
+   */
+  getFullProfile(user: User): FullUserProfile {
+    return {
+      id: user.id,
+      email: user.email ?? null,
+      name: user.name ?? null,
+      profilePhotoUrl: user.profilePhotoUrl,
+      role: user.role,
+      investorCompany: user.investorCompany,
+      investmentFocus: user.investmentFocus,
+      linkedinUrl: user.linkedinUrl,
+      isAccredited: user.isAccredited ?? null,
+      phoneNumber: user.phoneNumber,
+      wallets: user.wallets || [],
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      userType: user.role === UserRole.INVESTOR ? 'investor' : user.role === UserRole.STAFF ? 'staff' : 'user',
+    };
+  }
 
   async create(payload: Partial<User>): Promise<User> {
     const user = this.usersRepo.create(payload as any);

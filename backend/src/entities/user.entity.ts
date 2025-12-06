@@ -45,16 +45,6 @@ export class User {
   })
   role: UserRole;
 
-  // Fields for regular users/founders
-  @Column({ type: 'varchar', nullable: true })
-  companyName?: string;
-
-  @Column({ type: 'varchar', nullable: true })
-  companyWebsite?: string;
-
-  @Column({ type: 'varchar', nullable: true })
-  industry?: string;
-
   // Fields for investors
   @Column({ type: 'varchar', nullable: true })
   investorCompany?: string;

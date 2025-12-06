@@ -28,14 +28,14 @@ export class UsersController {
   @Get(':id')
   @UseGuards(AuthGuard('jwt'))
   async get(@Param('id') id: string, @CurrentUser() currentUser: any) {
-    // simple protection: allow request only if token subject matches the requested id
-    if (!currentUser || currentUser.sub !== id) {
-      return { success: false, message: 'Unauthorized' };
-    }
     const user = await this.usersService.findById(id);
     
+    if (!user) {
+      return { success: false, message: 'User not found' };
+    }
+
     // Generate fresh signed URL for profile photo if it exists
-    if (user && user.profilePhotoUrl && !user.profilePhotoUrl.startsWith('http')) {
+    if (user.profilePhotoUrl && !user.profilePhotoUrl.startsWith('http')) {
       try {
         const freshUrl = await this.gcpStorageService.generateSignedUrl(user.profilePhotoUrl);
         user.profilePhotoUrl = freshUrl;
@@ -44,8 +44,16 @@ export class UsersController {
         // Keep the existing URL if regeneration fails
       }
     }
-    
-    return { success: !!user, data: user };
+
+    // If user is requesting their own profile, return full data
+    if (currentUser && currentUser.sub === id) {
+      const fullProfile = this.usersService.getFullProfile(user);
+      return { success: true, data: fullProfile };
+    }
+
+    // Otherwise, return sanitized public data only
+    const sanitized = this.usersService.sanitizeUser(user);
+    return { success: true, data: sanitized };
   }
 
   @Post('upload-avatar')

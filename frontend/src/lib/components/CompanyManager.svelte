@@ -240,199 +240,241 @@
       </div>
 
       {#if errorMessage}
-        <div class="alert alert-error mb-4">
+        <div class="alert alert-error mb-6">
           <span>{errorMessage}</span>
         </div>
       {/if}
 
-      <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="space-y-4">
-        <div class="form-control">
-          <label class="label" for="company-name">
-            <span class="label-text">Company Name *</span>
-          </label>
-          <input 
-            type="text"
-            id="company-name"
-            class="input input-bordered"
-            bind:value={name}
-            required
-          />
-        </div>
-
-        <div class="form-control">
-          <label class="label" for="company-description">
-            <span class="label-text">Description *</span>
-          </label>
-          <textarea 
-            id="company-description"
-            class="textarea textarea-bordered h-24"
-            bind:value={description}
-            required
-          ></textarea>
-        </div>
-
-        <div class="form-control">
-          <label class="label" for="company-industry">
-            <span class="label-text">Industry</span>
-          </label>
-          <select 
-            id="company-industry"
-            class="select select-bordered"
-            bind:value={industry}
-          >
-            <option value="">Select Industry</option>
-            {#each industries as ind}
-              <option value={ind}>{ind}</option>
-            {/each}
-          </select>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="space-y-6">
+        <!-- Basic Information Section -->
+        <div class="space-y-4">
+          <h3 class="text-lg font-semibold opacity-80 mb-4">Basic Information</h3>
+          
           <div class="form-control">
-            <label class="label" for="company-stage">
-              <span class="label-text">Stage</span>
-            </label>
-            <select 
-              id="company-stage"
-              class="select select-bordered"
-              bind:value={stage}
-            >
-              {#each stageOptions as opt}
-                <option value={opt.value}>{opt.label}</option>
-              {/each}
-            </select>
-          </div>
-
-          <div class="form-control">
-            <label class="label" for="company-funding">
-              <span class="label-text">Funding Stage</span>
-            </label>
-            <select 
-              id="company-funding"
-              class="select select-bordered"
-              bind:value={fundingStage}
-            >
-              {#each fundingOptions as opt}
-                <option value={opt.value}>{opt.label}</option>
-              {/each}
-            </select>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="form-control">
-            <label class="label" for="company-employees">
-              <span class="label-text">Number of Employees</span>
-            </label>
-            <input 
-              type="number"
-              id="company-employees"
-              class="input input-bordered"
-              bind:value={employeeCount}
-              min="1"
-            />
-          </div>
-
-          <div class="form-control">
-            <label class="label" for="company-location">
-              <span class="label-text">Location</span>
+            <label class="label" for="company-name">
+              <span class="label-text font-medium">Company Name <span class="text-error">*</span></span>
             </label>
             <input 
               type="text"
-              id="company-location"
-              class="input input-bordered"
-              placeholder="e.g., Dublin, Ireland"
-              bind:value={location}
-            />
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="form-control">
-            <label class="label" for="company-founded">
-              <span class="label-text">Founded Date</span>
-            </label>
-            <input 
-              type="date"
-              id="company-founded"
-              class="input input-bordered"
-              bind:value={foundedDate}
+              id="company-name"
+              class="input input-bordered w-full"
+              placeholder="Enter your company name"
+              bind:value={name}
+              required
             />
           </div>
 
           <div class="form-control">
-            <label class="label" for="company-website">
-              <span class="label-text">Website</span>
+            <label class="label" for="company-description">
+              <span class="label-text font-medium">Description <span class="text-error">*</span></span>
             </label>
-            <input 
-              type="url"
-              id="company-website"
-              class="input input-bordered"
-              placeholder="https://example.com"
-              bind:value={website}
-            />
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="form-control">
-            <label class="label" for="company-linkedin">
-              <span class="label-text">LinkedIn URL</span>
-            </label>
-            <input 
-              type="url"
-              id="company-linkedin"
-              class="input input-bordered"
-              placeholder="https://linkedin.com/company/..."
-              bind:value={linkedinUrl}
-            />
+            <textarea 
+              id="company-description"
+              class="textarea textarea-bordered w-full h-32"
+              placeholder="Describe what your company does..."
+              bind:value={description}
+              required
+            ></textarea>
           </div>
 
           <div class="form-control">
-            <label class="label" for="company-twitter">
-              <span class="label-text">Twitter URL</span>
+            <label class="label" for="company-industry">
+              <span class="label-text font-medium">Industry</span>
             </label>
-            <input 
-              type="url"
-              id="company-twitter"
-              class="input input-bordered"
-              placeholder="https://x.com/..."
-              bind:value={twitterUrl}
-            />
+            <select 
+              id="company-industry"
+              class="select select-bordered w-full"
+              bind:value={industry}
+            >
+              <option value="">Select Industry</option>
+              {#each industries as ind}
+                <option value={ind}>{ind}</option>
+              {/each}
+            </select>
           </div>
         </div>
 
-        <div class="form-control">
-          <label class="label" for="company-tags">
-            <span class="label-text">Tags (comma-separated)</span>
-          </label>
-          <input 
-            type="text"
-            id="company-tags"
-            class="input input-bordered"
-            placeholder="e.g., AI, SaaS, B2B"
-            bind:value={tagsInput}
-          />
+        <div class="divider"></div>
+
+        <!-- Stage & Funding Section -->
+        <div class="space-y-4">
+          <h3 class="text-lg font-semibold opacity-80 mb-4">Stage & Funding</h3>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="form-control">
+              <label class="label" for="company-stage">
+                <span class="label-text font-medium">Company Stage</span>
+              </label>
+              <select 
+                id="company-stage"
+                class="select select-bordered w-full"
+                bind:value={stage}
+              >
+                {#each stageOptions as opt}
+                  <option value={opt.value}>{opt.label}</option>
+                {/each}
+              </select>
+            </div>
+
+            <div class="form-control">
+              <label class="label" for="company-funding">
+                <span class="label-text font-medium">Funding Stage</span>
+              </label>
+              <select 
+                id="company-funding"
+                class="select select-bordered w-full"
+                bind:value={fundingStage}
+              >
+                {#each fundingOptions as opt}
+                  <option value={opt.value}>{opt.label}</option>
+                {/each}
+              </select>
+            </div>
+          </div>
         </div>
 
-        <div class="form-control">
-          <label class="label cursor-pointer justify-start gap-4">
+        <div class="divider"></div>
+
+        <!-- Company Details Section -->
+        <div class="space-y-4">
+          <h3 class="text-lg font-semibold opacity-80 mb-4">Company Details</h3>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="form-control">
+              <label class="label" for="company-employees">
+                <span class="label-text font-medium">Team Size</span>
+              </label>
+              <input 
+                type="number"
+                id="company-employees"
+                class="input input-bordered w-full"
+                placeholder="Number of employees"
+                bind:value={employeeCount}
+                min="1"
+              />
+            </div>
+
+            <div class="form-control">
+              <label class="label" for="company-location">
+                <span class="label-text font-medium">Location</span>
+              </label>
+              <input 
+                type="text"
+                id="company-location"
+                class="input input-bordered w-full"
+                placeholder="e.g., Dublin, Ireland"
+                bind:value={location}
+              />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="form-control">
+              <label class="label" for="company-founded">
+                <span class="label-text font-medium">Founded Date</span>
+              </label>
+              <input 
+                type="date"
+                id="company-founded"
+                class="input input-bordered w-full"
+                bind:value={foundedDate}
+              />
+            </div>
+
+            <div class="form-control">
+              <label class="label" for="company-website">
+                <span class="label-text font-medium">Website</span>
+              </label>
+              <input 
+                type="url"
+                id="company-website"
+                class="input input-bordered w-full"
+                placeholder="https://example.com"
+                bind:value={website}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Social Links Section -->
+        <div class="space-y-4">
+          <h3 class="text-lg font-semibold opacity-80 mb-4">Social Links</h3>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="form-control">
+              <label class="label" for="company-linkedin">
+                <span class="label-text font-medium">LinkedIn URL</span>
+              </label>
+              <input 
+                type="url"
+                id="company-linkedin"
+                class="input input-bordered w-full"
+                placeholder="https://linkedin.com/company/..."
+                bind:value={linkedinUrl}
+              />
+            </div>
+
+            <div class="form-control">
+              <label class="label" for="company-twitter">
+                <span class="label-text font-medium">Twitter/X URL</span>
+              </label>
+              <input 
+                type="url"
+                id="company-twitter"
+                class="input input-bordered w-full"
+                placeholder="https://x.com/..."
+                bind:value={twitterUrl}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Tags & Visibility Section -->
+        <div class="space-y-4">
+          <h3 class="text-lg font-semibold opacity-80 mb-4">Tags & Visibility</h3>
+          
+          <div class="form-control">
+            <label class="label" for="company-tags">
+              <span class="label-text font-medium">Tags</span>
+              <span class="label-text-alt opacity-70">Comma-separated</span>
+            </label>
             <input 
-              type="checkbox"
-              class="toggle toggle-primary"
-              bind:checked={isPublic}
+              type="text"
+              id="company-tags"
+              class="input input-bordered w-full"
+              placeholder="e.g., AI, SaaS, B2B, Fintech"
+              bind:value={tagsInput}
             />
-            <span class="label-text">Make company profile public</span>
-          </label>
-          <span class="text-sm opacity-70 ml-1 mt-1">
-            Public companies are visible on the Companies page to all users
-          </span>
+          </div>
+
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-4 p-4 bg-base-200 rounded-lg">
+              <input 
+                type="checkbox"
+                class="toggle toggle-primary"
+                bind:checked={isPublic}
+              />
+              <div class="flex flex-col">
+                <span class="label-text font-medium">Make company profile public</span>
+                <span class="text-sm opacity-70 mt-1">
+                  Public companies are visible on the Companies page to all users
+                </span>
+              </div>
+            </label>
+          </div>
         </div>
 
-        <div class="flex gap-3 pt-4">
+        <div class="divider"></div>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-col sm:flex-row gap-3 pt-4">
           <button 
             type="submit"
-            class="btn btn-primary"
+            class="btn btn-primary flex-1 sm:flex-initial sm:min-w-[200px]"
             disabled={isSubmitting}
           >
             {#if isSubmitting}
@@ -442,7 +484,7 @@
           </button>
           <button 
             type="button"
-            class="btn btn-ghost"
+            class="btn btn-ghost flex-1 sm:flex-initial"
             onclick={closeForm}
             disabled={isSubmitting}
           >
