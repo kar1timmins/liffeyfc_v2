@@ -14,6 +14,7 @@ export class GcpStorageService {
       const projectId = this.configService.get<string>('GCP_PROJECT_ID');
       const keyFilename = this.configService.get<string>('GCP_KEY_FILE_PATH') || 
                           this.configService.get<string>('GCP_KEY_FILENAME');
+      const credentialsJson = this.configService.get<string>('GOOGLE_APPLICATION_CREDENTIALS_JSON');
       const bucketName = this.configService.get<string>('GCP_BUCKET_NAME');
 
       if (!bucketName) {
@@ -24,11 +25,19 @@ export class GcpStorageService {
 
       this.bucketName = bucketName;
 
-      // In production, prefer Application Default Credentials (ADC)
-      const nodeEnv = this.configService.get<string>('NODE_ENV');
-      if (nodeEnv === 'production' && !keyFilename) {
-        this.logger.log('Using Application Default Credentials (ADC) for GCP Storage');
-        this.storage = new Storage({ projectId });
+      // Priority: JSON credentials > key file > Application Default Credentials
+      if (credentialsJson) {
+        try {
+          const credentials = JSON.parse(credentialsJson);
+          this.logger.log('Using JSON credentials from environment variable');
+          this.storage = new Storage({
+            projectId: credentials.project_id || projectId,
+            credentials,
+          });
+        } catch (parseError) {
+          this.logger.error('Failed to parse GOOGLE_APPLICATION_CREDENTIALS_JSON:', parseError);
+          throw parseError;
+        }
       } else if (keyFilename) {
         this.logger.log(`Using key file: ${keyFilename}`);
         this.storage = new Storage({
