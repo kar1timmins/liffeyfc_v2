@@ -5,6 +5,8 @@ import { Wallet } from './entities/wallet.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { Company } from './entities/company.entity';
 import { WishlistItem } from './entities/wishlist-item.entity';
+import { UserWallet } from './entities/user-wallet.entity';
+import { CompanyWallet } from './entities/company-wallet.entity';
 
 /**
  * Parse DATABASE_URL if present (format: postgres://user:password@host:port/database)
@@ -44,7 +46,7 @@ const dbConfig = parseDatabaseConfig();
 const AppDataSource = new DataSource({
   type: 'postgres',
   ...dbConfig,
-  entities: [User, Wallet, RefreshToken, Company, WishlistItem],
+  entities: [User, Wallet, RefreshToken, Company, WishlistItem, UserWallet, CompanyWallet],
   migrations: [__dirname + '/migrations/*.{ts,js}'],
   synchronize: process.env.TYPEORM_SYNCHRONIZE === 'true',
 });
