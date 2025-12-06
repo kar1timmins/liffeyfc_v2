@@ -6,7 +6,8 @@
 	import { toastStore } from '$lib/stores/toast';
 	import { User, Settings, Wallet, LogOut, UserCircle, Briefcase } from 'lucide-svelte';
 
-	let user: any = null;
+	let user = $state<any>(null);
+	let avatarUrl = $state<string | null>(null);
 
 	function handleLogout() {
 		authStore.logout();
@@ -30,7 +31,13 @@
 		const ok = await authStore.verify();
 		if (!ok) goto('/auth');
 		// subscribe to authStore to get user for display
-		authStore.subscribe((s) => (user = s.user))();
+		authStore.subscribe((s) => {
+			user = s.user;
+			// Set avatar URL if user has one
+			if (s.user?.avatarUrl) {
+				avatarUrl = s.user.avatarUrl;
+			}
+		})();
 	});
 
 	function getRoleBadgeClass(role: string) {
@@ -53,7 +60,7 @@
 					<p class="text-base-content/70">Welcome back, <span class="font-semibold">{user.name || user.email}</span>!</p>
 				{/if}
 			</div>
-			<button on:click={handleLogout} class="btn btn-outline btn-error gap-2">
+			<button onclick={handleLogout} class="btn btn-outline btn-error gap-2">
 				<LogOut size={18} />
 				Logout
 			</button>
@@ -64,9 +71,15 @@
 			<div class="card bg-gradient-to-br from-primary/10 to-secondary/10 shadow-md">
 				<div class="card-body">
 					<div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-						<div class="avatar placeholder">
-							<div class="bg-primary text-primary-content rounded-full w-16 h-16">
-								<span class="text-2xl">{user.name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase()}</span>
+						<div class="avatar">
+							<div class="w-16 h-16 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2">
+								{#if avatarUrl}
+									<img src={avatarUrl} alt={user.name || 'User'} />
+								{:else}
+									<div class="bg-primary text-primary-content rounded-full w-16 h-16 flex items-center justify-center">
+										<span class="text-2xl">{user.name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase()}</span>
+									</div>
+								{/if}
 							</div>
 						</div>
 						<div class="flex-1">
@@ -84,7 +97,7 @@
 							</div>
 						</div>
 						{#if user.role === 'user'}
-							<button class="btn btn-primary btn-sm" on:click={() => goto('/profile')}>
+							<button class="btn btn-primary btn-sm" onclick={() => goto('/profile')}>
 								Upgrade to Investor
 							</button>
 						{/if}
@@ -107,7 +120,7 @@
 				</div>
 				<p class="text-base-content/70 mb-4 flex-grow">View and edit your profile information, upgrade to investor account, and manage your details.</p>
 				<div class="card-actions">
-					<button class="btn btn-primary btn-block" on:click={() => goto('/profile')}>
+					<button class="btn btn-primary btn-block" onclick={() => goto('/profile')}>
 						View Profile
 					</button>
 				</div>
@@ -150,12 +163,12 @@
 									<div class="text-xs text-success font-semibold mb-1">Connected</div>
 									<div class="font-mono text-sm">{$formattedAddress}</div>
 								</div>
-								<button class="btn btn-outline btn-error btn-sm btn-block" on:click={() => walletStore.disconnect()}>
+								<button class="btn btn-outline btn-error btn-sm btn-block" onclick={() => walletStore.disconnect()}>
 									Disconnect Wallet
 								</button>
 							</div>
 						{:else}
-							<button class="btn btn-accent btn-block" on:click={connectWallet}>
+							<button class="btn btn-accent btn-block" onclick={connectWallet}>
 								Connect Wallet
 							</button>
 						{/if}
