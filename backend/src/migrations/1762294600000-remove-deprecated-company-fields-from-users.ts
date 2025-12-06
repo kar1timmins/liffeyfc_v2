@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class RemoveDeprecatedCompanyFieldsFromUsers1733508000000 implements MigrationInterface {
-    name = 'RemoveDeprecatedCompanyFieldsFromUsers1733508000000'
+export class RemoveDeprecatedCompanyFieldsFromUsers1762294600000 implements MigrationInterface {
+  name = 'RemoveDeprecatedCompanyFieldsFromUsers1762294600000';
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         // Check if columns exist before attempting to drop them (idempotent)

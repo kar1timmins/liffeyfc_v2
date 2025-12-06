@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddUserIdToWallets1733504000000 implements MigrationInterface {
-  name = 'AddUserIdToWallets1733504000000';
+export class AddUserIdToWallets1762294400000 implements MigrationInterface {
+  name = 'AddUserIdToWallets1762294400000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Check if userId column already exists

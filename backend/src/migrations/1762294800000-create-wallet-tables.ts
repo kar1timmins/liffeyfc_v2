@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner, Table, TableForeignKey } from 'typeorm';
 
-export class CreateWalletTables1733509000000 implements MigrationInterface {
-  name = 'CreateWalletTables1733509000000';
+export class CreateWalletTables1762294800000 implements MigrationInterface {
+  name = 'CreateWalletTables1762294800000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Create user_wallets table

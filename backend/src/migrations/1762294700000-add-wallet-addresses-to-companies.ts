@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm';
 
-export class AddWalletAddressesToCompanies1733508600000 implements MigrationInterface {
-  name = 'AddWalletAddressesToCompanies1733508600000';
+export class AddWalletAddressesToCompanies1762294700000 implements MigrationInterface {
+  name = 'AddWalletAddressesToCompanies1762294700000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Check if ethAddress column exists before adding

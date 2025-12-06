@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateCompaniesAndWishlist1733505000000 implements MigrationInterface {
-  name = 'CreateCompaniesAndWishlist1733505000000';
+export class CreateCompaniesAndWishlist1762294500000 implements MigrationInterface {
+  name = 'CreateCompaniesAndWishlist1762294500000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Enable uuid-ossp extension if not already enabled
