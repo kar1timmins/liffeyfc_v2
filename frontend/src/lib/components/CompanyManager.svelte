@@ -98,6 +98,10 @@
   async function checkUserWallet() {
     isCheckingWallet = true;
     try {
+      // Verify authentication first
+      const verified = await authStore.verify();
+      if (!verified) return;
+
       const token = $authStore.accessToken;
       if (!token) return;
 

@@ -22,6 +22,12 @@
     error = null;
 
     try {
+      // Verify authentication first
+      const verified = await authStore.verify();
+      if (!verified) {
+        throw new Error('Please log in again to generate a wallet');
+      }
+
       const token = $authStore.accessToken;
       if (!token) {
         throw new Error('Not authenticated');
