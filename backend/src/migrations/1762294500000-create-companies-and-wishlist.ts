@@ -7,9 +7,9 @@ export class CreateCompaniesAndWishlist1762294500000 implements MigrationInterfa
     // Enable uuid-ossp extension if not already enabled
     await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
 
-    // Create companies table
+    // Create companies table if it doesn't exist
     await queryRunner.query(`
-      CREATE TABLE "companies" (
+      CREATE TABLE IF NOT EXISTS "companies" (
         "id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
         "name" varchar(255) NOT NULL,
         "description" text NOT NULL,
@@ -33,9 +33,9 @@ export class CreateCompaniesAndWishlist1762294500000 implements MigrationInterfa
       )
     `);
 
-    // Create wishlist_items table
+    // Create wishlist_items table if it doesn't exist
     await queryRunner.query(`
-      CREATE TABLE "wishlist_items" (
+      CREATE TABLE IF NOT EXISTS "wishlist_items" (
         "id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
         "title" varchar(255) NOT NULL,
         "description" text,
@@ -48,14 +48,14 @@ export class CreateCompaniesAndWishlist1762294500000 implements MigrationInterfa
       )
     `);
 
-    // Create indexes for better query performance
-    await queryRunner.query(`CREATE INDEX "IDX_companies_ownerId" ON "companies" ("ownerId")`);
-    await queryRunner.query(`CREATE INDEX "IDX_companies_stage" ON "companies" ("stage")`);
-    await queryRunner.query(`CREATE INDEX "IDX_companies_fundingStage" ON "companies" ("fundingStage")`);
-    await queryRunner.query(`CREATE INDEX "IDX_companies_isPublic" ON "companies" ("isPublic")`);
-    await queryRunner.query(`CREATE INDEX "IDX_companies_industry" ON "companies" ("industry")`);
-    await queryRunner.query(`CREATE INDEX "IDX_wishlist_companyId" ON "wishlist_items" ("companyId")`);
-    await queryRunner.query(`CREATE INDEX "IDX_wishlist_category" ON "wishlist_items" ("category")`);
+    // Create indexes for better query performance (only if they don't exist)
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_companies_ownerId" ON "companies" ("ownerId")`);
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_companies_stage" ON "companies" ("stage")`);
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_companies_fundingStage" ON "companies" ("fundingStage")`);
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_companies_isPublic" ON "companies" ("isPublic")`);
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_companies_industry" ON "companies" ("industry")`);
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_wishlist_companyId" ON "wishlist_items" ("companyId")`);
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_wishlist_category" ON "wishlist_items" ("category")`);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
