@@ -3,6 +3,8 @@ import { DataSource } from 'typeorm';
 import { User } from './entities/user.entity';
 import { Wallet } from './entities/wallet.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
+import { Company } from './entities/company.entity';
+import { WishlistItem } from './entities/wishlist-item.entity';
 
 /**
  * Parse DATABASE_URL if present (format: postgres://user:password@host:port/database)
@@ -42,7 +44,7 @@ const dbConfig = parseDatabaseConfig();
 const AppDataSource = new DataSource({
   type: 'postgres',
   ...dbConfig,
-  entities: [User, Wallet, RefreshToken],
+  entities: [User, Wallet, RefreshToken, Company, WishlistItem],
   migrations: [__dirname + '/migrations/*.{ts,js}'],
   synchronize: process.env.TYPEORM_SYNCHRONIZE === 'true',
 });

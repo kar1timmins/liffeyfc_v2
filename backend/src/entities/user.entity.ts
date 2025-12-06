@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
 import { Wallet } from './wallet.entity';
 import { RefreshToken } from './refresh-token.entity';
+import { Company } from './company.entity';
 
 /**
  * User Role Enum
@@ -89,6 +90,9 @@ export class User {
 
   @OneToMany(() => RefreshToken, (r: RefreshToken) => r.user, { cascade: true })
   refreshTokens?: RefreshToken[];
+
+  @OneToMany(() => Company, (c: Company) => c.owner, { cascade: true })
+  companies?: Company[];
 
   @CreateDateColumn()
   createdAt: Date;

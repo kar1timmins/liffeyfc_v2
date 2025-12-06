@@ -10,6 +10,7 @@ import { ContactModule } from './contact/contact.module';
 import { Web3Module } from './web3/web3.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { CompaniesModule } from './companies/companies.module';
 import { throttlerConfig } from './config/throttler.config';
 import { GcpStorageService } from './common/gcp-storage.service';
 
@@ -76,6 +77,7 @@ function parseDatabaseUrl() {
     Web3Module,
     UsersModule,
     AuthModule,
+    CompaniesModule,
   ],
   controllers: [AppController],
   providers: [
