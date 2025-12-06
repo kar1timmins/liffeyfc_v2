@@ -180,7 +180,7 @@
 
           <div class="form-control">
             <label class="label p-1" for="wishlist-description">
-              <span class="label-text font-semibold text-sm">Details (optional)</span>
+              <span class="label-text font-semibold text-sm">Details</span>
               <span class="label-text-alt text-xs opacity-60">Provide context or specifics</span>
             </label>
             <textarea
@@ -197,7 +197,7 @@
         <div class="divider my-3"></div>
         
         <div class="space-y-3">
-          <label class="text-sm font-semibold">Category & Priority</label>
+          <h5 class="text-sm font-semibold">Category & Priority</h5>
           
           <div class="grid grid-cols-2 gap-3">
             <!-- Category -->
@@ -243,7 +243,7 @@
           <label class="label p-1" for="wishlist-value">
             <span class="label-text font-semibold text-sm flex items-center gap-1">
               <Euro class="w-4 h-4 text-success" />
-              Target Value (optional)
+              Target Value
             </span>
             <span class="label-text-alt text-xs opacity-60">Amount needed in EUR</span>
           </label>
