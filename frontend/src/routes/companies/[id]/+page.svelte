@@ -5,6 +5,7 @@
   import { Building2, MapPin, Users, TrendingUp, DollarSign, Calendar, Globe, Linkedin, Twitter, Target, CheckCircle, Circle, ArrowLeft, Wallet, Eye, EyeOff, Copy, Send } from 'lucide-svelte';
   import { PUBLIC_API_URL } from '$env/static/public';
   import { authStore } from '$lib/stores/auth';
+  import WishlistForm from '$lib/components/WishlistForm.svelte';
 
   let company = $state<any>(null);
   let wishlistItems = $state<any[]>([]);
@@ -20,6 +21,8 @@
 
   const companyId = $derived($page.params.id);
   const isInvestor = $derived($authStore.user?.role === 'investor');
+  const isOwner = $derived(company?.ownerId === $authStore.user?.id);
+  const canDonate = $derived(isInvestor && !isOwner);
 
   const stageLabels: Record<string, string> = {
     idea: 'Idea',
@@ -310,7 +313,15 @@
                 <p class="text-sm">You need to switch to an investor account to view wallet addresses and send donations. Visit your profile to upgrade your account.</p>
               </div>
             </div>
-          {:else}
+          {:else if isOwner}
+            <div class="alert alert-info">
+              <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <div>
+                <h3 class="font-bold">You own this company</h3>
+                <p class="text-sm">You cannot donate to your own company. Other investors can support your company through donations.</p>
+              </div>
+            </div>
+          {:else if canDonate}
             <p class="opacity-80 mb-6">
               Send cryptocurrency directly to this company's wallet. All transactions are processed securely through MetaMask.
             </p>
@@ -502,58 +513,73 @@
       {/if}
 
       <!-- Wishlist -->
-      {#if wishlistItems.length > 0}
+      {#if wishlistItems.length > 0 || isOwner}
         <div class="glass-subtle rounded-2xl p-6 mb-6">
           <div class="flex items-center gap-3 mb-6">
             <Target class="w-6 h-6 text-primary" />
             <h2 class="text-2xl font-bold">Company Wishlist</h2>
           </div>
 
-          <p class="opacity-80 mb-6">
-            Looking for support in the following areas:
-          </p>
+          {#if isOwner && companyId}
+            <WishlistForm 
+              companyId={companyId} 
+              onItemAdded={fetchCompany}
+            />
+          {/if}
 
-          <div class="space-y-4">
-            {#each wishlistItems as item}
-              {@const Icon = categoryIcons[item.category] || Circle}
-              {@const priorityColors: Record<string, string> = {
-                low: 'badge-ghost',
-                medium: 'badge-info',
-                high: 'badge-warning',
-                critical: 'badge-error'
-              }}
-              
-              <div class="glass-subtle rounded-xl p-4 {item.isFulfilled ? 'opacity-60' : ''}">
-                <div class="flex items-start gap-4">
-                  <div class="flex-shrink-0 mt-1">
-                    {#if item.isFulfilled}
-                      <CheckCircle class="w-6 h-6 text-success" />
-                    {:else}
-                      <Icon class="w-6 h-6 text-primary" />
-                    {/if}
-                  </div>
+          {#if wishlistItems.length > 0}
+            <p class="opacity-80 mb-6">
+              Looking for support in the following areas:
+            </p>
 
-                  <div class="flex-1">
-                    <div class="flex items-start justify-between gap-4 mb-2">
-                      <h3 class="text-lg font-semibold">{item.title}</h3>
-                      <div class="flex gap-2">
-                        <span class="badge badge-sm {priorityColors[item.priority] || 'badge-ghost'}">{item.priority}</span>
-                        <span class="badge badge-sm badge-outline capitalize">{item.category}</span>
-                      </div>
+            <div class="space-y-4">
+              {#each wishlistItems as item}
+                {@const Icon = categoryIcons[item.category] || Circle}
+                {@const priorityColors: Record<string, string> = {
+                  low: 'badge-ghost',
+                  medium: 'badge-info',
+                  high: 'badge-warning',
+                  critical: 'badge-error'
+                }}
+                
+                <div class="glass-subtle rounded-xl p-4 {item.isFulfilled ? 'opacity-60' : ''}">
+                  <div class="flex items-start gap-4">
+                    <div class="flex-shrink-0 mt-1">
+                      {#if item.isFulfilled}
+                        <CheckCircle class="w-6 h-6 text-success" />
+                      {:else}
+                        <Icon class="w-6 h-6 text-primary" />
+                      {/if}
                     </div>
-                    
-                    {#if item.description}
-                      <p class="opacity-80">{item.description}</p>
-                    {/if}
 
-                    {#if item.isFulfilled}
-                      <span class="text-success text-sm mt-2 inline-block">✓ Fulfilled</span>
-                    {/if}
+                    <div class="flex-1">
+                      <div class="flex items-start justify-between gap-4 mb-2">
+                        <h3 class="text-lg font-semibold">{item.title}</h3>
+                        <div class="flex gap-2">
+                          <span class="badge badge-sm {priorityColors[item.priority] || 'badge-ghost'}">{item.priority}</span>
+                          <span class="badge badge-sm badge-outline capitalize">{item.category}</span>
+                        </div>
+                      </div>
+                      
+                      {#if item.description}
+                        <p class="opacity-80">{item.description}</p>
+                      {/if}
+
+                      {#if item.value}
+                        <p class="text-sm opacity-70 mt-2">Estimated value: ${item.value.toLocaleString()}</p>
+                      {/if}
+
+                      {#if item.isFulfilled}
+                        <span class="text-success text-sm mt-2 inline-block">✓ Fulfilled</span>
+                      {/if}
+                    </div>
                   </div>
                 </div>
-              </div>
-            {/each}
-          </div>
+              {/each}
+            </div>
+          {:else if !isOwner}
+            <p class="opacity-60 text-center py-8">No wishlist items yet</p>
+          {/if}
         </div>
       {/if}
 

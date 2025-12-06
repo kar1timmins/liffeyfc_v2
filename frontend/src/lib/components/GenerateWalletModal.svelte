@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { Download, Copy, AlertTriangle, Check, X, Wallet } from 'lucide-svelte';
   import { PUBLIC_API_URL } from '$env/static/public';
   import { authStore } from '$lib/stores/auth';
@@ -16,6 +17,38 @@
   let copied = $state(false);
   let error = $state<string | null>(null);
   let hasAcknowledged = $state(false);
+  let hasExistingWallet = $state(false);
+  let isCheckingWallet = $state(false);
+
+  onMount(async () => {
+    await checkExistingWallet();
+  });
+
+  async function checkExistingWallet() {
+    isCheckingWallet = true;
+    try {
+      const verified = await authStore.verify();
+      if (!verified) return;
+
+      const token = $authStore.accessToken;
+      if (!token) return;
+
+      const response = await fetch(`${PUBLIC_API_URL}/wallet/check`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        hasExistingWallet = result.data.hasWallet;
+      }
+    } catch (err) {
+      console.error('Failed to check wallet:', err);
+    } finally {
+      isCheckingWallet = false;
+    }
+  }
 
   async function generateWallet() {
     isGenerating = true;
@@ -129,47 +162,64 @@ SECURITY REMINDERS:
     {#if !walletData}
       <!-- Warning & Generation -->
       <div class="space-y-4">
-        <div class="alert alert-warning">
-          <AlertTriangle class="w-5 h-5 flex-shrink-0" />
-          <div class="flex-1">
-            <p class="font-semibold mb-3">Important Security Information</p>
-            <ul class="text-sm space-y-2 list-none">
-              <li class="flex items-start gap-2">
-                <span class="flex-shrink-0 text-lg">🔒</span>
-                <span class="break-words">You can only generate ONE master wallet<br class="hidden sm:inline"/> per account</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="flex-shrink-0 text-lg">👁️</span>
-                <span class="break-words">Your recovery phrase and private key<br class="hidden sm:inline"/> will be shown ONCE</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="flex-shrink-0 text-lg">💾</span>
-                <span class="break-words">You must download and securely store<br class="hidden sm:inline"/> this information</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="flex-shrink-0 text-lg">🚨</span>
-                <span class="break-words">Loss of this data means permanent loss<br class="hidden sm:inline"/> of access to funds</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="flex-shrink-0 text-lg">🏢</span>
-                <span class="break-words">Company wallets will be derived<br class="hidden sm:inline"/> from this master wallet</span>
-              </li>
-            </ul>
+        {#if isCheckingWallet}
+          <div class="flex justify-center py-6">
+            <span class="loading loading-spinner loading-lg"></span>
           </div>
-        </div>
+        {:else if hasExistingWallet}
+          <div class="alert alert-info">
+            <AlertTriangle class="w-5 h-5 flex-shrink-0" />
+            <div class="flex-1">
+              <p class="font-semibold">Wallet Already Generated</p>
+              <p class="text-sm mt-1">You have already generated a master wallet for your account. Each account can only have one master wallet for security reasons.</p>
+            </div>
+          </div>
+        {:else}
+          <div class="alert alert-warning">
+            <AlertTriangle class="w-5 h-5 flex-shrink-0" />
+            <div class="flex-1">
+              <p class="font-semibold mb-3">Important Security Information</p>
+              <ul class="text-sm space-y-2 list-none">
+                <li class="flex items-start gap-2">
+                  <span class="flex-shrink-0 text-lg">🔒</span>
+                  <span class="break-words">You can only generate ONE master wallet<br class="hidden sm:inline"/> per account</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="flex-shrink-0 text-lg">👁️</span>
+                  <span class="break-words">Your recovery phrase and private key<br class="hidden sm:inline"/> will be shown ONCE</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="flex-shrink-0 text-lg">💾</span>
+                  <span class="break-words">You must download and securely store<br class="hidden sm:inline"/> this information</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="flex-shrink-0 text-lg">🚨</span>
+                  <span class="break-words">Loss of this data means permanent loss<br class="hidden sm:inline"/> of access to funds</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="flex-shrink-0 text-lg">🏢</span>
+                  <span class="break-words">Company wallets will be derived<br class="hidden sm:inline"/> from this master wallet</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        {/if}
 
-        <div class="form-control">
-          <label class="label cursor-pointer justify-start gap-3">
-            <input 
-              type="checkbox" 
-              class="checkbox checkbox-primary"
-              bind:checked={hasAcknowledged}
-            />
-            <span class="label-text break-words">
-              I understand that I must securely store my wallet information<br class="hidden sm:inline"/> and that it cannot be recovered if lost.
-            </span>
-          </label>
-        </div>
+        {#if !hasExistingWallet}
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input 
+                type="checkbox" 
+                class="checkbox checkbox-primary"
+                bind:checked={hasAcknowledged}
+                disabled={isCheckingWallet}
+              />
+              <span class="label-text break-words">
+                I understand that I must securely store my wallet information<br class="hidden sm:inline"/> and that it cannot be recovered if lost.
+              </span>
+            </label>
+          </div>
+        {/if}
 
         {#if error}
           <div class="alert alert-error">
@@ -178,17 +228,21 @@ SECURITY REMINDERS:
         {/if}
 
         <div class="modal-action">
-          <button class="btn btn-ghost" onclick={closeModal}>Cancel</button>
-          <button 
-            class="btn btn-primary"
-            disabled={!hasAcknowledged || isGenerating}
-            onclick={generateWallet}
-          >
-            {#if isGenerating}
-              <span class="loading loading-spinner loading-sm"></span>
-            {/if}
-            Generate Wallet
+          <button class="btn btn-ghost" onclick={closeModal}>
+            {hasExistingWallet ? 'Close' : 'Cancel'}
           </button>
+          {#if !hasExistingWallet}
+            <button 
+              class="btn btn-primary"
+              disabled={!hasAcknowledged || isGenerating || isCheckingWallet}
+              onclick={generateWallet}
+            >
+              {#if isGenerating}
+                <span class="loading loading-spinner loading-sm"></span>
+              {/if}
+              Generate Wallet
+            </button>
+          {/if}
         </div>
       </div>
     {:else}
