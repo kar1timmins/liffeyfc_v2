@@ -125,6 +125,36 @@ export class UsersController {
     }
   }
 
+  @Post('attach-wallet')
+  @UseGuards(AuthGuard('jwt'))
+  async attachWallet(
+    @Body() body: { address: string; chainId?: string },
+    @CurrentUser() currentUser: any
+  ) {
+    const userId = currentUser?.sub;
+    if (!userId) {
+      return { success: false, message: 'Unauthorized' };
+    }
+
+    try {
+      const updatedUser = await this.usersService.attachWallet(userId, body.address, body.chainId);
+      
+      if (!updatedUser) {
+        return { success: false, message: 'User not found' };
+      }
+      
+      return { 
+        success: true, 
+        data: updatedUser
+      };
+    } catch (error) {
+      return { 
+        success: false, 
+        message: error.message || 'Failed to attach wallet' 
+      };
+    }
+  }
+
   @Patch('upgrade-to-investor')
   @UseGuards(AuthGuard('jwt'))
   async upgradeToInvestor(

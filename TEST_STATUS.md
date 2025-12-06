@@ -23,10 +23,14 @@ This document tracks the current state of all tests across the Liffey Founders C
 - Added `DataSource` mock provider for app controller tests
 - All authentication flow tests passing (SIWE, nonce management, refresh tokens)
 
+**Recent Features**:
+- Added `POST /users/attach-wallet` endpoint for storing generated wallet addresses
+- Wallet generation flow now saves to database automatically
+
 **Coverage**:
 - Authentication: JWT signing/verification, SIWE flow, nonce consumption
 - User management: User creation, wallet attachment
-- API endpoints: Root endpoint validation
+- API endpoints: Root endpoint validation, wallet attachment
 
 ---
 

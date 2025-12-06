@@ -1,7 +1,9 @@
 <script lang="ts">
   import { walletStore } from '$lib/stores/walletStore';
+  import { authStore } from '$lib/stores/auth';
   import { X, Wallet, Download, CheckCircle, AlertCircle, RefreshCw } from 'lucide-svelte';
   import { Wallet as EthersWallet } from 'ethers';
+  import { PUBLIC_API_URL } from '$env/static/public';
   
   let { isOpen = $bindable(false) } = $props();
   
@@ -56,6 +58,9 @@
       // Automatically download keys
       downloadKeys();
       
+      // Store wallet address in backend database
+      await saveWalletToBackend(wallet.address, chain.chainId);
+      
       // Adopt the wallet in the store
       await walletStore.adoptWallet(wallet.address, chain.chainId);
       
@@ -64,6 +69,36 @@
       error = err.message || 'Failed to generate wallet';
     } finally {
       isGenerating = false;
+    }
+  }
+
+  async function saveWalletToBackend(address: string, chainId: string) {
+    try {
+      const token = $authStore.accessToken;
+      if (!token) {
+        console.warn('No access token available, wallet not saved to database');
+        return;
+      }
+
+      const response = await fetch(`${PUBLIC_API_URL}/users/attach-wallet`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ address, chainId })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || 'Failed to save wallet');
+      }
+
+      console.log('Wallet successfully saved to database');
+    } catch (err: any) {
+      console.error('Failed to save wallet to backend:', err);
+      // Don't throw - wallet generation succeeded, just database save failed
+      // User can still use the wallet
     }
   }
 
