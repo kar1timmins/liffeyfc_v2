@@ -11,10 +11,10 @@ const config = {
 		adapter: adapter({
 			pages: 'build',
 			assets: 'build',
-			fallback: null,
+			fallback: 'index.html',
 			precompress: true,
-			// This ensures paths work from root
-			strict: true
+			// Allow dynamic routes with fallback
+			strict: false
 		}),
 		prerender: {
 			entries: ['*', '/pitch', '/learnMore']
