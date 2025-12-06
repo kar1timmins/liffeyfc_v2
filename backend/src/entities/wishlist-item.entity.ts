@@ -30,6 +30,9 @@ export class WishlistItem {
   @Column({ type: 'text', nullable: true })
   description?: string;
 
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  value?: number;
+
   @Column({ type: 'enum', enum: WishlistCategory, default: WishlistCategory.OTHER })
   category: WishlistCategory;
 

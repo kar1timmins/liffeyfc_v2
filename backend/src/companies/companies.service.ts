@@ -33,6 +33,7 @@ export interface UpdateCompanyDto extends Partial<CreateCompanyDto> {
 export interface CreateWishlistItemDto {
   title: string;
   description?: string;
+  value?: number;
   category?: WishlistCategory;
   priority?: WishlistPriority;
 }
