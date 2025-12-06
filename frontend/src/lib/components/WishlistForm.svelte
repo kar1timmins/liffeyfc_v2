@@ -125,83 +125,66 @@
   }
 </script>
 
-<div class="my-6">
+<div class="my-4">
   {#if !isFormOpen}
     <button
-      class="btn btn-primary btn-sm"
+      class="btn btn-primary btn-sm gap-2"
       onclick={toggleForm}
     >
       <Plus class="w-4 h-4" />
       Add Wishlist Item
     </button>
   {:else}
-    <div class="glass-subtle rounded-xl p-6">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold">Add Wishlist Item</h3>
+    <div class="bg-base-200/50 rounded-lg p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h4 class="font-semibold text-sm">Add Wishlist Item</h4>
         <button
-          class="btn btn-ghost btn-sm btn-circle"
+          class="btn btn-ghost btn-xs btn-circle"
           onclick={toggleForm}
         >
-          <X class="w-4 h-4" />
+          <X class="w-3 h-3" />
         </button>
       </div>
 
-      <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="space-y-4">
+      <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="space-y-3">
         <!-- Title -->
         <div class="form-control">
-          <label class="label" for="wishlist-title">
-            <span class="label-text">Title *</span>
+          <label class="label py-1" for="wishlist-title">
+            <span class="label-text text-xs">Title *</span>
           </label>
           <input
             id="wishlist-title"
             type="text"
             bind:value={formData.title}
             placeholder="e.g., Looking for seed funding"
-            class="input input-bordered w-full"
+            class="input input-bordered input-sm w-full"
             required
           />
         </div>
 
         <!-- Description -->
         <div class="form-control">
-          <label class="label" for="wishlist-description">
-            <span class="label-text">Description</span>
+          <label class="label py-1" for="wishlist-description">
+            <span class="label-text text-xs">Description</span>
           </label>
           <textarea
             id="wishlist-description"
             bind:value={formData.description}
-            placeholder="Provide more details about what you're looking for..."
-            class="textarea textarea-bordered h-24"
+            placeholder="Provide more details..."
+            class="textarea textarea-bordered textarea-sm h-20 text-sm"
           ></textarea>
         </div>
 
-        <!-- Value -->
-        <div class="form-control">
-          <label class="label" for="wishlist-value">
-            <span class="label-text">Value (Optional)</span>
-            <span class="label-text-alt">Estimated monetary value</span>
-          </label>
-          <input
-            id="wishlist-value"
-            type="number"
-            bind:value={formData.value}
-            placeholder="e.g., 50000"
-            step="0.01"
-            min="0"
-            class="input input-bordered w-full"
-          />
-        </div>
-
-        <!-- Category and Priority -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Category, Priority, and Value in grid -->
+        <div class="grid grid-cols-3 gap-2">
           <div class="form-control">
-            <label class="label" for="wishlist-category">
-              <span class="label-text">Category</span>
+            <label class="label py-1" for="wishlist-category">
+              <span class="label-text text-xs">Category</span>
             </label>
             <select
               id="wishlist-category"
               bind:value={formData.category}
-              class="select select-bordered w-full"
+              class="select select-bordered select-sm w-full text-sm"
             >
               {#each categories as cat}
                 <option value={cat.value}>{cat.label}</option>
@@ -210,32 +193,47 @@
           </div>
 
           <div class="form-control">
-            <label class="label" for="wishlist-priority">
-              <span class="label-text">Priority</span>
+            <label class="label py-1" for="wishlist-priority">
+              <span class="label-text text-xs">Priority</span>
             </label>
             <select
               id="wishlist-priority"
               bind:value={formData.priority}
-              class="select select-bordered w-full"
+              class="select select-bordered select-sm w-full text-sm"
             >
               {#each priorities as pri}
                 <option value={pri.value}>{pri.label}</option>
               {/each}
             </select>
           </div>
+
+          <div class="form-control">
+            <label class="label py-1" for="wishlist-value">
+              <span class="label-text text-xs">Value ($)</span>
+            </label>
+            <input
+              id="wishlist-value"
+              type="number"
+              bind:value={formData.value}
+              placeholder="50000"
+              step="0.01"
+              min="0"
+              class="input input-bordered input-sm w-full"
+            />
+          </div>
         </div>
 
         <!-- Error Message -->
         {#if error}
-          <div class="alert alert-error">
-            <span class="text-sm">{error}</span>
+          <div class="alert alert-error py-2">
+            <span class="text-xs">{error}</span>
           </div>
         {/if}
 
         <!-- Success Message -->
         {#if success}
-          <div class="alert alert-success">
-            <span class="text-sm">Wishlist item added successfully!</span>
+          <div class="alert alert-success py-2">
+            <span class="text-xs">Wishlist item added successfully!</span>
           </div>
         {/if}
 
@@ -243,7 +241,7 @@
         <div class="flex gap-2 justify-end">
           <button
             type="button"
-            class="btn btn-ghost"
+            class="btn btn-ghost btn-sm"
             onclick={toggleForm}
             disabled={isSubmitting}
           >
@@ -251,15 +249,15 @@
           </button>
           <button
             type="submit"
-            class="btn btn-primary"
+            class="btn btn-primary btn-sm"
             disabled={isSubmitting || !formData.title.trim()}
           >
             {#if isSubmitting}
-              <span class="loading loading-spinner loading-sm"></span>
+              <span class="loading loading-spinner loading-xs"></span>
             {:else}
-              <Plus class="w-4 h-4" />
+              <Plus class="w-3 h-3" />
             {/if}
-            Add Item
+            Add
           </button>
         </div>
       </form>

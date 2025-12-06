@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Building2, Plus, Edit, Trash2, Globe, Linkedin, Twitter, X, Target, Wallet, AlertCircle } from 'lucide-svelte';
+  import { Building2, Plus, Edit, Trash2, Globe, Linkedin, Twitter, X, Target, Wallet, AlertCircle, ChevronDown, ChevronUp } from 'lucide-svelte';
   import { PUBLIC_API_URL } from '$env/static/public';
   import { authStore } from '$lib/stores/auth';
+  import WishlistForm from './WishlistForm.svelte';
 
   interface Company {
     id: string;
@@ -42,6 +43,7 @@
   let hasWallet = $state<boolean | null>(null);
   let isCheckingWallet = $state(false);
   let walletAddresses = $state<{ eth: string; avax: string } | null>(null);
+  let expandedWishlistId = $state<string | null>(null);
   
   // Form fields
   let name = $state('');
@@ -193,6 +195,15 @@
     showForm = false;
     editingCompany = null;
     errorMessage = null;
+  }
+
+  function toggleWishlist(companyId: string) {
+    expandedWishlistId = expandedWishlistId === companyId ? null : companyId;
+  }
+
+  function handleWishlistItemAdded() {
+    // Refresh companies to show updated wishlist
+    onUpdate();
   }
 
   async function handleSubmit() {
@@ -713,56 +724,95 @@
                 {/if}
               </div>
 
-              <!-- Wishlist Items for Business Owner -->
-              {#if company.wishlistItems && company.wishlistItems.length > 0}
-                <div class="mt-4 space-y-3">
-                  <h4 class="text-sm font-semibold opacity-70">Your Wishlist Items:</h4>
-                  {#each company.wishlistItems as item}
-                    <div class="bg-base-200/50 rounded-lg p-3">
-                      <div class="flex items-start justify-between mb-2">
-                        <div class="flex-1">
-                          <h5 class="font-semibold text-sm">{item.title}</h5>
-                          {#if item.description}
-                            <p class="text-xs opacity-70 mt-1">{item.description}</p>
-                          {/if}
-                        </div>
-                        <span class="badge badge-sm badge-{item.priority === 'critical' ? 'error' : item.priority === 'high' ? 'warning' : 'ghost'}">
-                          {item.priority}
-                        </span>
+              <!-- Wishlist Section - Expandable -->
+              <div class="mt-4">
+                <button
+                  class="btn btn-sm btn-outline w-full justify-between"
+                  onclick={() => toggleWishlist(company.id)}
+                >
+                  <span class="flex items-center gap-2">
+                    <Target class="w-4 h-4" />
+                    Company Wishlist
+                    {#if company.wishlistItems && company.wishlistItems.length > 0}
+                      <span class="badge badge-primary badge-sm">{company.wishlistItems.length}</span>
+                    {/if}
+                  </span>
+                  {#if expandedWishlistId === company.id}
+                    <ChevronUp class="w-4 h-4" />
+                  {:else}
+                    <ChevronDown class="w-4 h-4" />
+                  {/if}
+                </button>
+
+                {#if expandedWishlistId === company.id}
+                  <div class="mt-4 space-y-4 border-t border-base-300 pt-4">
+                    <!-- Add New Wishlist Item -->
+                    <WishlistForm 
+                      companyId={company.id}
+                      onItemAdded={handleWishlistItemAdded}
+                    />
+
+                    <!-- Existing Wishlist Items -->
+                    {#if company.wishlistItems && company.wishlistItems.length > 0}
+                      <div class="space-y-3">
+                        <h4 class="text-sm font-semibold opacity-70">Current Wishlist Items:</h4>
+                        {#each company.wishlistItems as item}
+                          <div class="bg-base-200/50 rounded-lg p-3">
+                            <div class="flex items-start justify-between mb-2">
+                              <div class="flex-1">
+                                <h5 class="font-semibold text-sm">{item.title}</h5>
+                                {#if item.description}
+                                  <p class="text-xs opacity-70 mt-1">{item.description}</p>
+                                {/if}
+                                <div class="flex gap-2 mt-2">
+                                  <span class="badge badge-sm">{item.category}</span>
+                                  <span class="badge badge-sm badge-{item.priority === 'critical' ? 'error' : item.priority === 'high' ? 'warning' : 'ghost'}">
+                                    {item.priority}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {#if item.value}
+                              {@const percentage = Math.min(100, ((item.amountRaised || 0) / item.value) * 100)}
+                              {@const remaining = Math.max(0, item.value - (item.amountRaised || 0))}
+                              <div class="mt-2">
+                                <div class="flex justify-between text-xs mb-1">
+                                  <span class="opacity-70">Progress</span>
+                                  <span class="font-semibold">{percentage.toFixed(0)}% complete</span>
+                                </div>
+                                <progress class="progress progress-primary w-full h-2" value={percentage} max="100"></progress>
+                                <div class="flex justify-between text-xs mt-1 opacity-70">
+                                  <span>Raised: ${(item.amountRaised || 0).toLocaleString()}</span>
+                                  <span>Goal: ${item.value.toLocaleString()}</span>
+                                </div>
+                                {#if remaining > 0}
+                                  <p class="text-xs mt-1 opacity-60">
+                                    ${remaining.toLocaleString()} remaining to reach goal
+                                  </p>
+                                {:else}
+                                  <p class="text-xs mt-1 text-success font-semibold">
+                                    🎉 Goal reached!
+                                  </p>
+                                {/if}
+                              </div>
+                            {:else}
+                              <p class="text-xs opacity-60 mt-2">
+                                Raised: ${(item.amountRaised || 0).toLocaleString()}
+                              </p>
+                            {/if}
+                          </div>
+                        {/each}
                       </div>
-                      
-                      {#if item.value}
-                        {@const percentage = Math.min(100, ((item.amountRaised || 0) / item.value) * 100)}
-                        {@const remaining = Math.max(0, item.value - (item.amountRaised || 0))}
-                        <div class="mt-2">
-                          <div class="flex justify-between text-xs mb-1">
-                            <span class="opacity-70">Progress</span>
-                            <span class="font-semibold">{percentage.toFixed(0)}% complete</span>
-                          </div>
-                          <progress class="progress progress-primary w-full h-2" value={percentage} max="100"></progress>
-                          <div class="flex justify-between text-xs mt-1 opacity-70">
-                            <span>Raised: ${(item.amountRaised || 0).toLocaleString()}</span>
-                            <span>Goal: ${item.value.toLocaleString()}</span>
-                          </div>
-                          {#if remaining > 0}
-                            <p class="text-xs mt-1 opacity-60">
-                              ${remaining.toLocaleString()} remaining to reach goal
-                            </p>
-                          {:else}
-                            <p class="text-xs mt-1 text-success font-semibold">
-                              🎉 Goal reached!
-                            </p>
-                          {/if}
-                        </div>
-                      {:else}
-                        <p class="text-xs opacity-60 mt-2">
-                          Raised: ${(item.amountRaised || 0).toLocaleString()}
-                        </p>
-                      {/if}
-                    </div>
-                  {/each}
-                </div>
-              {/if}
+                    {:else}
+                      <div class="text-center py-6 opacity-60">
+                        <Target class="w-8 h-8 mx-auto mb-2 opacity-30" />
+                        <p class="text-sm">No wishlist items yet. Add your first item above!</p>
+                      </div>
+                    {/if}
+                  </div>
+                {/if}
+              </div>
             </div>
 
             <div class="flex md:flex-col gap-2">
