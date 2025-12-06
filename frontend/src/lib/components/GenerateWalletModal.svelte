@@ -129,24 +129,24 @@ SECURITY REMINDERS:
             <p class="font-semibold mb-3">Important Security Information</p>
             <ul class="text-sm space-y-2 list-none">
               <li class="flex items-start gap-2">
-                <span class="flex-shrink-0">⚠️</span>
-                <span>You can only generate ONE master wallet per account</span>
+                <span class="flex-shrink-0 text-lg">🔒</span>
+                <span class="break-words">You can only generate ONE master wallet<br class="hidden sm:inline"/> per account</span>
               </li>
               <li class="flex items-start gap-2">
-                <span class="flex-shrink-0">⚠️</span>
-                <span>Your recovery phrase and private key will be shown ONCE</span>
+                <span class="flex-shrink-0 text-lg">👁️</span>
+                <span class="break-words">Your recovery phrase and private key<br class="hidden sm:inline"/> will be shown ONCE</span>
               </li>
               <li class="flex items-start gap-2">
-                <span class="flex-shrink-0">⚠️</span>
-                <span>You must download and securely store this information</span>
+                <span class="flex-shrink-0 text-lg">💾</span>
+                <span class="break-words">You must download and securely store<br class="hidden sm:inline"/> this information</span>
               </li>
               <li class="flex items-start gap-2">
-                <span class="flex-shrink-0">⚠️</span>
-                <span>Loss of this data means permanent loss of access to funds</span>
+                <span class="flex-shrink-0 text-lg">🚨</span>
+                <span class="break-words">Loss of this data means permanent loss<br class="hidden sm:inline"/> of access to funds</span>
               </li>
               <li class="flex items-start gap-2">
-                <span class="flex-shrink-0">⚠️</span>
-                <span>Company wallets will be derived from this master wallet</span>
+                <span class="flex-shrink-0 text-lg">🏢</span>
+                <span class="break-words">Company wallets will be derived<br class="hidden sm:inline"/> from this master wallet</span>
               </li>
             </ul>
           </div>
@@ -159,8 +159,8 @@ SECURITY REMINDERS:
               class="checkbox checkbox-primary"
               bind:checked={hasAcknowledged}
             />
-            <span class="label-text">
-              I understand that I must securely store my wallet information and that it cannot be recovered if lost.
+            <span class="label-text break-words">
+              I understand that I must securely store my wallet information<br class="hidden sm:inline"/> and that it cannot be recovered if lost.
             </span>
           </label>
         </div>
