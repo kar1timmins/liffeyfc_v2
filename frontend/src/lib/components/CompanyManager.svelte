@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { Building2, Plus, Edit, Trash2, Globe, Linkedin, Twitter, X, Target, Wallet } from 'lucide-svelte';
+  import { onMount } from 'svelte';
+  import { Building2, Plus, Edit, Trash2, Globe, Linkedin, Twitter, X, Target, Wallet, AlertCircle } from 'lucide-svelte';
   import { PUBLIC_API_URL } from '$env/static/public';
   import { authStore } from '$lib/stores/auth';
 
@@ -24,15 +25,23 @@
     wishlistItems?: any[];
   }
 
-  let { companies = $bindable([]), onUpdate = () => {} }: { 
+  let { 
+    companies = $bindable([]), 
+    onUpdate = () => {},
+    refreshWalletTrigger = 0
+  }: { 
     companies: Company[], 
-    onUpdate: () => void 
+    onUpdate: () => void,
+    refreshWalletTrigger?: number
   } = $props();
 
   let showForm = $state(false);
   let editingCompany = $state<Company | null>(null);
   let isSubmitting = $state(false);
   let errorMessage = $state<string | null>(null);
+  let hasWallet = $state<boolean | null>(null);
+  let isCheckingWallet = $state(false);
+  let walletAddresses = $state<{ eth: string; avax: string } | null>(null);
   
   // Form fields
   let name = $state('');
@@ -75,7 +84,63 @@
     'Real Estate', 'Media', 'Agriculture', 'Transportation', 'Other'
   ];
 
+  onMount(() => {
+    checkUserWallet();
+  });
+
+  // Re-check wallet when trigger changes
+  $effect(() => {
+    if (refreshWalletTrigger > 0) {
+      checkUserWallet();
+    }
+  });
+
+  async function checkUserWallet() {
+    isCheckingWallet = true;
+    try {
+      const token = $authStore.accessToken;
+      if (!token) return;
+
+      const response = await fetch(`${PUBLIC_API_URL}/wallet/check`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        hasWallet = result.data.hasWallet;
+        
+        // If user has wallet, fetch addresses for display
+        if (hasWallet) {
+          const addrResponse = await fetch(`${PUBLIC_API_URL}/wallet/addresses`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          const addrResult = await addrResponse.json();
+          if (addrResult.success) {
+            walletAddresses = {
+              eth: addrResult.data.ethAddress,
+              avax: addrResult.data.avaxAddress
+            };
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to check wallet:', err);
+    } finally {
+      isCheckingWallet = false;
+    }
+  }
+
   function openForm(company: Company | null = null) {
+    // Check wallet requirement for new companies
+    if (!company && hasWallet === false) {
+      errorMessage = 'Please generate a master wallet before registering a company. Scroll down to the wallet section.';
+      return;
+    }
+
     editingCompany = company;
     if (company) {
       // Populate form with existing company data
@@ -231,10 +296,21 @@
     </div>
     
     {#if !showForm}
-      <button class="btn btn-primary" onclick={() => openForm()}>
-        <Plus class="w-5 h-5" />
-        Register Company
-      </button>
+      {#if hasWallet === false}
+        <div class="flex items-center gap-2 text-warning">
+          <AlertCircle class="w-5 h-5" />
+          <span class="text-sm">Generate wallet to register companies</span>
+        </div>
+      {:else}
+        <button 
+          class="btn btn-primary" 
+          onclick={() => openForm()}
+          disabled={isCheckingWallet}
+        >
+          <Plus class="w-5 h-5" />
+          Register Company
+        </button>
+      {/if}
     {/if}
   </div>
 
@@ -449,39 +525,62 @@
             <Wallet class="w-5 h-5 text-primary" />
             <h3 class="text-lg font-semibold opacity-80">Wallet Addresses</h3>
           </div>
-          <p class="text-sm opacity-70 mb-4">
-            Allow supporters and investors to send funds directly to your company's wallet.
-          </p>
           
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="form-control">
-              <label class="label" for="company-eth-address">
-                <span class="label-text font-medium">Ethereum Address (ETH)</span>
-                <span class="label-text-alt opacity-70">Optional</span>
-              </label>
-              <input 
-                type="text"
-                id="company-eth-address"
-                class="input input-bordered w-full font-mono text-sm"
-                placeholder="0x..."
-                bind:value={ethAddress}
-              />
+          {#if !editingCompany}
+            <!-- New company - show auto-generation info -->
+            <div class="alert alert-info">
+              <AlertCircle class="w-5 h-5" />
+              <div>
+                <h4 class="font-semibold">Wallet addresses will be auto-generated</h4>
+                <p class="text-sm mt-1">
+                  When you create this company, unique ETH and AVAX addresses will be automatically derived from your master wallet. 
+                  These addresses maintain a hierarchical link to your main wallet for security and recovery.
+                </p>
+                {#if walletAddresses}
+                  <p class="text-sm mt-2 opacity-80">
+                    <strong>Your master wallet:</strong><br>
+                    ETH: <code class="text-xs">{walletAddresses.eth}</code><br>
+                    AVAX: <code class="text-xs">{walletAddresses.avax}</code>
+                  </p>
+                {/if}
+              </div>
             </div>
+          {:else}
+            <!-- Editing existing company - show current addresses -->
+            <p class="text-sm opacity-70 mb-4">
+              These wallet addresses were automatically generated for your company.
+            </p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="form-control">
+                <label class="label" for="company-eth-address-display">
+                  <span class="label-text font-medium">Ethereum Address (ETH)</span>
+                </label>
+                <input 
+                  type="text"
+                  id="company-eth-address-display"
+                  class="input input-bordered w-full font-mono text-sm"
+                  value={ethAddress}
+                  disabled
+                  title="Auto-generated wallet address (cannot be changed)"
+                />
+              </div>
 
-            <div class="form-control">
-              <label class="label" for="company-avax-address">
-                <span class="label-text font-medium">Avalanche Address (AVAX)</span>
-                <span class="label-text-alt opacity-70">Optional</span>
-              </label>
-              <input 
-                type="text"
-                id="company-avax-address"
-                class="input input-bordered w-full font-mono text-sm"
-                placeholder="0x..."
-                bind:value={avaxAddress}
-              />
+              <div class="form-control">
+                <label class="label" for="company-avax-address-display">
+                  <span class="label-text font-medium">Avalanche Address (AVAX)</span>
+                </label>
+                <input 
+                  type="text"
+                  id="company-avax-address-display"
+                  class="input input-bordered w-full font-mono text-sm"
+                  value={avaxAddress}
+                  disabled
+                  title="Auto-generated wallet address (cannot be changed)"
+                />
+              </div>
             </div>
-          </div>
+          {/if}
         </div>
 
         <div class="divider"></div>

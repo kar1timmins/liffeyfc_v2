@@ -3,7 +3,13 @@
   import { PUBLIC_API_URL } from '$env/static/public';
   import { authStore } from '$lib/stores/auth';
 
-  let { isOpen = $bindable(false) }: { isOpen: boolean } = $props();
+  let { 
+    isOpen = $bindable(false),
+    onWalletGenerated = () => {}
+  }: { 
+    isOpen: boolean;
+    onWalletGenerated?: () => void;
+  } = $props();
 
   let isGenerating = $state(false);
   let walletData = $state<any>(null);
@@ -32,6 +38,7 @@
 
       if (result.success) {
         walletData = result.data;
+        onWalletGenerated(); // Notify parent component
       } else {
         error = result.message || 'Failed to generate wallet';
       }

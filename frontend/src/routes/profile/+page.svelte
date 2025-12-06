@@ -15,6 +15,7 @@
   let upgradeSuccess = $state(false);
   let showGenerateWalletModal = $state(false);
   let companies = $state<any[]>([]);
+  let walletRefreshTrigger = $state(0);
 
   // Avatar upload
   let fileInput: HTMLInputElement | undefined = $state();
@@ -66,6 +67,11 @@
     } catch (err) {
       console.error('Failed to fetch companies:', err);
     }
+  }
+
+  function handleWalletGenerated() {
+    // Increment trigger to refresh wallet status in CompanyManager
+    walletRefreshTrigger++;
   }
 
   async function handleFileSelect(event: Event) {
@@ -215,7 +221,10 @@
     <p class="text-base-content/70">Manage your account information and preferences</p>
   </div>
 
-  <GenerateWalletModal bind:isOpen={showGenerateWalletModal} />
+  <GenerateWalletModal 
+    bind:isOpen={showGenerateWalletModal}
+    onWalletGenerated={handleWalletGenerated}
+  />
 
   {#if isLoading}
     <!-- Loading State -->
@@ -374,7 +383,11 @@
     </div>
 
     <!-- Companies Section -->
-    <CompanyManager bind:companies={companies} onUpdate={fetchMyCompanies} />
+    <CompanyManager 
+      bind:companies={companies} 
+      onUpdate={fetchMyCompanies}
+      refreshWalletTrigger={walletRefreshTrigger}
+    />
 
     <!-- Investor Upgrade Section (only show for regular users) -->
     {#if user.role === 'user'}
