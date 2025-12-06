@@ -43,24 +43,38 @@ async function bootstrap() {
   app.use(cookieParser());
   
   // Enable CORS for frontend requests
-  const allowedOrigins = [
-    'http://localhost:5173', 
-    'http://frontend:5173',
-    'https://liffeyfoundersclub.com',
-    'https://www.liffeyfoundersclub.com',
-  ];
+  // Development: localhost:5173
+  // Production: liffeyfoundersclub.com
+  const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
+  
+  const corsOrigins = isDevelopment 
+    ? [
+        'http://localhost:5173',      // Local dev
+        'http://localhost:3000',      // Local backend (self)
+        'http://127.0.0.1:5173',      // Loopback dev
+        'http://127.0.0.1:3000',      // Loopback backend
+        'http://frontend:5173',       // Docker Compose
+      ]
+    : [
+        'https://liffeyfoundersclub.com',
+        'https://www.liffeyfoundersclub.com',
+      ];
 
   // Add dynamic origin from environment variable if set
   if (process.env.FRONTEND_URL) {
-    allowedOrigins.push(process.env.FRONTEND_URL);
+    corsOrigins.push(process.env.FRONTEND_URL);
   }
 
   app.enableCors({
-    origin: allowedOrigins,
-    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
+    origin: corsOrigins,
+    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
+    maxAge: 3600,
   });
+  
+  console.log(`🌍 CORS enabled in ${isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION'} mode`);
+  console.log(`📡 Allowed origins: ${corsOrigins.join(', ')}`);
   
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
