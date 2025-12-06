@@ -28,10 +28,12 @@ export class EmailService {
     try {
       const payload = {
         access_key: accessKey,
-        to: to,
-        from: fromEmail,
+        name: 'Liffey Founders Club',
+        email: to,
+        message: this.getPasswordResetEmailTemplate(resetUrl),
+        from_name: 'Liffey Founders Club',
         subject: '🔐 Password Reset Request - Liffey Founders Club',
-        html: this.getPasswordResetEmailTemplate(resetUrl),
+        replyto: fromEmail,
       };
 
       const response = await fetch('https://api.web3forms.com/submit', {
@@ -83,10 +85,12 @@ export class EmailService {
     try {
       const payload = {
         access_key: accessKey,
-        to: to,
-        from: fromEmail,
+        name: 'Liffey Founders Club',
+        email: to,
+        message: this.getWelcomeEmailTemplate(name),
+        from_name: 'Liffey Founders Club',
         subject: '🎉 Welcome to Liffey Founders Club!',
-        html: this.getWelcomeEmailTemplate(name),
+        replyto: fromEmail,
       };
 
       const response = await fetch('https://api.web3forms.com/submit', {
