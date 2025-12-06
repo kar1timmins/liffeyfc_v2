@@ -1,68 +1,66 @@
 import { Injectable, Logger } from '@nestjs/common';
+import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
+  private transporter: nodemailer.Transporter | null = null;
 
   constructor() {
-    const accessKey = process.env.WEB3FORMS_ACCESS_KEY;
-    if (!accessKey) {
-      this.logger.warn('WEB3FORMS_ACCESS_KEY not configured - email sending disabled');
-    } else {
-      this.logger.log('Email service configured with Web3Forms');
+    this.initializeTransporter();
+  }
+
+  private initializeTransporter() {
+    const smtpHost = process.env.SMTP_HOST;
+    const smtpPort = process.env.SMTP_PORT;
+    const smtpUser = process.env.SMTP_USER;
+    const smtpPass = process.env.SMTP_PASS;
+
+    if (!smtpHost || !smtpPort || !smtpUser || !smtpPass) {
+      this.logger.warn('SMTP not fully configured - email sending disabled');
+      return;
+    }
+
+    try {
+      this.transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: parseInt(smtpPort),
+        secure: parseInt(smtpPort) === 465,
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 10000,
+      });
+
+      this.logger.log(`Email service configured with SMTP: ${smtpHost}:${smtpPort}`);
+    } catch (error) {
+      this.logger.error('Failed to initialize SMTP transporter:', error);
     }
   }
 
   /**
-   * Send password reset email via Web3Forms
+   * Send password reset email via SMTP
    */
   async sendPasswordResetEmail(to: string, resetUrl: string): Promise<boolean> {
-    const accessKey = process.env.WEB3FORMS_ACCESS_KEY;
-    if (!accessKey) {
-      this.logger.error('Cannot send email: WEB3FORMS_ACCESS_KEY not configured');
+    if (!this.transporter) {
+      this.logger.error('Cannot send email: SMTP transporter not initialized');
       return false;
     }
 
     const fromEmail = process.env.SMTP_USER || 'noreply@liffeyfoundersclub.com';
 
     try {
-      const payload = {
-        access_key: accessKey,
-        name: 'Liffey Founders Club',
-        email: to,
-        message: this.getPasswordResetEmailTemplate(resetUrl),
-        from_name: 'Liffey Founders Club',
+      await this.transporter.sendMail({
+        from: `"Liffey Founders Club" <${fromEmail}>`,
+        to,
         subject: '🔐 Password Reset Request - Liffey Founders Club',
-        replyto: fromEmail,
-      };
-
-      const response = await fetch('https://api.web3forms.com/submit', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'User-Agent': 'Mozilla/5.0 (compatible; LiffeyFC-Backend/1.0)',
-          'Origin': process.env.FRONTEND_URL || 'https://liffeyfoundersclub.com',
-        },
-        body: JSON.stringify(payload),
+        text: this.getPasswordResetEmailTemplate(resetUrl),
       });
 
-      // Check if response is JSON
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        this.logger.error(`Web3Forms returned non-JSON response (${response.status}): ${text.substring(0, 200)}`);
-        return false;
-      }
-
-      const result = await response.json();
-      
-      if (!response.ok || !result.success) {
-        this.logger.error(`Web3Forms submission failed for ${to}:`, result);
-        return false;
-      }
-
-      this.logger.log(`Password reset email sent to ${to} via Web3Forms`);
+      this.logger.log(`Password reset email sent to ${to}`);
       return true;
     } catch (error) {
       this.logger.error(`Failed to send password reset email to ${to}:`, error);
@@ -71,55 +69,25 @@ export class EmailService {
   }
 
   /**
-   * Send welcome email via Web3Forms
+   * Send welcome email via SMTP
    */
   async sendWelcomeEmail(to: string, name: string): Promise<boolean> {
-    const accessKey = process.env.WEB3FORMS_ACCESS_KEY;
-    if (!accessKey) {
-      this.logger.error('Cannot send email: WEB3FORMS_ACCESS_KEY not configured');
+    if (!this.transporter) {
+      this.logger.error('Cannot send email: SMTP transporter not initialized');
       return false;
     }
 
     const fromEmail = process.env.SMTP_USER || 'noreply@liffeyfoundersclub.com';
 
     try {
-      const payload = {
-        access_key: accessKey,
-        name: 'Liffey Founders Club',
-        email: to,
-        message: this.getWelcomeEmailTemplate(name),
-        from_name: 'Liffey Founders Club',
+      await this.transporter.sendMail({
+        from: `"Liffey Founders Club" <${fromEmail}>`,
+        to,
         subject: '🎉 Welcome to Liffey Founders Club!',
-        replyto: fromEmail,
-      };
-
-      const response = await fetch('https://api.web3forms.com/submit', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'User-Agent': 'Mozilla/5.0 (compatible; LiffeyFC-Backend/1.0)',
-          'Origin': process.env.FRONTEND_URL || 'https://liffeyfoundersclub.com',
-        },
-        body: JSON.stringify(payload),
+        text: this.getWelcomeEmailTemplate(name),
       });
 
-      // Check if response is JSON
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        this.logger.error(`Web3Forms returned non-JSON response (${response.status}): ${text.substring(0, 200)}`);
-        return false;
-      }
-
-      const result = await response.json();
-      
-      if (!response.ok || !result.success) {
-        this.logger.error(`Web3Forms submission failed for ${to}:`, result);
-        return false;
-      }
-
-      this.logger.log(`Welcome email sent to ${to} via Web3Forms`);
+      this.logger.log(`Welcome email sent to ${to}`);
       return true;
     } catch (error) {
       this.logger.error(`Failed to send welcome email to ${to}:`, error);
