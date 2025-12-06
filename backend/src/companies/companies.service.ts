@@ -64,6 +64,22 @@ export class CompaniesService {
     return companies.map(c => this.sanitizeCompany(c));
   }
 
+  /**
+   * Remove internal fields from company for owner's view
+   * Owner doesn't need to see ownerId (they know it's theirs)
+   */
+  private sanitizeOwnCompany(company: Company): Partial<Company> {
+    const { ownerId, owner, isActive, ...cleanCompany } = company;
+    return cleanCompany;
+  }
+
+  /**
+   * Sanitize array of owned companies
+   */
+  private sanitizeOwnCompanies(companies: Company[]): Partial<Company>[] {
+    return companies.map(c => this.sanitizeOwnCompany(c));
+  }
+
   async createCompany(userId: string, data: CreateCompanyDto): Promise<Company> {
     const user = await this.usersRepo.findOne({ where: { id: userId } });
     if (!user) {
@@ -105,12 +121,15 @@ export class CompaniesService {
     return this.sanitizeCompany(company);
   }
 
-  async getCompaniesByUser(userId: string): Promise<Company[]> {
-    return this.companiesRepo.find({ 
+  async getCompaniesByUser(userId: string): Promise<Partial<Company>[]> {
+    const companies = await this.companiesRepo.find({ 
       where: { ownerId: userId },
       relations: ['wishlistItems'],
       order: { createdAt: 'DESC' }
     });
+    
+    // Remove internal fields for owner's view
+    return this.sanitizeOwnCompanies(companies);
   }
 
   async getAllPublicCompanies(filters?: {

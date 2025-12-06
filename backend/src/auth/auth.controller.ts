@@ -393,11 +393,9 @@ export class AuthController {
       }
     }
     
-    // Remove sensitive data
-    const { passwordHash, ...userData } = user;
-    
-    // Add userType to the response (from user.role for consistency)
-    return { success: true, data: { ...userData, userType: user.role } };
+    // Return sanitized full profile (user accessing their own data)
+    const fullProfile = this.usersService.getFullProfile(user);
+    return { success: true, data: fullProfile };
   }
 
   /**
