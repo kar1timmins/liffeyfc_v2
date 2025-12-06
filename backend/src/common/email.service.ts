@@ -1,66 +1,56 @@
 import { Injectable, Logger } from '@nestjs/common';
-import * as nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private transporter: nodemailer.Transporter | null = null;
+  private resend: Resend | null = null;
 
   constructor() {
-    this.initializeTransporter();
+    this.initializeResend();
   }
 
-  private initializeTransporter() {
-    const smtpHost = process.env.SMTP_HOST;
-    const smtpPort = process.env.SMTP_PORT;
-    const smtpUser = process.env.SMTP_USER;
-    const smtpPass = process.env.SMTP_PASS;
+  private initializeResend() {
+    const apiKey = process.env.RESEND_API_KEY;
 
-    if (!smtpHost || !smtpPort || !smtpUser || !smtpPass) {
-      this.logger.warn('SMTP not fully configured - email sending disabled');
+    if (!apiKey) {
+      this.logger.warn('RESEND_API_KEY not configured - email sending disabled');
       return;
     }
 
     try {
-      this.transporter = nodemailer.createTransport({
-        host: smtpHost,
-        port: parseInt(smtpPort),
-        secure: parseInt(smtpPort) === 465,
-        auth: {
-          user: smtpUser,
-          pass: smtpPass,
-        },
-        connectionTimeout: 10000,
-        greetingTimeout: 10000,
-        socketTimeout: 10000,
-      });
-
-      this.logger.log(`Email service configured with SMTP: ${smtpHost}:${smtpPort}`);
+      this.resend = new Resend(apiKey);
+      this.logger.log('Email service configured with Resend');
     } catch (error) {
-      this.logger.error('Failed to initialize SMTP transporter:', error);
+      this.logger.error('Failed to initialize Resend:', error);
     }
   }
 
   /**
-   * Send password reset email via SMTP
+   * Send password reset email via Resend
    */
   async sendPasswordResetEmail(to: string, resetUrl: string): Promise<boolean> {
-    if (!this.transporter) {
-      this.logger.error('Cannot send email: SMTP transporter not initialized');
+    if (!this.resend) {
+      this.logger.error('Cannot send email: Resend not initialized');
       return false;
     }
 
-    const fromEmail = process.env.SMTP_USER || 'noreply@liffeyfoundersclub.com';
+    const fromEmail = process.env.EMAIL_FROM || 'noreply@liffeyfoundersclub.com';
 
     try {
-      await this.transporter.sendMail({
-        from: `"Liffey Founders Club" <${fromEmail}>`,
-        to,
+      const { data, error } = await this.resend.emails.send({
+        from: `Liffey Founders Club <${fromEmail}>`,
+        to: [to],
         subject: '🔐 Password Reset Request - Liffey Founders Club',
         text: this.getPasswordResetEmailTemplate(resetUrl),
       });
 
-      this.logger.log(`Password reset email sent to ${to}`);
+      if (error) {
+        this.logger.error(`Resend error for ${to}:`, error);
+        return false;
+      }
+
+      this.logger.log(`Password reset email sent to ${to} (ID: ${data?.id})`);
       return true;
     } catch (error) {
       this.logger.error(`Failed to send password reset email to ${to}:`, error);
@@ -69,25 +59,30 @@ export class EmailService {
   }
 
   /**
-   * Send welcome email via SMTP
+   * Send welcome email via Resend
    */
   async sendWelcomeEmail(to: string, name: string): Promise<boolean> {
-    if (!this.transporter) {
-      this.logger.error('Cannot send email: SMTP transporter not initialized');
+    if (!this.resend) {
+      this.logger.error('Cannot send email: Resend not initialized');
       return false;
     }
 
-    const fromEmail = process.env.SMTP_USER || 'noreply@liffeyfoundersclub.com';
+    const fromEmail = process.env.EMAIL_FROM || 'noreply@liffeyfoundersclub.com';
 
     try {
-      await this.transporter.sendMail({
-        from: `"Liffey Founders Club" <${fromEmail}>`,
-        to,
+      const { data, error } = await this.resend.emails.send({
+        from: `Liffey Founders Club <${fromEmail}>`,
+        to: [to],
         subject: '🎉 Welcome to Liffey Founders Club!',
         text: this.getWelcomeEmailTemplate(name),
       });
 
-      this.logger.log(`Welcome email sent to ${to}`);
+      if (error) {
+        this.logger.error(`Resend error for ${to}:`, error);
+        return false;
+      }
+
+      this.logger.log(`Welcome email sent to ${to} (ID: ${data?.id})`);
       return true;
     } catch (error) {
       this.logger.error(`Failed to send welcome email to ${to}:`, error);
