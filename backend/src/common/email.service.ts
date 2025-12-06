@@ -43,6 +43,14 @@ export class EmailService {
         body: JSON.stringify(payload),
       });
 
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        this.logger.error(`Web3Forms returned non-JSON response (${response.status}): ${text.substring(0, 200)}`);
+        return false;
+      }
+
       const result = await response.json();
       
       if (!response.ok || !result.success) {
@@ -87,6 +95,14 @@ export class EmailService {
         },
         body: JSON.stringify(payload),
       });
+
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        this.logger.error(`Web3Forms returned non-JSON response (${response.status}): ${text.substring(0, 200)}`);
+        return false;
+      }
 
       const result = await response.json();
       
