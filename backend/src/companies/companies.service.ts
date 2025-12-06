@@ -5,6 +5,7 @@ import { Company, CompanyStage, FundingStage } from '../entities/company.entity'
 import { WishlistItem, WishlistCategory, WishlistPriority } from '../entities/wishlist-item.entity';
 import { User } from '../entities/user.entity';
 import { UsersService } from '../users/users.service';
+import { WalletGenerationService } from '../web3/wallet-generation.service';
 
 export interface CreateCompanyDto {
   name: string;
@@ -46,6 +47,7 @@ export class CompaniesService {
     @InjectRepository(User)
     private usersRepo: Repository<User>,
     private usersService: UsersService,
+    private walletService: WalletGenerationService,
   ) {}
 
   /**
@@ -94,7 +96,20 @@ export class CompaniesService {
       owner: user,
     });
 
-    return this.companiesRepo.save(company);
+    const savedCompany = await this.companiesRepo.save(company);
+
+    // Auto-generate company wallet if user has a master wallet
+    try {
+      const hasMasterWallet = await this.walletService.hasMasterWallet(userId);
+      if (hasMasterWallet) {
+        await this.walletService.generateCompanyWallet(userId, savedCompany.id);
+      }
+    } catch (error) {
+      // Log but don't fail company creation if wallet generation fails
+      console.error('Failed to generate company wallet:', error);
+    }
+
+    return savedCompany;
   }
 
   async updateCompany(companyId: string, userId: string, data: UpdateCompanyDto): Promise<Company | null> {

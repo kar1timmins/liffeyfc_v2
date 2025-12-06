@@ -1,6 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, OneToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { User } from './user.entity';
 import { WishlistItem } from './wishlist-item.entity';
+import { CompanyWallet } from './company-wallet.entity';
 
 export enum CompanyStage {
   IDEA = 'idea',
@@ -85,6 +86,9 @@ export class Company {
 
   @OneToMany(() => WishlistItem, (item) => item.company)
   wishlistItems: WishlistItem[];
+
+  @OneToOne(() => CompanyWallet, (w: CompanyWallet) => w.company, { cascade: true })
+  companyWallet?: CompanyWallet;
 
   @CreateDateColumn()
   createdAt: Date;

@@ -1,8 +1,15 @@
 import { Module, Provider } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { Web3Controller } from './web3.controller';
+import { WalletController } from './wallet.controller';
 import { Web3Service } from './web3.service';
+import { WalletGenerationService } from './wallet-generation.service';
 import { NonceService } from './nonce.service';
 import { RedisNonceService } from './nonce.redis.service';
+import { UserWallet } from '../entities/user-wallet.entity';
+import { CompanyWallet } from '../entities/company-wallet.entity';
+import { User } from '../entities/user.entity';
+import { Company } from '../entities/company.entity';
 
 const nonceProvider: Provider = {
   provide: NonceService,
@@ -16,8 +23,11 @@ const nonceProvider: Provider = {
 };
 
 @Module({
-  controllers: [Web3Controller],
-  providers: [Web3Service, nonceProvider],
-  exports: [Web3Service, NonceService],
+  imports: [
+    TypeOrmModule.forFeature([UserWallet, CompanyWallet, User, Company]),
+  ],
+  controllers: [Web3Controller, WalletController],
+  providers: [Web3Service, WalletGenerationService, nonceProvider],
+  exports: [Web3Service, WalletGenerationService, NonceService],
 })
 export class Web3Module {}

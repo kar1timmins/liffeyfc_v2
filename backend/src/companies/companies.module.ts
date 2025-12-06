@@ -7,9 +7,13 @@ import { WishlistItem } from '../entities/wishlist-item.entity';
 import { User } from '../entities/user.entity';
 import { Wallet } from '../entities/wallet.entity';
 import { UsersService } from '../users/users.service';
+import { Web3Module } from '../web3/web3.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Company, WishlistItem, User, Wallet])],
+  imports: [
+    TypeOrmModule.forFeature([Company, WishlistItem, User, Wallet]),
+    Web3Module,
+  ],
   controllers: [CompaniesController],
   providers: [CompaniesService, UsersService],
   exports: [CompaniesService],

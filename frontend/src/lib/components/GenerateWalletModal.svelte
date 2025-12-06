@@ -1,272 +1,247 @@
 <script lang="ts">
-  import { walletStore } from '$lib/stores/walletStore';
-  import { authStore } from '$lib/stores/auth';
-  import { X, Wallet, Download, CheckCircle, AlertCircle, RefreshCw } from 'lucide-svelte';
-  import { Wallet as EthersWallet } from 'ethers';
+  import { Download, Copy, AlertTriangle, Check, X, Wallet } from 'lucide-svelte';
   import { PUBLIC_API_URL } from '$env/static/public';
-  
-  let { isOpen = $bindable(false) } = $props();
-  
-  let isGenerating = $state(false);
-  let error = $state<string | null>(null);
-  let generatedWallet = $state<{
-    address: string;
-    privateKey: string;
-    mnemonic: string;
-    chainName: string;
-    symbol: string;
-    chainId: string;
-  } | null>(null);
-  
-  const generationChains = [
-    {
-      chainId: '0x1',
-      chainName: 'Ethereum Mainnet',
-      symbol: 'ETH',
-      description: 'Securely generate an ETH wallet',
-    },
-    {
-      chainId: '0xa86a',
-      chainName: 'Avalanche C-Chain',
-      symbol: 'AVAX',
-      description: 'Native Avalanche C-Chain address',
-    },
-  ];
+  import { authStore } from '$lib/stores/auth';
 
-  let selectedChainId = $state(generationChains[0].chainId);
+  let { isOpen = $bindable(false) }: { isOpen: boolean } = $props();
+
+  let isGenerating = $state(false);
+  let walletData = $state<any>(null);
+  let copied = $state(false);
+  let error = $state<string | null>(null);
+  let hasAcknowledged = $state(false);
 
   async function generateWallet() {
     isGenerating = true;
     error = null;
-    generatedWallet = null;
 
     try {
-      const chain = generationChains.find(c => c.chainId === selectedChainId) || generationChains[0];
-      
-      // Create random wallet
-      const wallet = EthersWallet.createRandom();
-      
-      generatedWallet = {
-        address: wallet.address,
-        privateKey: wallet.privateKey,
-        mnemonic: wallet.mnemonic?.phrase || '',
-        chainName: chain.chainName,
-        symbol: chain.symbol,
-        chainId: chain.chainId
-      };
-      
-      // Automatically download keys
-      downloadKeys();
-      
-      // Store wallet address in backend database
-      await saveWalletToBackend(wallet.address, chain.chainId);
-      
-      // Adopt the wallet in the store
-      await walletStore.adoptWallet(wallet.address, chain.chainId);
-      
+      const token = $authStore.accessToken;
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`${PUBLIC_API_URL}/wallet/generate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        walletData = result.data;
+      } else {
+        error = result.message || 'Failed to generate wallet';
+      }
     } catch (err: any) {
-      console.error('Wallet generation failed', err);
-      error = err.message || 'Failed to generate wallet';
+      error = err.message || 'An error occurred';
     } finally {
       isGenerating = false;
     }
   }
 
-  async function saveWalletToBackend(address: string, chainId: string) {
-    try {
-      const token = $authStore.accessToken;
-      if (!token) {
-        console.warn('No access token available, wallet not saved to database');
-        return;
-      }
+  function downloadWallet() {
+    if (!walletData) return;
 
-      const response = await fetch(`${PUBLIC_API_URL}/users/attach-wallet`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ address, chainId })
-      });
+    const content = `LIFFEY FOUNDERS CLUB - MASTER WALLET
+========================================
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Failed to save wallet');
-      }
+⚠️  CRITICAL WARNING ⚠️
+${walletData.warning}
 
-      console.log('Wallet successfully saved to database');
-    } catch (err: any) {
-      console.error('Failed to save wallet to backend:', err);
-      // Don't throw - wallet generation succeeded, just database save failed
-      // User can still use the wallet
-    }
-  }
+Generated: ${new Date(walletData.createdAt).toLocaleString()}
 
-  function downloadKeys() {
-    if (!generatedWallet) return;
-    
-    const content = `Liffey Founders Club Web Wallet - ${generatedWallet.chainName}
-    
-Address: ${generatedWallet.address}
-Private Key: ${generatedWallet.privateKey}
-Mnemonic: ${generatedWallet.mnemonic}
+========================================
+ETHEREUM ADDRESS:
+${walletData.ethAddress}
 
-IMPORTANT: Store this file in a secure location. Do not share your private keys with anyone.
-These keys give full access to your funds on the ${generatedWallet.chainName}.
+AVALANCHE ADDRESS:
+${walletData.avaxAddress}
+
+========================================
+RECOVERY PHRASE (12 Words):
+${walletData.mnemonic}
+
+========================================
+PRIVATE KEY:
+${walletData.privateKey}
+
+========================================
+DERIVATION PATH:
+${walletData.derivationPath}
+
+========================================
+SECURITY REMINDERS:
+- NEVER share your private key or recovery phrase with anyone
+- Store this file in a secure, encrypted location
+- Consider using a hardware wallet for maximum security
+- Make multiple backups in different secure locations
+- Delete this file from unsecured devices after backing up
+========================================
 `;
 
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `liffeyfc-${generatedWallet.symbol.toLowerCase()}-keys.txt`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `lfc-master-wallet-${walletData.ethAddress.slice(0, 8)}.txt`;
+    a.click();
     URL.revokeObjectURL(url);
   }
-  
+
+  function copyMnemonic() {
+    if (!walletData) return;
+    navigator.clipboard.writeText(walletData.mnemonic);
+    copied = true;
+    setTimeout(() => copied = false, 2000);
+  }
+
   function closeModal() {
     isOpen = false;
-    // Reset state after closing (optional, maybe keep it if they want to see it again?)
-    // For security, maybe better to clear sensitive data
-    if (!isOpen) {
-        setTimeout(() => {
-            generatedWallet = null;
-            error = null;
-        }, 500);
-    }
-  }
-  
-  function handleBackdropClick(e: MouseEvent) {
-    if (e.target === e.currentTarget) {
-      closeModal();
-    }
+    walletData = null;
+    error = null;
+    hasAcknowledged = false;
   }
 </script>
 
-{#if isOpen}
-  <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-  <div 
-    class="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-sm"
-    onclick={handleBackdropClick}
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="generate-wallet-title"
-    tabindex="-1"
-  >
-    <div class="glass-subtle rounded-3xl p-6 md:p-8 max-w-md w-full mx-4 relative animate-fade-in border border-white/10">
-      <!-- Close button -->
-      <button
-        class="absolute top-4 right-4 btn btn-ghost btn-sm btn-circle"
-        onclick={closeModal}
-        aria-label="Close modal"
-      >
-        <X class="w-5 h-5" />
-      </button>
-      
-      <!-- Title -->
-      <h2 id="generate-wallet-title" class="text-2xl font-bold mb-2 flex items-center gap-3">
-        <Wallet class="w-7 h-7 text-primary" />
-        Generate Wallet
-      </h2>
-      <p class="text-sm opacity-80 mb-6">Create a new secure wallet for Web3 access</p>
-      
-      {#if generatedWallet}
-        <!-- Success State -->
-        <div class="bg-success/10 border border-success/30 rounded-2xl p-5 mb-6">
-          <div class="flex items-center gap-3 mb-3">
-            <CheckCircle class="w-6 h-6 text-success" />
-            <span class="font-bold text-success text-lg">Wallet Generated!</span>
+<dialog class="modal" class:modal-open={isOpen}>
+  <div class="modal-box max-w-2xl">
+    <h3 class="font-bold text-2xl flex items-center gap-2 mb-4">
+      <Wallet class="w-6 h-6 text-primary" />
+      Generate Master Wallet
+    </h3>
+
+    {#if !walletData}
+      <!-- Warning & Generation -->
+      <div class="space-y-4">
+        <div class="alert alert-warning">
+          <AlertTriangle class="w-5 h-5" />
+          <div class="flex-1">
+            <p class="font-semibold">Important Security Information</p>
+            <ul class="text-sm mt-2 space-y-1 list-disc list-inside">
+              <li>You can only generate ONE master wallet per account</li>
+              <li>Your recovery phrase and private key will be shown ONCE</li>
+              <li>You must download and securely store this information</li>
+              <li>Loss of this data means permanent loss of access to funds</li>
+              <li>Company wallets will be derived from this master wallet</li>
+            </ul>
           </div>
-          <p class="text-sm opacity-90 mb-4">
-            Your keys have been downloaded. Please keep them safe!
-          </p>
-          
-          <div class="bg-base-300/50 rounded-xl p-3 mb-4">
-            <div class="text-xs opacity-60 mb-1">Address</div>
-            <div class="font-mono text-sm break-all">{generatedWallet.address}</div>
-          </div>
-          
-          <button 
-            class="btn btn-outline btn-sm w-full gap-2"
-            onclick={downloadKeys}
-          >
-            <Download class="w-4 h-4" />
-            Download Keys Again
-          </button>
         </div>
-        
-        <button
-          class="btn btn-primary w-full"
-          onclick={closeModal}
-        >
-          Done
-        </button>
-      {:else}
-        <!-- Generation Form -->
-        <div class="space-y-4">
-          <div class="form-control">
-            <label class="label" for="chain-select">
-              <span class="label-text">Select Blockchain</span>
-            </label>
-            <select 
-              id="chain-select"
-              class="select select-bordered w-full"
-              bind:value={selectedChainId}
-              disabled={isGenerating}
-            >
-              {#each generationChains as chain}
-                <option value={chain.chainId}>{chain.chainName} ({chain.symbol})</option>
-              {/each}
-            </select>
-          </div>
-          
-          <div class="alert alert-info text-xs">
-            <AlertCircle class="w-4 h-4" />
-            <span>A text file with your private keys will be downloaded automatically.</span>
-          </div>
-          
-          <button
-            class="btn btn-primary w-full btn-lg mt-2"
-            onclick={generateWallet}
-            disabled={isGenerating}
-          >
-            {#if isGenerating}
-              <span class="loading loading-spinner"></span>
-              Generating...
-            {:else}
-              <RefreshCw class="w-5 h-5 mr-2" />
-              Generate Wallet
-            {/if}
-          </button>
+
+        <div class="form-control">
+          <label class="label cursor-pointer justify-start gap-3">
+            <input 
+              type="checkbox" 
+              class="checkbox checkbox-primary"
+              bind:checked={hasAcknowledged}
+            />
+            <span class="label-text">
+              I understand that I must securely store my wallet information and that it cannot be recovered if lost.
+            </span>
+          </label>
         </div>
-        
+
         {#if error}
-          <div class="alert alert-error mt-4 text-sm">
-            <AlertCircle class="w-4 h-4" />
+          <div class="alert alert-error">
             <span>{error}</span>
           </div>
         {/if}
-      {/if}
-    </div>
-  </div>
-{/if}
 
-<style>
-  .animate-fade-in {
-    animation: fadeIn 0.2s ease-out;
-  }
-  
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-</style>
+        <div class="modal-action">
+          <button class="btn btn-ghost" onclick={closeModal}>Cancel</button>
+          <button 
+            class="btn btn-primary"
+            disabled={!hasAcknowledged || isGenerating}
+            onclick={generateWallet}
+          >
+            {#if isGenerating}
+              <span class="loading loading-spinner loading-sm"></span>
+            {/if}
+            Generate Wallet
+          </button>
+        </div>
+      </div>
+    {:else}
+      <!-- Wallet Generated - Show Details -->
+      <div class="space-y-4">
+        <div class="alert alert-success">
+          <Check class="w-5 h-5" />
+          <span>Wallet generated successfully! Please download and store securely.</span>
+        </div>
+
+        <div class="alert alert-error">
+          <AlertTriangle class="w-5 h-5" />
+          <div>
+            <p class="font-semibold">⚠️ CRITICAL: This information will only be shown once!</p>
+            <p class="text-sm mt-1">Download your wallet file immediately. You will not be able to access this information again.</p>
+          </div>
+        </div>
+
+        <!-- Addresses -->
+        <div class="space-y-2">
+          <h4 class="font-semibold">Your Wallet Addresses:</h4>
+          <div class="bg-base-200 p-3 rounded">
+            <p class="text-xs opacity-70 mb-1">Ethereum (ETH)</p>
+            <code class="text-sm break-all">{walletData.ethAddress}</code>
+          </div>
+          <div class="bg-base-200 p-3 rounded">
+            <p class="text-xs opacity-70 mb-1">Avalanche (AVAX)</p>
+            <code class="text-sm break-all">{walletData.avaxAddress}</code>
+          </div>
+        </div>
+
+        <!-- Recovery Phrase -->
+        <div class="space-y-2">
+          <h4 class="font-semibold">Recovery Phrase (12 Words):</h4>
+          <div class="bg-base-200 p-4 rounded relative">
+            <div class="grid grid-cols-3 gap-2 mb-3">
+              {#each walletData.mnemonic.split(' ') as word, i}
+                <div class="badge badge-lg badge-outline">
+                  <span class="text-xs opacity-50 mr-1">{i + 1}.</span>
+                  {word}
+                </div>
+              {/each}
+            </div>
+            <button
+              class="btn btn-xs btn-ghost absolute top-2 right-2"
+              onclick={copyMnemonic}
+            >
+              {#if copied}
+                <Check class="w-3 h-3" />
+              {:else}
+                <Copy class="w-3 h-3" />
+              {/if}
+              {copied ? 'Copied!' : 'Copy'}
+            </button>
+          </div>
+        </div>
+
+        <!-- Download Button -->
+        <div class="card bg-primary text-primary-content">
+          <div class="card-body">
+            <h5 class="card-title text-sm">Download Your Wallet</h5>
+            <p class="text-xs opacity-90">
+              Click below to download a text file containing all your wallet information.
+              Store this file in a secure, encrypted location.
+            </p>
+            <button class="btn btn-sm btn-neutral" onclick={downloadWallet}>
+              <Download class="w-4 h-4" />
+              Download Wallet File
+            </button>
+          </div>
+        </div>
+
+        <div class="modal-action">
+          <button class="btn btn-primary" onclick={closeModal}>
+            I've Downloaded My Wallet
+          </button>
+        </div>
+      </div>
+    {/if}
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button onclick={closeModal}>close</button>
+  </form>
+</dialog>

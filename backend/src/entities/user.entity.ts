@@ -1,7 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, OneToOne } from 'typeorm';
 import { Wallet } from './wallet.entity';
 import { RefreshToken } from './refresh-token.entity';
 import { Company } from './company.entity';
+import { UserWallet } from './user-wallet.entity';
 
 /**
  * User Role Enum
@@ -83,6 +84,9 @@ export class User {
 
   @OneToMany(() => Company, (c: Company) => c.owner, { cascade: true })
   companies?: Company[];
+
+  @OneToOne(() => UserWallet, (w: UserWallet) => w.user, { cascade: true })
+  userWallet?: UserWallet;
 
   @CreateDateColumn()
   createdAt: Date;
