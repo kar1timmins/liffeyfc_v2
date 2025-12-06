@@ -83,20 +83,37 @@ export class UsersController {
         return { success: false, message: 'User not found' };
       }
 
-      // Delete old photo from GCP if it exists and is a file path (not signed URL)
-      if (currentUserData.profilePhotoUrl && !currentUserData.profilePhotoUrl.startsWith('http')) {
-        await this.gcpStorageService.deleteFile(currentUserData.profilePhotoUrl);
+      // Delete old photo from GCP if it exists
+      if (currentUserData.profilePhotoUrl) {
+        try {
+          // Extract the file path from either signed URL or direct path
+          let oldFilePath = currentUserData.profilePhotoUrl;
+          
+          // If it's a signed URL, extract the path from the URL
+          if (oldFilePath.startsWith('http')) {
+            const url = new URL(oldFilePath);
+            // GCS signed URLs have the path after the bucket name
+            const pathMatch = url.pathname.match(/\/[^\/]+\/(.*?)(\?|$)/);
+            if (pathMatch) {
+              oldFilePath = decodeURIComponent(pathMatch[1]);
+            }
+          }
+          
+          await this.gcpStorageService.deleteFile(oldFilePath);
+        } catch (deleteError) {
+          // Log but don't fail upload if deletion fails
+          console.error('Failed to delete old photo:', deleteError);
+        }
       }
 
-      // Generate unique filename
+      // Generate unique filename with user-specific folder
+      const userId = currentUser.sub;
       const randomName = uuidv4();
       const filename = `${randomName}${extname(file.originalname)}`;
+      const filePath = `avatars/${userId}/${filename}`;
 
-      // Upload to GCP
-      await this.gcpStorageService.uploadFile(file, `profiles_users/avatars/${filename}`);
-
-      // Store the file path (not signed URL) in database
-      const filePath = `profiles_users/avatars/${filename}`;
+      // Upload to GCP with user-specific path
+      await this.gcpStorageService.uploadFile(file, filePath);
       
       // Generate signed URL for immediate response
       const photoUrl = await this.gcpStorageService.generateSignedUrl(filePath);
