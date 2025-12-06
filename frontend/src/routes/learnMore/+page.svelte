@@ -963,7 +963,7 @@
 
 									<div class="flex justify-center">
 										<a
-											href="https://lu.ma/event/evt-Hs6RP2j7Bkc8jGQ"
+											href="https://luma.com/9vefsesm"
 											target="_blank"
 											rel="noopener noreferrer"
 											class="luma-checkout--button luma-cta btn glass-subtle btn-neon-adaptive btn-lg focus:ring-accent/50 flex transform items-center gap-3 rounded-full px-8 py-4 text-base shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-accent/20 focus:outline-none focus:ring-4 md:px-10 md:text-lg"
