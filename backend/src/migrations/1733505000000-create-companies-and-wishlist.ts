@@ -4,6 +4,9 @@ export class CreateCompaniesAndWishlist1733505000000 implements MigrationInterfa
   name = 'CreateCompaniesAndWishlist1733505000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    // Enable uuid-ossp extension if not already enabled
+    await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
+
     // Create companies table
     await queryRunner.query(`
       CREATE TABLE "companies" (
