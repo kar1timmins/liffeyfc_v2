@@ -10,6 +10,7 @@ import { Repository } from 'typeorm';
 import { RefreshToken } from '../entities/refresh-token.entity';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 
 @Injectable()
 export class AuthService {
@@ -264,5 +265,85 @@ export class AuthService {
     if (!user) throw new Error('Failed to create or attach wallet to user');
     const token = signJwt(user.id, user.role);
     return { user, token };
+  }
+
+  /**
+   * Request a password reset - generates a reset token and sends email
+   */
+  async requestPasswordReset(email: string): Promise<{ success: boolean; message: string }> {
+    const user = await this.usersService.findByEmail(email);
+    
+    // Always return success even if email doesn't exist (security best practice)
+    if (!user || !user.passwordHash) {
+      return { 
+        success: true, 
+        message: 'If an account with that email exists, a password reset link has been sent.' 
+      };
+    }
+
+    // Generate secure random token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = await bcrypt.hash(resetToken, 10);
+    
+    // Token expires in 1 hour
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 1);
+
+    // Save hashed token to user
+    await this.usersService.updateResetToken(user.id, hashedToken, expiresAt);
+
+    // Send email with reset link (email service will be called from controller)
+    return { 
+      success: true, 
+      message: 'If an account with that email exists, a password reset link has been sent.',
+      resetToken, // Return plain token to send in email
+      userId: user.id
+    } as any;
+  }
+
+  /**
+   * Validate a password reset token
+   */
+  async validateResetToken(token: string): Promise<{ valid: boolean; userId?: string }> {
+    const users = await this.usersService.findAll();
+    
+    for (const user of users) {
+      if (user.resetPasswordToken && user.resetPasswordExpires) {
+        // Check if token is expired
+        if (new Date() > user.resetPasswordExpires) {
+          continue;
+        }
+
+        // Check if token matches
+        const isValid = await bcrypt.compare(token, user.resetPasswordToken);
+        if (isValid) {
+          return { valid: true, userId: user.id };
+        }
+      }
+    }
+
+    return { valid: false };
+  }
+
+  /**
+   * Reset password using a valid token
+   */
+  async resetPassword(token: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+    const validation = await this.validateResetToken(token);
+    
+    if (!validation.valid || !validation.userId) {
+      throw new Error('Invalid or expired reset token');
+    }
+
+    // Hash new password
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    // Update password and clear reset token
+    await this.usersService.updatePassword(validation.userId, passwordHash);
+
+    return { 
+      success: true, 
+      message: 'Password has been reset successfully. You can now log in with your new password.' 
+    };
   }
 }

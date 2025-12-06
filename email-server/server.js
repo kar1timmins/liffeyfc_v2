@@ -479,6 +479,150 @@ app.get('/', (req, res) => {
     });
 });
 
+// Password reset email endpoint
+app.post('/send-password-reset', [
+    body('to').isEmail().normalizeEmail(),
+    body('resetUrl').trim().isLength({ min: 10, max: 500 })
+], async (req, res) => {
+    try {
+        // Check validation errors
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ 
+                success: false, 
+                errors: errors.array() 
+            });
+        }
+
+        // Check if SMTP is configured
+        if (!transporter) {
+            return res.status(503).json({
+                success: false,
+                message: 'SMTP not configured - password reset emails disabled'
+            });
+        }
+
+        const { to, resetUrl } = req.body;
+
+        // Create password reset email content
+        const resetEmailHTML = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px 20px; text-align: center; border-radius: 10px 10px 0 0; }
+                .content { background: #f9f9f9; padding: 30px 20px; }
+                .highlight { background: #fff; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #667eea; }
+                .button { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold; }
+                .footer { background: #333; color: #ccc; padding: 20px; text-align: center; border-radius: 0 0 10px 10px; font-size: 12px; }
+                .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; border-radius: 8px; margin: 15px 0; }
+                .code { font-family: 'Courier New', monospace; background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-size: 14px; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>🔐 Password Reset Request</h1>
+                    <p>Liffey Founders Club</p>
+                </div>
+                
+                <div class="content">
+                    <p>Hello,</p>
+                    
+                    <p>We received a request to reset your password for your Liffey Founders Club account.</p>
+                    
+                    <div class="highlight">
+                        <p style="text-align: center;">
+                            <a href="${resetUrl}" class="button">Reset Your Password</a>
+                        </p>
+                        <p style="text-align: center; font-size: 12px; color: #666;">
+                            Or copy and paste this link into your browser:<br>
+                            <span class="code">${resetUrl}</span>
+                        </p>
+                    </div>
+                    
+                    <div class="warning">
+                        <h3>⏰ Time Limit:</h3>
+                        <p>This password reset link will expire in <strong>1 hour</strong> for security reasons.</p>
+                    </div>
+                    
+                    <div class="warning">
+                        <h3>🔒 Security Notice:</h3>
+                        <p>If you didn't request this password reset, please ignore this email. Your password will remain unchanged.</p>
+                        <p>If you're concerned about your account security, please contact us immediately.</p>
+                    </div>
+                    
+                    <p>Best regards,<br>
+                    <strong>The Liffey Founders Club Team</strong></p>
+                </div>
+                
+                <div class="footer">
+                    <p>This email was sent because a password reset was requested for this account</p>
+                    <p>liffeyfoundersclub.com | Dublin, Ireland</p>
+                </div>
+            </div>
+        </body>
+        </html>`;
+
+        const resetEmailText = `Password Reset Request - Liffey Founders Club
+
+Hello,
+
+We received a request to reset your password for your Liffey Founders Club account.
+
+To reset your password, click the link below or copy and paste it into your browser:
+
+${resetUrl}
+
+Time Limit:
+This password reset link will expire in 1 hour for security reasons.
+
+Security Notice:
+If you didn't request this password reset, please ignore this email. Your password will remain unchanged.
+
+If you're concerned about your account security, please contact us immediately.
+
+Best regards,
+The Liffey Founders Club Team
+
+---
+This email was sent because a password reset was requested for this account
+liffeyfoundersclub.com | Dublin, Ireland`;
+
+        const mailOptions = {
+            from: `"Liffey Founders Club" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
+            to: to,
+            subject: '🔐 Password Reset Request - Liffey Founders Club',
+            text: resetEmailText,
+            html: resetEmailHTML
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+
+        console.log('✅ Password reset email sent:', {
+            messageId: info.messageId,
+            to: to,
+            timestamp: new Date().toISOString()
+        });
+
+        res.json({
+            success: true,
+            message: 'Password reset email sent successfully',
+            messageId: info.messageId
+        });
+    } catch (error) {
+        console.error('❌ Failed to send password reset email:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to send email',
+            error: error.message
+        });
+    }
+});
+
 // 404 handler
 app.use('*', (req, res) => {
     if (req.method === 'OPTIONS') {

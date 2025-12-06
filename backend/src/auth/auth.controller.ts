@@ -9,6 +9,8 @@ import { GcpStorageService } from '../common/gcp-storage.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { SiweVerifyDto } from './dto/siwe-verify.dto';
+import { RequestPasswordResetDto } from './dto/request-password-reset.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { CookieSecurityConfig } from '../config/cookie-security.config';
 import type { Response, Request } from 'express';
@@ -433,6 +435,122 @@ export class AuthController {
       success: true,
       data: stats,
     };
+  }
+
+  /**
+   * Request password reset
+   * Sends a password reset email to the user if the email exists
+   * Always returns success to prevent email enumeration
+   */
+  @Post('request-password-reset')
+  @Throttle({ default: { limit: 3, ttl: 900000 } }) // 3 requests per 15 minutes
+  async requestPasswordReset(
+    @Body() dto: RequestPasswordResetDto,
+    @Ip() ip: string,
+  ) {
+    try {
+      const result = await this.authService.requestPasswordReset(dto.email);
+      
+      // If we have a reset token, send email
+      if ((result as any).resetToken) {
+        const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${(result as any).resetToken}`;
+        
+        // Send email via email server
+        try {
+          await fetch(`${process.env.EMAIL_SERVER_URL || 'http://localhost:3001'}/send-password-reset`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: dto.email,
+              resetUrl,
+            }),
+          });
+        } catch (emailError) {
+          console.error('Failed to send password reset email:', emailError);
+          // Don't expose email sending failure to user
+        }
+      }
+
+      // Log security event
+      await this.securityMonitoring.logEvent({
+        type: SecurityEventType.PASSWORD_RESET_REQUEST,
+        userId: (result as any).userId || 'unknown',
+        ip,
+        timestamp: new Date(),
+      });
+
+      return {
+        success: true,
+        message: result.message,
+      };
+    } catch (error) {
+      return {
+        success: true,
+        message: 'If an account with that email exists, a password reset link has been sent.',
+      };
+    }
+  }
+
+  /**
+   * Reset password with token
+   * Validates the reset token and updates the user's password
+   */
+  @Post('reset-password')
+  @Throttle({ default: { limit: 5, ttl: 900000 } }) // 5 requests per 15 minutes
+  async resetPassword(
+    @Body() dto: ResetPasswordDto,
+    @Ip() ip: string,
+  ) {
+    try {
+      const result = await this.authService.resetPassword(dto.token, dto.newPassword);
+
+      // Log security event
+      await this.securityMonitoring.logEvent({
+        type: SecurityEventType.PASSWORD_RESET_SUCCESS,
+        userId: 'user-reset', // We don't have userId in DTO
+        ip,
+        timestamp: new Date(),
+      });
+
+      return {
+        success: true,
+        message: result.message,
+      };
+    } catch (error) {
+      // Log failed attempt
+      await this.securityMonitoring.logEvent({
+        type: SecurityEventType.PASSWORD_RESET_FAILED,
+        userId: 'unknown',
+        ip,
+        timestamp: new Date(),
+      });
+
+      throw new HttpException(
+        error.message || 'Failed to reset password',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  /**
+   * Validate reset token
+   * Checks if a password reset token is valid without actually resetting
+   */
+  @Post('validate-reset-token')
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute
+  async validateResetToken(@Body() body: { token: string }) {
+    try {
+      const result = await this.authService.validateResetToken(body.token);
+      return {
+        success: true,
+        valid: result.valid,
+      };
+    } catch (error) {
+      return {
+        success: true,
+        valid: false,
+      };
+    }
   }
 }
 

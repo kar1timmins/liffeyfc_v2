@@ -155,6 +155,14 @@
         {/if}
       </div>
 
+      {#if mode === 'login'}
+        <div class="text-center mt-2 mb-4">
+          <a href="/forgot-password" class="text-sm link link-primary">
+            Forgot your password?
+          </a>
+        </div>
+      {/if}
+
       <div class="flex items-center gap-3 mt-4">
         <button class="btn btn-primary" type="submit" disabled={loading}>{mode === 'login' ? 'Sign in' : 'Create account'}</button>
         <button type="button" class="btn btn-outline" on:click={handleGoogle}>Continue with Google</button>

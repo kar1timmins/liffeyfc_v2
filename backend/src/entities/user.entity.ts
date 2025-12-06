@@ -76,6 +76,13 @@ export class User {
   @Column({ type: 'varchar', nullable: true })
   providerId?: string; // OAuth provider ID
 
+  // Password reset fields
+  @Column({ type: 'varchar', nullable: true })
+  resetPasswordToken?: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  resetPasswordExpires?: Date;
+
   @OneToMany(() => Wallet, (w: Wallet) => w.user, { cascade: true })
   wallets?: Wallet[];
 

@@ -211,4 +211,32 @@ export class UsersService {
     }
     return user;
   }
+
+  /**
+   * Update password reset token
+   */
+  async updateResetToken(userId: string, hashedToken: string, expiresAt: Date): Promise<void> {
+    await this.usersRepo.update(userId, {
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: expiresAt,
+    } as any);
+  }
+
+  /**
+   * Update password and clear reset token
+   */
+  async updatePassword(userId: string, passwordHash: string): Promise<void> {
+    await this.usersRepo.update(userId, {
+      passwordHash,
+      resetPasswordToken: null,
+      resetPasswordExpires: null,
+    } as any);
+  }
+
+  /**
+   * Find all users (for token validation)
+   */
+  async findAll(): Promise<User[]> {
+    return this.usersRepo.find();
+  }
 }
