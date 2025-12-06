@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { CompaniesService, CreateCompanyDto, UpdateCompanyDto, CreateWishlistItemDto } from './companies.service';
+import { CompaniesService } from './companies.service';
+import type { CreateCompanyDto, UpdateCompanyDto, CreateWishlistItemDto } from './companies.service';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { CompanyStage, FundingStage } from '../entities/company.entity';
 
