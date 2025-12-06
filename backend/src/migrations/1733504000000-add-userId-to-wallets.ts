@@ -4,20 +4,26 @@ export class AddUserIdToWallets1733504000000 implements MigrationInterface {
   name = 'AddUserIdToWallets1733504000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // Add userId column to wallets table
-    await queryRunner.query(
-      `ALTER TABLE "wallets" ADD "userId" uuid`,
-    );
+    // Check if userId column already exists
+    const table = await queryRunner.getTable('wallets');
+    const userIdColumn = table?.findColumnByName('userId');
 
-    // Add foreign key constraint
-    await queryRunner.query(
-      `ALTER TABLE "wallets" ADD CONSTRAINT "FK_wallets_user" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
-    );
+    if (!userIdColumn) {
+      // Add userId column to wallets table
+      await queryRunner.query(
+        `ALTER TABLE "wallets" ADD "userId" uuid`,
+      );
 
-    // Create index on userId for better query performance
-    await queryRunner.query(
-      `CREATE INDEX "IDX_wallets_userId" ON "wallets" ("userId")`,
-    );
+      // Add foreign key constraint
+      await queryRunner.query(
+        `ALTER TABLE "wallets" ADD CONSTRAINT "FK_wallets_user" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+      );
+
+      // Create index on userId for better query performance
+      await queryRunner.query(
+        `CREATE INDEX "IDX_wallets_userId" ON "wallets" ("userId")`,
+      );
+    }
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
