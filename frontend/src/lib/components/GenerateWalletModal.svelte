@@ -114,7 +114,7 @@ SECURITY REMINDERS:
 </script>
 
 <dialog class="modal" class:modal-open={isOpen}>
-  <div class="modal-box max-w-2xl">
+  <div class="modal-box max-w-2xl max-h-[90vh] overflow-y-auto">
     <h3 class="font-bold text-2xl flex items-center gap-2 mb-4">
       <Wallet class="w-6 h-6 text-primary" />
       Generate Master Wallet
@@ -124,15 +124,30 @@ SECURITY REMINDERS:
       <!-- Warning & Generation -->
       <div class="space-y-4">
         <div class="alert alert-warning">
-          <AlertTriangle class="w-5 h-5" />
+          <AlertTriangle class="w-5 h-5 flex-shrink-0" />
           <div class="flex-1">
-            <p class="font-semibold">Important Security Information</p>
-            <ul class="text-sm mt-2 space-y-1 list-disc list-inside">
-              <li>You can only generate ONE master wallet per account</li>
-              <li>Your recovery phrase and private key will be shown ONCE</li>
-              <li>You must download and securely store this information</li>
-              <li>Loss of this data means permanent loss of access to funds</li>
-              <li>Company wallets will be derived from this master wallet</li>
+            <p class="font-semibold mb-3">Important Security Information</p>
+            <ul class="text-sm space-y-2 list-none">
+              <li class="flex items-start gap-2">
+                <span class="flex-shrink-0">⚠️</span>
+                <span>You can only generate ONE master wallet per account</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="flex-shrink-0">⚠️</span>
+                <span>Your recovery phrase and private key will be shown ONCE</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="flex-shrink-0">⚠️</span>
+                <span>You must download and securely store this information</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="flex-shrink-0">⚠️</span>
+                <span>Loss of this data means permanent loss of access to funds</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="flex-shrink-0">⚠️</span>
+                <span>Company wallets will be derived from this master wallet</span>
+              </li>
             </ul>
           </div>
         </div>

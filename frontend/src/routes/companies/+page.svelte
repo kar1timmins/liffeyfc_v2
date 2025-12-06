@@ -136,17 +136,17 @@
     <div class="glass-subtle rounded-2xl p-6 mb-8">
       <!-- Search Bar -->
       <div class="relative mb-6">
-        <Search class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+        <Search class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 opacity-50" />
         <input
           type="text"
           bind:value={searchQuery}
           placeholder="Search companies by name, description, industry, location, or tags..."
-          class="w-full pl-12 pr-12 py-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+          class="input input-bordered w-full pl-12 pr-12 text-base-content"
         />
         {#if searchQuery}
           <button
             onclick={clearSearch}
-            class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            class="absolute right-4 top-1/2 -translate-y-1/2 opacity-50 hover:opacity-100 transition-opacity"
           >
             <X class="w-5 h-5" />
           </button>
