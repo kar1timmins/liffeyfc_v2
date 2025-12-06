@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { User } from './user.entity';
 
 /**
@@ -19,7 +19,11 @@ export class Wallet {
   @Column({ type: 'varchar', nullable: true })
   chainId?: string;
 
+  @Column({ type: 'uuid', nullable: true })
+  userId?: string;
+
   // Simple relationship: wallet belongs to a user (any role)
   @ManyToOne(() => User, (u) => u.wallets, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'userId' })
   user: User;
 }
