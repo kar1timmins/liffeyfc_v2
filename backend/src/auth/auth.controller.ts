@@ -446,6 +446,7 @@ export class AuthController {
   @Throttle({ default: { limit: 3, ttl: 900000 } }) // 3 requests per 15 minutes
   async requestPasswordReset(
     @Body() dto: RequestPasswordResetDto,
+    @Req() req: Request,
     @Ip() ip: string,
   ) {
     try {
@@ -475,7 +476,9 @@ export class AuthController {
       await this.securityMonitoring.logEvent({
         type: SecurityEventType.PASSWORD_RESET_REQUEST,
         userId: (result as any).userId || 'unknown',
+        email: dto.email,
         ip,
+        userAgent: req.headers['user-agent'],
         timestamp: new Date(),
       });
 
@@ -499,6 +502,7 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 900000 } }) // 5 requests per 15 minutes
   async resetPassword(
     @Body() dto: ResetPasswordDto,
+    @Req() req: Request,
     @Ip() ip: string,
   ) {
     try {
@@ -509,6 +513,7 @@ export class AuthController {
         type: SecurityEventType.PASSWORD_RESET_SUCCESS,
         userId: 'user-reset', // We don't have userId in DTO
         ip,
+        userAgent: req.headers['user-agent'],
         timestamp: new Date(),
       });
 
@@ -522,6 +527,7 @@ export class AuthController {
         type: SecurityEventType.PASSWORD_RESET_FAILED,
         userId: 'unknown',
         ip,
+        userAgent: req.headers['user-agent'],
         timestamp: new Date(),
       });
 
