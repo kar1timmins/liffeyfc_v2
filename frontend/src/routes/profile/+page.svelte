@@ -3,7 +3,8 @@
   import { authStore } from '$lib/stores/auth';
   import { goto } from '$app/navigation';
   import { PUBLIC_API_URL } from '$env/static/public';
-  import { User, Mail, Briefcase, Building, Globe, Linkedin, CheckCircle, ArrowUpCircle, ArrowLeft, Camera } from 'lucide-svelte';
+  import { User, Mail, Briefcase, Building, Globe, Linkedin, CheckCircle, ArrowUpCircle, ArrowLeft, Camera, Wallet } from 'lucide-svelte';
+  import GenerateWalletModal from '$lib/components/GenerateWalletModal.svelte';
 
   let user: any = $state(null);
   let isLoading = $state(true);
@@ -11,6 +12,7 @@
   let isUpgrading = $state(false);
   let upgradeError = $state('');
   let upgradeSuccess = $state(false);
+  let showGenerateWalletModal = $state(false);
 
   // Avatar upload
   let fileInput: HTMLInputElement | undefined = $state();
@@ -189,6 +191,8 @@
     <p class="text-base-content/70">Manage your account information and preferences</p>
   </div>
 
+  <GenerateWalletModal bind:isOpen={showGenerateWalletModal} />
+
   {#if isLoading}
     <!-- Loading State -->
     <div class="card bg-base-100 shadow-lg">
@@ -310,6 +314,25 @@
               </div>
             </div>
           {/if}
+        </div>
+
+        <!-- Wallet Section -->
+        <div class="divider"></div>
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-lg font-semibold mb-1 flex items-center gap-2">
+              <Wallet size={18} class="text-primary" />
+              Web3 Wallet
+            </h3>
+            <p class="text-sm text-base-content/70">Manage your connected blockchain wallet</p>
+          </div>
+          <button 
+            class="btn btn-outline btn-primary gap-2"
+            onclick={() => showGenerateWalletModal = true}
+          >
+            <Wallet size={18} />
+            Generate New Wallet
+          </button>
         </div>
 
         <!-- Investment Focus (if investor) -->

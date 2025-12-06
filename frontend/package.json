@@ -55,6 +55,7 @@
 		"@web3modal/ethereum": "^2.7.1",
 		"@web3modal/html": "^2.7.1",
 		"daisyui": "^5.0.50",
+		"ethers": "^6.16.0",
 		"lucide-svelte": "^0.462.0"
 	}
 }

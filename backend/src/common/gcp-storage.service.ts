@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Storage } from '@google-cloud/storage';
 import { ConfigService } from '@nestjs/config';
 
@@ -6,66 +6,124 @@ import { ConfigService } from '@nestjs/config';
 export class GcpStorageService {
   private storage: Storage;
   private bucketName: string;
+  private readonly logger = new Logger(GcpStorageService.name);
+  private isConfigured: boolean = false;
 
   constructor(private configService: ConfigService) {
-    const projectId = this.configService.get<string>('GCP_PROJECT_ID');
-    const keyFilename = this.configService.get<string>('GCP_KEY_FILE_PATH');
+    try {
+      const projectId = this.configService.get<string>('GCP_PROJECT_ID');
+      const keyFilename = this.configService.get<string>('GCP_KEY_FILE_PATH') || 
+                          this.configService.get<string>('GCP_KEY_FILENAME');
+      const bucketName = this.configService.get<string>('GCP_BUCKET_NAME');
 
-    this.storage = new Storage({
-      projectId,
-      keyFilename: keyFilename || undefined, // Use ADC if not provided
-    });
+      if (!bucketName) {
+        this.logger.warn('GCP_BUCKET_NAME not configured. File uploads will fail.');
+        this.isConfigured = false;
+        return;
+      }
 
-    const bucketName = this.configService.get<string>('GCP_BUCKET_NAME');
-    if (!bucketName) {
-      throw new Error('GCP_BUCKET_NAME is required');
+      this.bucketName = bucketName;
+
+      // In production, prefer Application Default Credentials (ADC)
+      const nodeEnv = this.configService.get<string>('NODE_ENV');
+      if (nodeEnv === 'production' && !keyFilename) {
+        this.logger.log('Using Application Default Credentials (ADC) for GCP Storage');
+        this.storage = new Storage({ projectId });
+      } else if (keyFilename) {
+        this.logger.log(`Using key file: ${keyFilename}`);
+        this.storage = new Storage({
+          projectId,
+          keyFilename,
+        });
+      } else {
+        this.logger.log('Using Application Default Credentials (ADC) for GCP Storage');
+        this.storage = new Storage({ projectId });
+      }
+
+      this.isConfigured = true;
+      this.logger.log(`GCP Storage initialized for bucket: ${this.bucketName}`);
+    } catch (error) {
+      this.logger.error('Failed to initialize GCP Storage:', error);
+      this.isConfigured = false;
     }
-    this.bucketName = bucketName;
   }
 
   async uploadFile(file: Express.Multer.File, filename: string): Promise<string> {
-    const bucket = this.storage.bucket(this.bucketName);
-    const fileUpload = bucket.file(filename);
+    if (!this.isConfigured) {
+      throw new Error('GCP Storage is not configured. Please check environment variables.');
+    }
 
-    const stream = fileUpload.createWriteStream({
-      metadata: {
-        contentType: file.mimetype,
-      },
-    });
+    try {
+      const bucket = this.storage.bucket(this.bucketName);
+      const fileUpload = bucket.file(filename);
 
-    return new Promise((resolve, reject) => {
-      stream.on('error', reject);
-      stream.on('finish', () => {
-        resolve(`Uploaded ${filename}`);
+      const stream = fileUpload.createWriteStream({
+        metadata: {
+          contentType: file.mimetype,
+        },
+        resumable: false, // Faster for small files
       });
-      stream.end(file.buffer);
-    });
+
+      return new Promise((resolve, reject) => {
+        stream.on('error', (error) => {
+          this.logger.error(`Failed to upload ${filename}:`, error);
+          reject(error);
+        });
+        stream.on('finish', () => {
+          this.logger.log(`Successfully uploaded ${filename}`);
+          resolve(`Uploaded ${filename}`);
+        });
+        stream.end(file.buffer);
+      });
+    } catch (error) {
+      this.logger.error(`Upload error for ${filename}:`, error);
+      throw error;
+    }
   }
 
   async deleteFile(filename: string): Promise<void> {
+    if (!this.isConfigured) {
+      this.logger.warn('GCP Storage not configured, skipping file deletion');
+      return;
+    }
+
     const bucket = this.storage.bucket(this.bucketName);
     const file = bucket.file(filename);
 
     try {
       await file.delete();
+      this.logger.log(`Deleted file: ${filename}`);
     } catch (error) {
       // If file doesn't exist, that's fine - don't throw error
-      if (error.code !== 404) {
+      if (error.code === 404) {
+        this.logger.debug(`File not found (already deleted): ${filename}`);
+      } else {
+        this.logger.error(`Failed to delete ${filename}:`, error);
         throw error;
       }
     }
   }
 
   async generateSignedUrl(filename: string, expiresIn: number = 7 * 24 * 60 * 60 * 1000): Promise<string> {
-    const bucket = this.storage.bucket(this.bucketName);
-    const file = bucket.file(filename);
+    if (!this.isConfigured) {
+      throw new Error('GCP Storage is not configured. Cannot generate signed URL.');
+    }
 
-    const [url] = await file.getSignedUrl({
-      version: 'v4',
-      action: 'read',
-      expires: Date.now() + expiresIn, // Default 7 days (GCP maximum)
-    });
+    try {
+      const bucket = this.storage.bucket(this.bucketName);
+      const file = bucket.file(filename);
 
-    return url;
+      const [url] = await file.getSignedUrl({
+        version: 'v4',
+        action: 'read',
+        expires: Date.now() + expiresIn, // Default 7 days (GCP maximum)
+      });
+
+      this.logger.debug(`Generated signed URL for: ${filename}`);
+      return url;
+    } catch (error) {
+      this.logger.error(`Failed to generate signed URL for ${filename}:`, error);
+      throw error;
+    }
   }
 }

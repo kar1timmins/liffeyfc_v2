@@ -1,0 +1,16 @@
+{
+  "name": "liffeyfc-hardhat",
+  "version": "0.0.1",
+  "description": "Hardhat project for Liffey Founders Club",
+  "scripts": {
+    "test": "hardhat test"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.0",
+    "ethers": "^6.13.0",
+    "chai": "^4.3.7",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  }
+}

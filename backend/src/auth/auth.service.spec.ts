@@ -19,6 +19,11 @@ describe('AuthService (unit)', () => {
   let web3: Partial<Web3Service>;
   let refreshRepo: Partial<Repository<any>>;
 
+  beforeAll(() => {
+    // Set JWT_SECRET for tests
+    process.env.JWT_SECRET = 'test-secret-key-for-unit-tests-minimum-32-bytes-long';
+  });
+
   beforeEach(() => {
     usersService = {
       findByWallet: jest.fn().mockResolvedValue(null),

@@ -113,7 +113,7 @@
           Disconnect Wallet
         </button>
       {:else}
-        <!-- Connect Options -->
+                <!-- Connect Options -->
         <div class="space-y-3">
           <!-- MetaMask -->
           <button
@@ -156,6 +156,8 @@
             </div>
           </div>
         </div>
+        
+        <!-- Error Message -->
         
         <!-- Error Message -->
         {#if error}

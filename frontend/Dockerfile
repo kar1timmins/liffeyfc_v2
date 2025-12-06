@@ -3,11 +3,14 @@
 FROM node:20-alpine AS runner
 WORKDIR /app
 
+# Install pnpm
+RUN npm install -g pnpm
+
 # Copy package files
-COPY package.json package-lock.json ./
+COPY package.json pnpm-lock.yaml ./
 
 # Install dependencies
-RUN npm ci
+RUN pnpm install --frozen-lockfile
 
 # Copy source code
 COPY . .
@@ -16,4 +19,4 @@ COPY . .
 EXPOSE 5173
 
 # Run SvelteKit dev server
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
+CMD ["pnpm", "dev", "--host", "0.0.0.0", "--port", "5173"]

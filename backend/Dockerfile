@@ -1,32 +1,35 @@
 # Use Node 20 Alpine for smaller image
 FROM node:20-alpine AS base
 
+# Install pnpm
+RUN npm install -g pnpm
+
 # Production dependencies stage
 FROM base AS deps
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+COPY package.json pnpm-lock.yaml ./
 # Install prod dependencies + typeorm/ts-node for migrations (as prod deps, not dev)
-RUN npm ci --only=production && \
-    npm install typeorm ts-node @types/node typescript tslib
+RUN pnpm install --prod --frozen-lockfile && \
+    pnpm add typeorm ts-node @types/node typescript tslib
 
 # Build stage
 FROM base AS builder
 WORKDIR /app
 
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 
 COPY . .
-RUN npm run build
+RUN pnpm run build
 
 # Development stage (for docker-compose)
 FROM base AS dev
 WORKDIR /app
 
 # Install all dependencies (including dev dependencies)
-COPY package.json package-lock.json ./
-RUN npm install --legacy-peer-deps
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 
 # Copy source code
 COPY . .
@@ -37,7 +40,7 @@ ENV NODE_ENV=development
 EXPOSE 3000
 
 # Run in watch mode for development
-CMD ["npm", "run", "start:dev"]
+CMD ["pnpm", "run", "start:dev"]
 
 # Production stage
 FROM base AS runner

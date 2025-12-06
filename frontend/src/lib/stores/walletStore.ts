@@ -110,6 +110,51 @@ function createWalletStore() {
       }
     },
 
+    adoptWallet: async (address: string, chainId: string) => {
+      update(state => ({ ...state, isConnecting: true, error: null }));
+
+      try {
+        // Send connection info to backend
+        const response = await fetch(`${API_BASE_URL}/web3/connect`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ address, chainId }),
+        });
+
+        const result = await response.json();
+
+        if (!result.success) {
+          throw new Error(result.message || 'Failed to connect wallet');
+        }
+
+        // Update store with connection info
+        update(state => ({
+          ...state,
+          address: result.data.address,
+          chainId: result.data.chainId,
+          chainName: result.data.chainName,
+          isConnected: true,
+          isConnecting: false,
+          error: null,
+        }));
+
+        // Fetch balance
+        await walletStore.fetchBalance();
+
+        return result.data;
+      } catch (error: any) {
+        console.error('Error adopting wallet:', error);
+        update(state => ({
+          ...state,
+          isConnecting: false,
+          error: error.message || 'Failed to adopt wallet',
+        }));
+        throw error;
+      }
+    },
+
     disconnect: () => {
       set(initialState);
       localStorage.removeItem('walletConnected');
