@@ -18,6 +18,8 @@ export interface CreateCompanyDto {
   foundedDate?: string;
   linkedinUrl?: string;
   twitterUrl?: string;
+  ethAddress?: string;
+  avaxAddress?: string;
   tags?: string[];
 }
 

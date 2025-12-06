@@ -10,8 +10,8 @@
   let wishlistItems = $state<any[]>([]);
   let isLoading = $state(true);
   let error = $state<string | null>(null);
-  let showEthAddress = $state(false);
-  let showAvaxAddress = $state(false);
+  let showEthAddress = $state(true);
+  let showAvaxAddress = $state(true);
   let sendAmount = $state('');
   let selectedChain = $state<'eth' | 'avax' | null>(null);
   let isSending = $state(false);
@@ -290,11 +290,11 @@
         <div class="glass-subtle rounded-2xl p-6 mb-6">
           <div class="flex items-center gap-3 mb-6">
             <Wallet class="w-6 h-6 text-primary" />
-            <h2 class="text-2xl font-bold">Company Wallet</h2>
+            <h2 class="text-2xl font-bold">Support This Company</h2>
           </div>
 
           <p class="opacity-80 mb-6">
-            Support this company by sending funds directly to their wallet.
+            Send cryptocurrency directly to this company's wallet. All transactions are processed securely through MetaMask.
           </p>
 
           <div class="space-y-4">
@@ -482,7 +482,10 @@
 
           {#if !$authStore.isAuthenticated}
             <div class="alert alert-info mt-4">
-              <span>Sign in to send funds to this company</span>
+              <div class="flex flex-col gap-2">
+                <span class="font-semibold">Want to send funds?</span>
+                <span class="text-sm">You can copy the wallet address above and send funds using any crypto wallet, or sign in to send directly through MetaMask.</span>
+              </div>
             </div>
           {/if}
         </div>
