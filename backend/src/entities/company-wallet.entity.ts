@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToOne, JoinColumn, CreateDateColumn } from 'typeorm';
 import { Company } from './company.entity';
 import { UserWallet } from './user-wallet.entity';
 
@@ -38,7 +38,7 @@ export class CompanyWallet {
   @Column({ type: 'int' })
   childIndex: number;
 
-  @ManyToOne(() => Company, { onDelete: 'CASCADE' })
+  @OneToOne(() => Company, (c) => c.companyWallet, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'companyId' })
   company: Company;
 

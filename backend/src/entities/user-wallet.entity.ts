@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { User } from './user.entity';
 
 /**
@@ -38,7 +38,7 @@ export class UserWallet {
   @Column({ type: 'int', default: 0 })
   nextChildIndex: number;
 
-  @ManyToOne(() => User, (user) => user.userWallet, { onDelete: 'CASCADE' })
+  @OneToOne(() => User, (user) => user.userWallet, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })
   user: User;
 
