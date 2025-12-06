@@ -6,6 +6,7 @@ import { TokenCleanupService } from './token-cleanup.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { UsersService } from '../users/users.service';
 import { GcpStorageService } from '../common/gcp-storage.service';
+import { EmailService } from '../common/email.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { SiweVerifyDto } from './dto/siwe-verify.dto';
@@ -22,6 +23,7 @@ export class AuthController {
     private authService: AuthService, 
     private usersService: UsersService,
     private gcpStorageService: GcpStorageService,
+    private emailService: EmailService,
     private securityMonitoring: SecurityMonitoringService,
     private tokenCleanupService: TokenCleanupService,
   ) {
@@ -456,16 +458,9 @@ export class AuthController {
       if ((result as any).resetToken) {
         const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${(result as any).resetToken}`;
         
-        // Send email via email server
+        // Send email via SMTP
         try {
-          await fetch(`${process.env.EMAIL_SERVER_URL || 'http://localhost:3001'}/send-password-reset`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              to: dto.email,
-              resetUrl,
-            }),
-          });
+          await this.emailService.sendPasswordResetEmail(dto.email, resetUrl);
         } catch (emailError) {
           console.error('Failed to send password reset email:', emailError);
           // Don't expose email sending failure to user

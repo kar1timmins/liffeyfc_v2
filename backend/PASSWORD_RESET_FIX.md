@@ -1,28 +1,56 @@
-# Password Reset Email Bug Fix
+# Password Reset Email Bug Fix & SMTP Integration
 
 ## Issue Summary
-Password reset functionality was failing with two issues:
+Password reset functionality was failing with multiple issues:
 1. **Email field undefined in security logs**: The `email` and `userAgent` fields were missing from security event logs
-2. **ECONNREFUSED error**: Connection to email server failing
+2. **ECONNREFUSED error**: Connection to email server failing (email-server service not deployed)
+3. **Unnecessary architecture complexity**: Separate email-server service added extra network hop and deployment complexity
 
-## Root Causes
+## Solution: Direct SMTP Integration
 
-### 1. Missing Request Parameter
-The `requestPasswordReset` and `resetPassword` methods were missing the `@Req() req: Request` parameter decorator, which is needed to access HTTP request headers (specifically `user-agent`).
-
-### 2. Missing Security Event Fields
-Security event logs for password reset were not including:
-- `email`: The user's email address
-- `userAgent`: The browser/client user agent string
-
-### 3. Email Server Configuration
-The `EMAIL_SERVER_URL` environment variable was not documented in `.env.example`, and may not be configured in production.
+Instead of using a separate email-server service, we now send emails **directly from the backend using nodemailer** with Zoho Mail SMTP. This approach:
+- ✅ Eliminates the extra network hop and potential connection failures
+- ✅ Reduces deployment complexity (one less service to manage)
+- ✅ Uses the existing SMTP credentials already configured for Zoho Mail
+- ✅ Provides better error handling and logging
+- ✅ More reliable and performant
 
 ## Changes Made
 
-### `/backend/src/auth/auth.controller.ts`
+### New Files
+
+#### `/backend/src/common/email.service.ts`
+Created a new EmailService with:
+- **SMTP configuration** using nodemailer with Zoho Mail
+- **sendPasswordResetEmail()** method for password reset emails
+- **sendWelcomeEmail()** method for new user registration (future use)
+- **HTML email templates** matching the email-server design
+- **Error handling** with detailed logging
+- **Graceful degradation** if SMTP is not configured
+
+### Modified Files
+
+#### `/backend/src/auth/auth.controller.ts`
+
+**Imports - Added:**
+```typescript
+import { EmailService } from '../common/email.service';
+```
+
+**Constructor - Added EmailService injection:**
+```typescript
+constructor(
+  private authService: AuthService, 
+  private usersService: UsersService,
+  private gcpStorageService: GcpStorageService,
+  private emailService: EmailService,  // Added
+  private securityMonitoring: SecurityMonitoringService,
+  private tokenCleanupService: TokenCleanupService,
+)
+```
 
 #### `requestPasswordReset` method
+
 **Before:**
 ```typescript
 async requestPasswordReset(
@@ -38,6 +66,33 @@ async requestPasswordReset(
   @Req() req: Request,  // Added
   @Ip() ip: string,
 )
+```
+
+**Email sending - Before:**
+```typescript
+// Send email via email server
+try {
+  await fetch(`${process.env.EMAIL_SERVER_URL || 'http://localhost:3001'}/send-password-reset`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      to: dto.email,
+      resetUrl,
+    }),
+  });
+} catch (emailError) {
+  console.error('Failed to send password reset email:', emailError);
+}
+```
+
+**Email sending - After:**
+```typescript
+// Send email via SMTP
+try {
+  await this.emailService.sendPasswordResetEmail(dto.email, resetUrl);
+} catch (emailError) {
+  console.error('Failed to send password reset email:', emailError);
+}
 ```
 
 **Security Log - Before:**
@@ -82,41 +137,82 @@ async resetPassword(
 
 **Security Logs - Added `userAgent` to both success and failure events**
 
+#### `/backend/src/common/common.module.ts`
+Added EmailService to module:
+```typescript
+import { EmailService } from './email.service';
+
+@Module({
+  imports: [ConfigModule],
+  providers: [GcpStorageService, EmailService],  // Added EmailService
+  exports: [GcpStorageService, EmailService],    // Added EmailService
+})
+```
+
 ### `/backend/.env.example`
-Added documentation for email server configuration:
+**Replaced email-server config with SMTP config:**
 ```bash
-# Email Server Configuration (for password reset emails)
-EMAIL_SERVER_URL=http://localhost:3001
-# For production, set to your deployed email server URL (e.g., https://email-server.railway.app)
+# SMTP Configuration (Zoho Mail for email sending)
+SMTP_HOST=smtp.zoho.com
+SMTP_PORT=587
+SMTP_USER=info@liffeyfoundersclub.com
+SMTP_PASS=your_app_specific_password_here
 
 # Frontend URL (for password reset links in emails)
 FRONTEND_URL=http://localhost:5173
-# For production, set to your deployed frontend URL (e.g., https://liffeyfc.com)
+# For production, set to your deployed frontend URL (e.g., https://liffeyfoundersclub.com)
+```
+
+### `/backend/package.json`
+Added dependencies:
+```json
+{
+  "dependencies": {
+    "nodemailer": "^7.0.11"
+  },
+  "devDependencies": {
+    "@types/nodemailer": "^7.0.4"
+  }
+}
 ```
 
 ## Deployment Checklist
 
-### For Production Deployment
+### For Production Deployment (Railway)
 
-1. **Set Environment Variables**
+1. **Set SMTP Environment Variables**
    ```bash
-   # On Railway or your hosting platform
-   EMAIL_SERVER_URL=https://your-email-server-url.railway.app
-   FRONTEND_URL=https://liffeyfc.com
+   # On Railway, set these environment variables:
+   SMTP_HOST=smtp.zoho.com
+   SMTP_PORT=587
+   SMTP_USER=info@liffeyfoundersclub.com
+   SMTP_PASS=your_zoho_app_specific_password
+   FRONTEND_URL=https://liffeyfoundersclub.com
    ```
 
-2. **Verify Email Server is Running**
-   - Check that your email-server service is deployed and accessible
-   - Test the `/send-password-reset` endpoint manually if needed
-   - Verify SMTP credentials are configured correctly in email-server
+2. **Generate Zoho App-Specific Password** (if not already done)
+   - Log in to Zoho Mail
+   - Go to Settings → Security → App Passwords
+   - Generate a new app password for "LFC Backend"
+   - Use this password for `SMTP_PASS` (not your regular Zoho password)
 
-3. **Test Password Reset Flow**
+3. **Deploy Backend**
+   ```bash
+   git push origin main
+   # Railway will auto-deploy
+   ```
+
+4. **Verify SMTP Configuration**
+   - Check Railway logs for: "SMTP configured: smtp.zoho.com:587 (info@liffeyfoundersclub.com)"
+   - If you see "SMTP configuration incomplete", check environment variables
+
+5. **Test Password Reset Flow**
    - Request password reset from frontend
    - Check backend logs for security events with email and userAgent
-   - Verify email is received
+   - Verify email is received in inbox
    - Test reset link and password update
 
-4. **Monitor Security Logs**
+6. **Monitor Security Logs**
    - Security events should now include complete information:
      - `email`: User's email address
      - `userAgent`: Browser/client information
@@ -126,25 +222,66 @@ FRONTEND_URL=http://localhost:5173
 
 ## Testing Locally
 
-1. **Start Email Server**
-   ```bash
-   cd /home/karlitoyo/Development/liffeyfc/liffeyfc_v2/email-server
-   pnpm dev
-   ```
-
-2. **Set Environment Variables**
+1. **Set Environment Variables**
    ```bash
    # In backend/.env
-   EMAIL_SERVER_URL=http://localhost:3001
+   SMTP_HOST=smtp.zoho.com
+   SMTP_PORT=587
+   SMTP_USER=info@liffeyfoundersclub.com
+   SMTP_PASS=your_zoho_app_password
    FRONTEND_URL=http://localhost:5173
    ```
 
-3. **Test Password Reset**
+2. **Start Backend**
+   ```bash
+   cd backend
+   pnpm start:dev
+   ```
+
+3. **Check Logs for SMTP Configuration**
+   - Look for: `[EmailService] SMTP configured: smtp.zoho.com:587 (info@liffeyfoundersclub.com)`
+   - If not present, verify environment variables are set
+
+4. **Test Password Reset**
    - Go to frontend login page
    - Click "Forgot Password"
    - Enter email and submit
-   - Check email-server logs for email sending
-   - Check backend logs for security event with all fields
+   - Check backend logs for:
+     - Security event with email and userAgent
+     - "Password reset email sent to [email]"
+   - Check inbox for password reset email
+
+## Architecture Benefits
+
+### Before (Separate email-server)
+```
+Frontend → Backend → fetch(EMAIL_SERVER_URL) → Email Server → SMTP → Zoho Mail → User
+```
+**Issues:**
+- Extra network hop (potential connection failures)
+- Two services to deploy and monitor
+- ECONNREFUSED errors if email-server is down
+- More complex deployment and configuration
+
+### After (Direct SMTP)
+```
+Frontend → Backend → nodemailer → SMTP → Zoho Mail → User
+```
+**Benefits:**
+- ✅ One less service to deploy and maintain
+- ✅ Direct SMTP connection (more reliable)
+- ✅ Better error handling and logging
+- ✅ Faster email delivery (no extra hop)
+- ✅ Simpler configuration (just SMTP env vars)
+
+## Email-Server Service
+
+The email-server service (in `/email-server/`) is now **optional** and can be:
+- **Kept** if you want to use it for other purposes (contact forms, notifications, etc.)
+- **Removed** if all email sending is done via backend SMTP
+- **Repurposed** as a webhook receiver or other utility service
+
+The backend is now self-sufficient for password reset emails.
 
 ## Security Benefits
 
@@ -153,9 +290,16 @@ The enhanced security logging now provides:
 - **Threat detection**: Ability to identify suspicious patterns (multiple attempts from same IP, different user agents, etc.)
 - **Compliance**: Better logging for security audits and compliance requirements
 - **Debugging**: Easier to troubleshoot password reset issues with complete context
+- **Direct control**: Email sending is part of the backend service (no external dependencies)
 
-## Related Files
-- `/backend/src/auth/auth.controller.ts` - Password reset endpoints
-- `/backend/src/auth/security-monitoring.service.ts` - Security event logging
-- `/backend/src/auth/dto/request-password-reset.dto.ts` - DTO validation
-- `/backend/.env.example` - Environment variable documentation
+## Future Enhancements
+
+The EmailService can be extended for:
+- **Welcome emails** on new user registration (method already implemented)
+- **Event notifications** for upcoming club events
+- **Password change confirmations**
+- **Account verification emails**
+- **Newsletter subscriptions**
+- **Donation confirmations** (for wishlist donations)
+
+All using the same SMTP configuration and email templates.
