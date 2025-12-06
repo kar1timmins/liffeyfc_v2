@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
-  import { Building2, MapPin, Users, TrendingUp, DollarSign, Calendar, Globe, Linkedin, Twitter, Target, CheckCircle, Circle, ArrowLeft } from 'lucide-svelte';
+  import { Building2, MapPin, Users, TrendingUp, DollarSign, Calendar, Globe, Linkedin, Twitter, Target, CheckCircle, Circle, ArrowLeft, Wallet, Eye, EyeOff, Copy, Send } from 'lucide-svelte';
   import { PUBLIC_API_URL } from '$env/static/public';
   import { authStore } from '$lib/stores/auth';
 
@@ -10,6 +10,13 @@
   let wishlistItems = $state<any[]>([]);
   let isLoading = $state(true);
   let error = $state<string | null>(null);
+  let showEthAddress = $state(false);
+  let showAvaxAddress = $state(false);
+  let sendAmount = $state('');
+  let selectedChain = $state<'eth' | 'avax' | null>(null);
+  let isSending = $state(false);
+  let sendSuccess = $state<string | null>(null);
+  let sendError = $state<string | null>(null);
 
   const companyId = $derived($page.params.id);
 
@@ -69,6 +76,66 @@
 
   function goBack() {
     goto('/companies');
+  }
+
+  function copyAddress(address: string) {
+    navigator.clipboard.writeText(address);
+  }
+
+  function maskAddress(address: string): string {
+    if (!address) return '';
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  }
+
+  async function sendFunds(chain: 'eth' | 'avax') {
+    if (!sendAmount || parseFloat(sendAmount) <= 0) {
+      sendError = 'Please enter a valid amount';
+      return;
+    }
+
+    const toAddress = chain === 'eth' ? company.ethAddress : company.avaxAddress;
+    if (!toAddress) {
+      sendError = `No ${chain.toUpperCase()} address found for this company`;
+      return;
+    }
+
+    if (typeof window === 'undefined' || !window.ethereum) {
+      sendError = 'MetaMask not detected. Please install MetaMask to send funds.';
+      return;
+    }
+
+    isSending = true;
+    sendError = null;
+    sendSuccess = null;
+
+    try {
+      // Request account access
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      if (!accounts || accounts.length === 0) {
+        throw new Error('No accounts found');
+      }
+
+      // Convert amount to Wei (assuming ETH/AVAX)
+      const amountInWei = '0x' + (parseFloat(sendAmount) * 1e18).toString(16);
+
+      // Send transaction
+      const txHash = await window.ethereum.request({
+        method: 'eth_sendTransaction',
+        params: [{
+          from: accounts[0],
+          to: toAddress,
+          value: amountInWei,
+        }],
+      });
+
+      sendSuccess = `Transaction sent! Hash: ${txHash}`;
+      sendAmount = '';
+      selectedChain = null;
+    } catch (err: any) {
+      sendError = err.message || 'Transaction failed';
+    } finally {
+      isSending = false;
+    }
   }
 </script>
 
@@ -215,6 +282,209 @@
               <span class="badge badge-lg badge-outline">{tag}</span>
             {/each}
           </div>
+        </div>
+      {/if}
+
+      <!-- Wallet Addresses -->
+      {#if company.ethAddress || company.avaxAddress}
+        <div class="glass-subtle rounded-2xl p-6 mb-6">
+          <div class="flex items-center gap-3 mb-6">
+            <Wallet class="w-6 h-6 text-primary" />
+            <h2 class="text-2xl font-bold">Company Wallet</h2>
+          </div>
+
+          <p class="opacity-80 mb-6">
+            Support this company by sending funds directly to their wallet.
+          </p>
+
+          <div class="space-y-4">
+            <!-- Ethereum Address -->
+            {#if company.ethAddress}
+              <div class="glass-subtle rounded-xl p-4">
+                <div class="flex items-center justify-between mb-3">
+                  <h3 class="font-semibold flex items-center gap-2">
+                    <span class="badge badge-primary">ETH</span>
+                    Ethereum Address
+                  </h3>
+                  <button
+                    onclick={() => showEthAddress = !showEthAddress}
+                    class="btn btn-sm btn-ghost"
+                  >
+                    {#if showEthAddress}
+                      <EyeOff class="w-4 h-4" />
+                    {:else}
+                      <Eye class="w-4 h-4" />
+                    {/if}
+                  </button>
+                </div>
+
+                {#if showEthAddress}
+                  <div class="flex items-center gap-2 mb-3">
+                    <code class="flex-1 px-3 py-2 bg-base-200 rounded text-sm break-all">
+                      {company.ethAddress}
+                    </code>
+                    <button
+                      onclick={() => copyAddress(company.ethAddress)}
+                      class="btn btn-sm btn-ghost"
+                      title="Copy address"
+                    >
+                      <Copy class="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {#if $authStore.isAuthenticated}
+                    {#if selectedChain === 'eth'}
+                      <div class="space-y-3">
+                        <input
+                          type="number"
+                          bind:value={sendAmount}
+                          placeholder="Amount in ETH"
+                          step="0.001"
+                          min="0"
+                          class="input input-bordered w-full"
+                        />
+                        <div class="flex gap-2">
+                          <button
+                            onclick={() => sendFunds('eth')}
+                            disabled={isSending || !sendAmount}
+                            class="btn btn-primary flex-1"
+                          >
+                            {#if isSending}
+                              <span class="loading loading-spinner loading-sm"></span>
+                            {:else}
+                              <Send class="w-4 h-4" />
+                            {/if}
+                            Send ETH
+                          </button>
+                          <button
+                            onclick={() => { selectedChain = null; sendAmount = ''; sendError = null; }}
+                            class="btn btn-ghost"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    {:else}
+                      <button
+                        onclick={() => { selectedChain = 'eth'; sendError = null; sendSuccess = null; }}
+                        class="btn btn-primary btn-sm w-full"
+                      >
+                        <Send class="w-4 h-4" />
+                        Send ETH
+                      </button>
+                    {/if}
+                  {/if}
+                {:else}
+                  <p class="text-sm opacity-70">
+                    {maskAddress(company.ethAddress)}
+                  </p>
+                {/if}
+              </div>
+            {/if}
+
+            <!-- Avalanche Address -->
+            {#if company.avaxAddress}
+              <div class="glass-subtle rounded-xl p-4">
+                <div class="flex items-center justify-between mb-3">
+                  <h3 class="font-semibold flex items-center gap-2">
+                    <span class="badge badge-error">AVAX</span>
+                    Avalanche Address
+                  </h3>
+                  <button
+                    onclick={() => showAvaxAddress = !showAvaxAddress}
+                    class="btn btn-sm btn-ghost"
+                  >
+                    {#if showAvaxAddress}
+                      <EyeOff class="w-4 h-4" />
+                    {:else}
+                      <Eye class="w-4 h-4" />
+                    {/if}
+                  </button>
+                </div>
+
+                {#if showAvaxAddress}
+                  <div class="flex items-center gap-2 mb-3">
+                    <code class="flex-1 px-3 py-2 bg-base-200 rounded text-sm break-all">
+                      {company.avaxAddress}
+                    </code>
+                    <button
+                      onclick={() => copyAddress(company.avaxAddress)}
+                      class="btn btn-sm btn-ghost"
+                      title="Copy address"
+                    >
+                      <Copy class="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {#if $authStore.isAuthenticated}
+                    {#if selectedChain === 'avax'}
+                      <div class="space-y-3">
+                        <input
+                          type="number"
+                          bind:value={sendAmount}
+                          placeholder="Amount in AVAX"
+                          step="0.001"
+                          min="0"
+                          class="input input-bordered w-full"
+                        />
+                        <div class="flex gap-2">
+                          <button
+                            onclick={() => sendFunds('avax')}
+                            disabled={isSending || !sendAmount}
+                            class="btn btn-error flex-1"
+                          >
+                            {#if isSending}
+                              <span class="loading loading-spinner loading-sm"></span>
+                            {:else}
+                              <Send class="w-4 h-4" />
+                            {/if}
+                            Send AVAX
+                          </button>
+                          <button
+                            onclick={() => { selectedChain = null; sendAmount = ''; sendError = null; }}
+                            class="btn btn-ghost"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    {:else}
+                      <button
+                        onclick={() => { selectedChain = 'avax'; sendError = null; sendSuccess = null; }}
+                        class="btn btn-error btn-sm w-full"
+                      >
+                        <Send class="w-4 h-4" />
+                        Send AVAX
+                      </button>
+                    {/if}
+                  {/if}
+                {:else}
+                  <p class="text-sm opacity-70">
+                    {maskAddress(company.avaxAddress)}
+                  </p>
+                {/if}
+              </div>
+            {/if}
+          </div>
+
+          <!-- Send Status Messages -->
+          {#if sendSuccess}
+            <div class="alert alert-success mt-4">
+              <span class="text-sm break-all">{sendSuccess}</span>
+            </div>
+          {/if}
+
+          {#if sendError}
+            <div class="alert alert-error mt-4">
+              <span class="text-sm">{sendError}</span>
+            </div>
+          {/if}
+
+          {#if !$authStore.isAuthenticated}
+            <div class="alert alert-info mt-4">
+              <span>Sign in to send funds to this company</span>
+            </div>
+          {/if}
         </div>
       {/if}
 

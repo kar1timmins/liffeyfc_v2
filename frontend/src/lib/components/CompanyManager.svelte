@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Building2, Plus, Edit, Trash2, Globe, Linkedin, Twitter, X, Target } from 'lucide-svelte';
+  import { Building2, Plus, Edit, Trash2, Globe, Linkedin, Twitter, X, Target, Wallet } from 'lucide-svelte';
   import { PUBLIC_API_URL } from '$env/static/public';
   import { authStore } from '$lib/stores/auth';
 
@@ -17,6 +17,8 @@
     logoUrl?: string;
     linkedinUrl?: string;
     twitterUrl?: string;
+    ethAddress?: string;
+    avaxAddress?: string;
     tags?: string[];
     isPublic: boolean;
     wishlistItems?: any[];
@@ -44,6 +46,8 @@
   let foundedDate = $state('');
   let linkedinUrl = $state('');
   let twitterUrl = $state('');
+  let ethAddress = $state('');
+  let avaxAddress = $state('');
   let tagsInput = $state('');
   let isPublic = $state(true);
 
@@ -86,6 +90,8 @@
       foundedDate = company.foundedDate || '';
       linkedinUrl = company.linkedinUrl || '';
       twitterUrl = company.twitterUrl || '';
+      ethAddress = company.ethAddress || '';
+      avaxAddress = company.avaxAddress || '';
       tagsInput = company.tags?.join(', ') || '';
       isPublic = company.isPublic ?? true;
     } else {
@@ -108,6 +114,8 @@
     foundedDate = '';
     linkedinUrl = '';
     twitterUrl = '';
+    ethAddress = '';
+    avaxAddress = '';
     tagsInput = '';
     isPublic = true;
   }
@@ -150,6 +158,8 @@
         foundedDate: foundedDate || undefined,
         linkedinUrl: linkedinUrl || undefined,
         twitterUrl: twitterUrl || undefined,
+        ethAddress: ethAddress || undefined,
+        avaxAddress: avaxAddress || undefined,
         tags: tags.length > 0 ? tags : undefined,
         isPublic
       };
@@ -426,6 +436,49 @@
                 class="input input-bordered w-full"
                 placeholder="https://x.com/..."
                 bind:value={twitterUrl}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Wallet Addresses Section -->
+        <div class="space-y-4">
+          <div class="flex items-center gap-2 mb-4">
+            <Wallet class="w-5 h-5 text-primary" />
+            <h3 class="text-lg font-semibold opacity-80">Wallet Addresses</h3>
+          </div>
+          <p class="text-sm opacity-70 mb-4">
+            Allow supporters and investors to send funds directly to your company's wallet.
+          </p>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="form-control">
+              <label class="label" for="company-eth-address">
+                <span class="label-text font-medium">Ethereum Address (ETH)</span>
+                <span class="label-text-alt opacity-70">Optional</span>
+              </label>
+              <input 
+                type="text"
+                id="company-eth-address"
+                class="input input-bordered w-full font-mono text-sm"
+                placeholder="0x..."
+                bind:value={ethAddress}
+              />
+            </div>
+
+            <div class="form-control">
+              <label class="label" for="company-avax-address">
+                <span class="label-text font-medium">Avalanche Address (AVAX)</span>
+                <span class="label-text-alt opacity-70">Optional</span>
+              </label>
+              <input 
+                type="text"
+                id="company-avax-address"
+                class="input input-bordered w-full font-mono text-sm"
+                placeholder="0x..."
+                bind:value={avaxAddress}
               />
             </div>
           </div>

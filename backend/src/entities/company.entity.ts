@@ -64,6 +64,12 @@ export class Company {
   @Column({ type: 'simple-array', nullable: true })
   tags?: string[];
 
+  @Column({ type: 'varchar', length: 42, nullable: true })
+  ethAddress?: string;
+
+  @Column({ type: 'varchar', length: 42, nullable: true })
+  avaxAddress?: string;
+
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 
