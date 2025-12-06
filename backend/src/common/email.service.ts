@@ -39,6 +39,8 @@ export class EmailService {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (compatible; LiffeyFC-Backend/1.0)',
+          'Origin': process.env.FRONTEND_URL || 'https://liffeyfoundersclub.com',
         },
         body: JSON.stringify(payload),
       });
@@ -92,6 +94,8 @@ export class EmailService {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (compatible; LiffeyFC-Backend/1.0)',
+          'Origin': process.env.FRONTEND_URL || 'https://liffeyfoundersclub.com',
         },
         body: JSON.stringify(payload),
       });
