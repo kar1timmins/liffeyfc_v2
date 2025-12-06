@@ -5,6 +5,7 @@
   import { PUBLIC_API_URL } from '$env/static/public';
   import { User, Mail, Briefcase, Building, Globe, Linkedin, CheckCircle, ArrowUpCircle, ArrowLeft, Camera, Wallet } from 'lucide-svelte';
   import GenerateWalletModal from '$lib/components/GenerateWalletModal.svelte';
+  import CompanyManager from '$lib/components/CompanyManager.svelte';
 
   let user: any = $state(null);
   let isLoading = $state(true);
@@ -13,6 +14,7 @@
   let upgradeError = $state('');
   let upgradeSuccess = $state(false);
   let showGenerateWalletModal = $state(false);
+  let companies = $state<any[]>([]);
 
   // Avatar upload
   let fileInput: HTMLInputElement | undefined = $state();
@@ -32,6 +34,8 @@
         goto('/auth');
         return;
       }
+      // Fetch companies after verification
+      fetchMyCompanies();
     });
     
     // Subscribe to auth store to get user data
@@ -43,6 +47,26 @@
     // Return cleanup function
     return unsubscribe;
   });
+
+  async function fetchMyCompanies() {
+    try {
+      const token = $authStore.accessToken;
+      if (!token) return;
+
+      const response = await fetch(`${PUBLIC_API_URL}/companies/my-companies`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        companies = data.data;
+      }
+    } catch (err) {
+      console.error('Failed to fetch companies:', err);
+    }
+  }
 
   async function handleFileSelect(event: Event) {
     const target = event.target as HTMLInputElement;
@@ -348,6 +372,9 @@
         {/if}
       </div>
     </div>
+
+    <!-- Companies Section -->
+    <CompanyManager bind:companies={companies} onUpdate={fetchMyCompanies} />
 
     <!-- Investor Upgrade Section (only show for regular users) -->
     {#if user.role === 'user'}

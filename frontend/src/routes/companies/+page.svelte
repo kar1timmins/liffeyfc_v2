@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { Building2, Users, MapPin, Calendar, TrendingUp, Target, Plus } from 'lucide-svelte';
   import { PUBLIC_API_URL } from '$env/static/public';
-  import { authStore } from '$lib/stores/authStore';
+  import { authStore } from '$lib/stores/auth';
   import { goto } from '$app/navigation';
 
   let companies = $state<any[]>([]);
@@ -61,9 +61,11 @@
     goto('/profile?tab=company');
   }
 
-  $: if (selectedIndustry || selectedStage) {
-    fetchCompanies();
-  }
+  $effect(() => {
+    if (selectedIndustry || selectedStage) {
+      fetchCompanies();
+    }
+  });
 </script>
 
 <svelte:head>
@@ -92,10 +94,11 @@
     <div class="glass-subtle rounded-2xl p-6 mb-8">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label class="label">
+          <label class="label" for="industry-select">
             <span class="label-text">Industry</span>
           </label>
           <select 
+            id="industry-select"
             class="select select-bordered w-full"
             bind:value={selectedIndustry}
           >
@@ -107,10 +110,11 @@
         </div>
 
         <div>
-          <label class="label">
+          <label class="label" for="stage-select">
             <span class="label-text">Stage</span>
           </label>
           <select 
+            id="stage-select"
             class="select select-bordered w-full"
             bind:value={selectedStage}
           >
