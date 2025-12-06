@@ -44,7 +44,7 @@ export class CreateWalletTables1733509000000 implements MigrationInterface {
           {
             name: 'derivationPath',
             type: 'varchar',
-            default: "'m/44'/60'/0'/0/0'",
+            default: "$$m/44'/60'/0'/0/0$$",
           },
           {
             name: 'nextChildIndex',
