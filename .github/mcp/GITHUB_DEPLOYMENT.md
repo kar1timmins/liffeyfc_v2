@@ -46,14 +46,14 @@ git push origin main
 1. Go to [railway.app/new](https://railway.app/new)
 2. Click **"Deploy from GitHub repo"**
 3. Authorize Railway to access your GitHub account
-4. Select repository: **`Karlitoyo/liffeyfc_v2`**
+4. Select repository: **`kar1timmins/liffeyfc_v2`**
 5. Railway will detect the monorepo structure
 
 #### Option B: Add Service to Existing Project
 
 1. Go to your Railway project dashboard
 2. Click **"+ New"** → **"GitHub Repo"**
-3. Select **`Karlitoyo/liffeyfc_v2`**
+3. Select **`kar1timmins/liffeyfc_v2`**
 4. Railway will create a new service
 
 ### 3. Configure Backend Service
@@ -252,7 +252,7 @@ git push origin main
 
 # 2. Deploy via Railway dashboard
 # - railway.app/new → Deploy from GitHub
-# - Select Karlitoyo/liffeyfc_v2
+# - Select kar1timmins/liffeyfc_v2
 # - Set root directories
 
 # 3. Add databases

@@ -32,7 +32,7 @@
 2. **Click "+ New"** button (top right) → **Service** → **GitHub Repo**
 
 3. **Configure the new service**:
-   - **Repository**: Select `Karlitoyo/liffeyfc_v2`
+   - **Repository**: Select `kar1timmins/liffeyfc_v2`
    - **Service Name**: `backend` or `api` (your choice)
    - **Root Directory**: `backend` ⚠️ **CRITICAL**
    - **Branch**: `main`

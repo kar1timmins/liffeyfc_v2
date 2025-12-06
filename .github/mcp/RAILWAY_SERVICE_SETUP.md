@@ -25,7 +25,7 @@ If you want BOTH email server AND backend running:
 ### Backend Service:
 1. Go to project dashboard
 2. Click **+ New Service**
-3. Select **GitHub Repo** → `Karlitoyo/liffeyfc_v2`
+3. Select **GitHub Repo** → `kar1timmins/liffeyfc_v2`
 4. Set **Root Directory**: `backend`
 5. Set **Service Name**: `backend` or `api`
 6. Link environment variables:
@@ -35,7 +35,7 @@ If you want BOTH email server AND backend running:
 
 ### Email Server Service:
 1. Click **+ New Service**
-2. Select **GitHub Repo** → `Karlitoyo/liffeyfc_v2`
+2. Select **GitHub Repo** → `kar1timmins/liffeyfc_v2`
 3. Set **Root Directory**: `email-server`
 4. Set **Service Name**: `email-server`
 5. Add SMTP environment variables

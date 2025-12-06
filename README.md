@@ -152,7 +152,7 @@ backend/
 
 **Quick Steps:**
 1. Go to [railway.app/new](https://railway.app/new)
-2. Deploy from: `Karlitoyo/liffeyfc_v2`
+2. Deploy from: `kar1timmins/liffeyfc_v2`
 3. Root directory: `backend`
 4. Add environment variables (see [Backend Environment Variables](#backend-env-in-backend))
 5. Generate domain
@@ -198,7 +198,7 @@ Upload everything from `/frontend/build/`:
 **Step 1: Create Project**
 1. Sign in to [railway.app](https://railway.app)
 2. Click **"New Project"** → **"Deploy from GitHub repo"**
-3. Select repository: `Karlitoyo/liffeyfc_v2`
+3. Select repository: `kar1timmins/liffeyfc_v2`
 
 **Step 2: Configure Service**
 1. Click on the deployed service
