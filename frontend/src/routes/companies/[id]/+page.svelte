@@ -18,6 +18,12 @@
   let isSending = $state(false);
   let sendSuccess = $state<string | null>(null);
   let sendError = $state<string | null>(null);
+  
+  // Donation state for wishlist items
+  let donationAmounts = $state<Record<string, string>>({});
+  let donatingItemId = $state<string | null>(null);
+  let donationSuccess = $state<string | null>(null);
+  let donationError = $state<string | null>(null);
 
   const companyId = $derived($page.params.id);
   const isInvestor = $derived($authStore.user?.role === 'investor');
@@ -139,6 +145,54 @@
       sendError = err.message || 'Transaction failed';
     } finally {
       isSending = false;
+    }
+  }
+
+  async function donateToWishlistItem(itemId: string) {
+    const amount = donationAmounts[itemId];
+    if (!amount || parseFloat(amount) <= 0) {
+      donationError = 'Please enter a valid amount';
+      return;
+    }
+
+    donatingItemId = itemId;
+    donationError = null;
+    donationSuccess = null;
+
+    try {
+      const verified = await authStore.verify();
+      if (!verified) {
+        throw new Error('Please log in again');
+      }
+
+      const token = $authStore.accessToken;
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`${PUBLIC_API_URL}/companies/${companyId}/wishlist/${itemId}/donate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ amount: parseFloat(amount) })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        donationSuccess = `Thank you for your donation of $${amount}!`;
+        donationAmounts[itemId] = '';
+        // Refresh company data to get updated wishlist
+        await fetchCompany();
+      } else {
+        donationError = result.message || 'Failed to process donation';
+      }
+    } catch (err: any) {
+      donationError = err.message || 'An error occurred';
+    } finally {
+      donatingItemId = null;
     }
   }
 </script>
@@ -529,8 +583,21 @@
 
           {#if wishlistItems.length > 0}
             <p class="opacity-80 mb-6">
-              Looking for support in the following areas:
+              {isInvestor && !isOwner ? 'Support this company with their needs:' : 'Looking for support in the following areas:'}
             </p>
+
+            <!-- Donation Status Messages -->
+            {#if donationSuccess}
+              <div class="alert alert-success mb-4">
+                <span class="text-sm">{donationSuccess}</span>
+              </div>
+            {/if}
+
+            {#if donationError}
+              <div class="alert alert-error mb-4">
+                <span class="text-sm">{donationError}</span>
+              </div>
+            {/if}
 
             <div class="space-y-4">
               {#each wishlistItems as item}
@@ -541,6 +608,8 @@
                   high: 'badge-warning',
                   critical: 'badge-error'
                 }}
+                {@const percentage = item.value ? Math.min(100, ((item.amountRaised || 0) / item.value) * 100) : 0}
+                {@const remaining = item.value ? Math.max(0, item.value - (item.amountRaised || 0)) : 0}
                 
                 <div class="glass-subtle rounded-xl p-4 {item.isFulfilled ? 'opacity-60' : ''}">
                   <div class="flex items-start gap-4">
@@ -562,11 +631,68 @@
                       </div>
                       
                       {#if item.description}
-                        <p class="opacity-80">{item.description}</p>
+                        <p class="opacity-80 mb-3">{item.description}</p>
                       {/if}
 
                       {#if item.value}
-                        <p class="text-sm opacity-70 mt-2">Estimated value: ${item.value.toLocaleString()}</p>
+                        <div class="mt-3">
+                          <div class="flex justify-between text-sm mb-2">
+                            <span class="opacity-70">Funding Progress</span>
+                            <span class="font-semibold">{percentage.toFixed(0)}% complete</span>
+                          </div>
+                          <progress class="progress progress-primary w-full h-3 mb-2" value={percentage} max="100"></progress>
+                          <div class="flex justify-between text-sm opacity-70">
+                            <span>Raised: ${(item.amountRaised || 0).toLocaleString()}</span>
+                            <span>Goal: ${item.value.toLocaleString()}</span>
+                          </div>
+                          {#if remaining > 0}
+                            <p class="text-sm mt-2 opacity-60">
+                              ${remaining.toLocaleString()} remaining to reach goal
+                            </p>
+                          {:else}
+                            <p class="text-sm mt-2 text-success font-semibold">
+                              🎉 Goal reached!
+                            </p>
+                          {/if}
+
+                          <!-- Donate Button for Investors -->
+                          {#if isInvestor && !isOwner && remaining > 0}
+                            <div class="mt-4 p-4 bg-base-200/50 rounded-lg">
+                              <p class="text-sm font-semibold mb-2">Support this need:</p>
+                              <div class="flex gap-2">
+                                <input
+                                  type="number"
+                                  bind:value={donationAmounts[item.id]}
+                                  placeholder="Amount ($)"
+                                  step="1"
+                                  min="1"
+                                  max={remaining}
+                                  class="input input-bordered input-sm flex-1"
+                                  disabled={donatingItemId === item.id}
+                                />
+                                <button 
+                                  class="btn btn-primary btn-sm"
+                                  onclick={() => donateToWishlistItem(item.id)}
+                                  disabled={donatingItemId === item.id || !donationAmounts[item.id]}
+                                >
+                                  {#if donatingItemId === item.id}
+                                    <span class="loading loading-spinner loading-xs"></span>
+                                  {:else}
+                                    <DollarSign class="w-4 h-4" />
+                                  {/if}
+                                  Donate
+                                </button>
+                              </div>
+                              <p class="text-xs opacity-60 mt-2">
+                                Donations help companies achieve their goals faster
+                              </p>
+                            </div>
+                          {/if}
+                        </div>
+                      {:else}
+                        <p class="text-sm opacity-60 mt-2">
+                          {item.amountRaised > 0 ? `Total support received: $${(item.amountRaised || 0).toLocaleString()}` : 'No monetary goal set'}
+                        </p>
                       {/if}
 
                       {#if item.isFulfilled}

@@ -682,7 +682,7 @@
 
               <p class="opacity-80 mb-3">{company.description}</p>
 
-              <div class="flex flex-wrap gap-2 text-sm">
+              <div class="flex flex-wrap gap-2 text-sm mb-4">
                 {#if company.website}
                   <a 
                     href={company.website} 
@@ -712,6 +712,57 @@
                   </span>
                 {/if}
               </div>
+
+              <!-- Wishlist Items for Business Owner -->
+              {#if company.wishlistItems && company.wishlistItems.length > 0}
+                <div class="mt-4 space-y-3">
+                  <h4 class="text-sm font-semibold opacity-70">Your Wishlist Items:</h4>
+                  {#each company.wishlistItems as item}
+                    <div class="bg-base-200/50 rounded-lg p-3">
+                      <div class="flex items-start justify-between mb-2">
+                        <div class="flex-1">
+                          <h5 class="font-semibold text-sm">{item.title}</h5>
+                          {#if item.description}
+                            <p class="text-xs opacity-70 mt-1">{item.description}</p>
+                          {/if}
+                        </div>
+                        <span class="badge badge-sm badge-{item.priority === 'critical' ? 'error' : item.priority === 'high' ? 'warning' : 'ghost'}">
+                          {item.priority}
+                        </span>
+                      </div>
+                      
+                      {#if item.value}
+                        {@const percentage = Math.min(100, ((item.amountRaised || 0) / item.value) * 100)}
+                        {@const remaining = Math.max(0, item.value - (item.amountRaised || 0))}
+                        <div class="mt-2">
+                          <div class="flex justify-between text-xs mb-1">
+                            <span class="opacity-70">Progress</span>
+                            <span class="font-semibold">{percentage.toFixed(0)}% complete</span>
+                          </div>
+                          <progress class="progress progress-primary w-full h-2" value={percentage} max="100"></progress>
+                          <div class="flex justify-between text-xs mt-1 opacity-70">
+                            <span>Raised: ${(item.amountRaised || 0).toLocaleString()}</span>
+                            <span>Goal: ${item.value.toLocaleString()}</span>
+                          </div>
+                          {#if remaining > 0}
+                            <p class="text-xs mt-1 opacity-60">
+                              ${remaining.toLocaleString()} remaining to reach goal
+                            </p>
+                          {:else}
+                            <p class="text-xs mt-1 text-success font-semibold">
+                              🎉 Goal reached!
+                            </p>
+                          {/if}
+                        </div>
+                      {:else}
+                        <p class="text-xs opacity-60 mt-2">
+                          Raised: ${(item.amountRaised || 0).toLocaleString()}
+                        </p>
+                      {/if}
+                    </div>
+                  {/each}
+                </div>
+              {/if}
             </div>
 
             <div class="flex md:flex-col gap-2">

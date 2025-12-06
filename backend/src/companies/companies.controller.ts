@@ -196,4 +196,40 @@ export class CompaniesController {
       return { success: false, message: error.message || 'Failed to delete wishlist item' };
     }
   }
+
+  @Post(':companyId/wishlist/:itemId/donate')
+  @UseGuards(AuthGuard('jwt'))
+  async donateToWishlistItem(
+    @Param('companyId') companyId: string,
+    @Param('itemId') itemId: string,
+    @Body() data: { amount: number },
+    @CurrentUser() currentUser: any,
+  ) {
+    try {
+      // Verify user is an investor
+      if (currentUser.userType !== 'investor') {
+        return { success: false, message: 'Only investors can make donations' };
+      }
+
+      // Verify amount is positive
+      if (!data.amount || data.amount <= 0) {
+        return { success: false, message: 'Donation amount must be positive' };
+      }
+
+      const item = await this.companiesService.addDonationToWishlistItem(
+        itemId,
+        companyId,
+        currentUser.sub,
+        data.amount
+      );
+      
+      if (!item) {
+        return { success: false, message: 'Wishlist item not found or you cannot donate to your own company' };
+      }
+
+      return { success: true, data: item, message: 'Donation recorded successfully' };
+    } catch (error) {
+      return { success: false, message: error.message || 'Failed to record donation' };
+    }
+  }
 }

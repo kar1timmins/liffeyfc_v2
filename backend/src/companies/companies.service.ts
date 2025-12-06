@@ -246,4 +246,32 @@ export class CompaniesService {
       order: { priority: 'DESC', createdAt: 'DESC' }
     });
   }
+
+  async addDonationToWishlistItem(itemId: string, companyId: string, userId: string, amount: number): Promise<WishlistItem | null> {
+    const item = await this.wishlistRepo.findOne({
+      where: { id: itemId, companyId },
+      relations: ['company'],
+    });
+
+    if (!item) {
+      return null;
+    }
+
+    // Prevent owners from donating to their own company
+    if (item.company.ownerId === userId) {
+      return null;
+    }
+
+    // Update amountRaised
+    const currentAmount = parseFloat(item.amountRaised?.toString() || '0');
+    const newAmount = currentAmount + amount;
+    item.amountRaised = newAmount;
+
+    // Auto-fulfill if goal is reached
+    if (item.value && newAmount >= item.value) {
+      item.isFulfilled = true;
+    }
+
+    return this.wishlistRepo.save(item);
+  }
 }
