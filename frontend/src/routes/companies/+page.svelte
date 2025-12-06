@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Building2, Users, MapPin, Calendar, TrendingUp, Target, Plus, Search, X } from 'lucide-svelte';
+  import { Building2, Users, MapPin, Calendar, TrendingUp, Plus, Search, X } from 'lucide-svelte';
   import { PUBLIC_API_URL } from '$env/static/public';
   import { authStore } from '$lib/stores/auth';
   import { goto } from '$app/navigation';
@@ -295,13 +295,6 @@
                 <TrendingUp class="w-4 h-4" />
                 <span class="capitalize">{company.stage.replace('_', ' ')}</span>
               </div>
-
-              {#if company.wishlistItems && company.wishlistItems.length > 0}
-                <div class="flex items-center gap-2 opacity-70">
-                  <Target class="w-4 h-4" />
-                  <span>{company.wishlistItems.length} wishlist {company.wishlistItems.length === 1 ? 'item' : 'items'}</span>
-                </div>
-              {/if}
             </div>
 
             <!-- Tags -->

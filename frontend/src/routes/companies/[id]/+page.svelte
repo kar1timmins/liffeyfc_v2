@@ -344,7 +344,7 @@
       {/if}
 
       <!-- Wallet Addresses -->
-      {#if company.ethAddress || company.avaxAddress}
+      {#if (company.ethAddress || company.avaxAddress) && !isOwner}
         <div class="glass-subtle rounded-2xl p-6 mb-6">
           <div class="flex items-center gap-3 mb-6">
             <Wallet class="w-6 h-6 text-primary" />
