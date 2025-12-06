@@ -35,8 +35,8 @@ export class EmailService {
           pass: smtpPass,
         },
         tls: {
-          // For Zoho Mail, we need to allow less secure connections
-          rejectUnauthorized: false,
+          // For Gmail, reject unauthorized connections for security
+          rejectUnauthorized: true,
         },
       });
 
@@ -56,7 +56,7 @@ export class EmailService {
       return false;
     }
 
-    const fromEmail = process.env.SMTP_USER || 'noreply@liffeyfoundersclub.com';
+    const fromEmail = process.env.SMTP_USER || 'noreply@example.com';
     const fromName = 'Liffey Founders Club';
 
     const mailOptions = {
@@ -85,7 +85,7 @@ export class EmailService {
       return false;
     }
 
-    const fromEmail = process.env.SMTP_USER || 'noreply@liffeyfoundersclub.com';
+    const fromEmail = process.env.SMTP_USER || 'noreply@example.com';
     const fromName = 'Liffey Founders Club';
 
     const mailOptions = {

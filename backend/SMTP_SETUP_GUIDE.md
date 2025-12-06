@@ -2,31 +2,38 @@
 
 ## Quick Setup Steps
 
-### 1. Get Zoho App-Specific Password
+### 1. Get Gmail App Password
 
-Since you're already using Zoho Mail, you need to generate an app-specific password:
+Gmail requires an app-specific password for SMTP access:
 
-1. **Log in to Zoho Mail** (https://mail.zoho.com)
-2. **Go to Settings** → Click your profile icon → Settings
-3. **Navigate to Security** → App Passwords (or Application-Specific Passwords)
-4. **Generate New Password**:
-   - Application Name: `LFC Backend Production`
+1. **Enable 2-Factor Authentication** (if not already enabled)
+   - Go to https://myaccount.google.com/security
+   - Enable 2-Step Verification
+
+2. **Generate App Password**:
+   - Go to https://myaccount.google.com/apppasswords
+   - Select app: "Mail"
+   - Select device: "Other (Custom name)"
+   - Enter name: `LFC Backend Production`
    - Click "Generate"
-   - **Copy the generated password** (you'll only see it once!)
+   - **Copy the 16-character password** (you'll only see it once!)
 
 ### 2. Set Environment Variables on Railway
 
 In your Railway backend service, add these environment variables:
 
 ```bash
-SMTP_HOST=smtp.zoho.com
+SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
-SMTP_USER=info@liffeyfoundersclub.com
-SMTP_PASS=paste_the_app_specific_password_here
+SMTP_USER=your-gmail@gmail.com
+SMTP_PASS=paste_the_16_char_app_password_here
 FRONTEND_URL=https://liffeyfoundersclub.com
 ```
 
-**Important:** Use the **app-specific password**, not your regular Zoho password!
+**Important:** 
+- Use the **16-character app password**, not your regular Gmail password!
+- Make sure 2-Factor Authentication is enabled on your Google account
+- The app password has no spaces (remove them if copying)
 
 ### 3. Deploy
 
@@ -36,7 +43,7 @@ Railway will automatically redeploy when you push to GitHub. The changes are alr
 
 After deployment, check Railway logs for:
 ```
-[EmailService] SMTP configured: smtp.zoho.com:587 (info@liffeyfoundersclub.com)
+[EmailService] SMTP configured: smtp.gmail.com:587 (your-gmail@gmail.com)
 ```
 
 If you see `SMTP configuration incomplete - email sending disabled`, double-check the environment variables.
@@ -50,7 +57,7 @@ If you see `SMTP configuration incomplete - email sending disabled`, double-chec
 
 ### After
 - Backend sends emails directly via SMTP
-- Uses Zoho Mail credentials
+- Uses Gmail credentials with app password
 - No extra service needed
 - More reliable and faster
 
@@ -59,8 +66,10 @@ If you see `SMTP configuration incomplete - email sending disabled`, double-chec
 1. Go to your login page
 2. Click "Forgot Password"
 3. Enter an email address
-4. You should receive a password reset email from `info@liffeyfoundersclub.com`
+4. You should receive a password reset email from your Gmail address
 5. Click the link to reset your password
+
+**Note:** First email might take 30-60 seconds as Gmail validates the connection
 
 ## Troubleshooting
 
@@ -69,12 +78,18 @@ If you see `SMTP configuration incomplete - email sending disabled`, double-chec
 - Make sure `SMTP_PASS` uses the app-specific password, not your regular password
 
 ### "Authentication failed"
-- The app-specific password might be incorrect
-- Generate a new one in Zoho Mail settings
+- The app password might be incorrect
+- Make sure 2FA is enabled on your Google account
+- Generate a new app password at https://myaccount.google.com/apppasswords
+- Remove any spaces from the app password
 
 ### "Connection timeout"
 - Railway might be blocking port 587
-- Try `SMTP_PORT=465` (use with `secure: true` in email.service.ts)
+- Try `SMTP_PORT=465` and update email.service.ts to use `secure: true`
+
+### "Less secure app access"
+- This error means you need to use an App Password, not your regular password
+- Follow step 1 to generate an app password
 
 ### Not receiving emails
 - Check spam/junk folder
