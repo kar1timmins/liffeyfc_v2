@@ -4,10 +4,14 @@ export class CreateWalletTables1762294800000 implements MigrationInterface {
   name = 'CreateWalletTables1762294800000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // Create user_wallets table
-    await queryRunner.createTable(
-      new Table({
-        name: 'user_wallets',
+    // Check if user_wallets table already exists
+    const userWalletsTableExists = await queryRunner.hasTable('user_wallets');
+    
+    // Create user_wallets table if it doesn't exist
+    if (!userWalletsTableExists) {
+      await queryRunner.createTable(
+        new Table({
+          name: 'user_wallets',
         columns: [
           {
             name: 'id',
@@ -65,11 +69,16 @@ export class CreateWalletTables1762294800000 implements MigrationInterface {
       }),
       true,
     );
+    }
 
-    // Create company_wallets table
-    await queryRunner.createTable(
-      new Table({
-        name: 'company_wallets',
+    // Check if company_wallets table already exists
+    const companyWalletsTableExists = await queryRunner.hasTable('company_wallets');
+    
+    // Create company_wallets table if it doesn't exist
+    if (!companyWalletsTableExists) {
+      await queryRunner.createTable(
+        new Table({
+          name: 'company_wallets',
         columns: [
           {
             name: 'id',
@@ -120,37 +129,62 @@ export class CreateWalletTables1762294800000 implements MigrationInterface {
       }),
       true,
     );
+    }
 
-    // Add foreign keys
-    await queryRunner.createForeignKey(
-      'user_wallets',
-      new TableForeignKey({
-        columnNames: ['userId'],
-        referencedColumnNames: ['id'],
-        referencedTableName: 'users',
-        onDelete: 'CASCADE',
-      }),
-    );
+    // Add foreign keys only if they don't exist
+    const userWalletsTable = await queryRunner.getTable('user_wallets');
+    if (userWalletsTable) {
+      const userFkExists = userWalletsTable.foreignKeys.find(
+        fk => fk.columnNames.indexOf('userId') !== -1,
+      );
+      
+      if (!userFkExists) {
+        await queryRunner.createForeignKey(
+          'user_wallets',
+          new TableForeignKey({
+            columnNames: ['userId'],
+            referencedColumnNames: ['id'],
+            referencedTableName: 'users',
+            onDelete: 'CASCADE',
+          }),
+        );
+      }
+    }
 
-    await queryRunner.createForeignKey(
-      'company_wallets',
-      new TableForeignKey({
-        columnNames: ['companyId'],
-        referencedColumnNames: ['id'],
-        referencedTableName: 'companies',
-        onDelete: 'CASCADE',
-      }),
-    );
+    const companyWalletsTable = await queryRunner.getTable('company_wallets');
+    if (companyWalletsTable) {
+      const companyFkExists = companyWalletsTable.foreignKeys.find(
+        fk => fk.columnNames.indexOf('companyId') !== -1,
+      );
+      
+      if (!companyFkExists) {
+        await queryRunner.createForeignKey(
+          'company_wallets',
+          new TableForeignKey({
+            columnNames: ['companyId'],
+            referencedColumnNames: ['id'],
+            referencedTableName: 'companies',
+            onDelete: 'CASCADE',
+          }),
+        );
+      }
 
-    await queryRunner.createForeignKey(
-      'company_wallets',
-      new TableForeignKey({
-        columnNames: ['parentWalletId'],
-        referencedColumnNames: ['id'],
-        referencedTableName: 'user_wallets',
-        onDelete: 'CASCADE',
-      }),
-    );
+      const parentWalletFkExists = companyWalletsTable.foreignKeys.find(
+        fk => fk.columnNames.indexOf('parentWalletId') !== -1,
+      );
+      
+      if (!parentWalletFkExists) {
+        await queryRunner.createForeignKey(
+          'company_wallets',
+          new TableForeignKey({
+            columnNames: ['parentWalletId'],
+            referencedColumnNames: ['id'],
+            referencedTableName: 'user_wallets',
+            onDelete: 'CASCADE',
+          }),
+        );
+      }
+    }
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
