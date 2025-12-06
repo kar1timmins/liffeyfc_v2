@@ -1,17 +1,20 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Building2, Users, MapPin, Calendar, TrendingUp, Target, Plus } from 'lucide-svelte';
+  import { Building2, Users, MapPin, Calendar, TrendingUp, Target, Plus, Search, X } from 'lucide-svelte';
   import { PUBLIC_API_URL } from '$env/static/public';
   import { authStore } from '$lib/stores/auth';
   import { goto } from '$app/navigation';
 
   let companies = $state<any[]>([]);
+  let filteredCompanies = $state<any[]>([]);
   let isLoading = $state(true);
   let error = $state<string | null>(null);
+  let searchQuery = $state('');
   let selectedIndustry = $state('all');
   let selectedStage = $state('all');
+  let selectedFunding = $state('all');
 
-  const industries = ['Technology', 'Healthcare', 'Finance', 'E-commerce', 'Education', 'Other'];
+  const industries = ['Technology', 'Healthcare', 'Finance', 'E-commerce', 'Education', 'SaaS', 'AI/ML', 'Blockchain', 'Consumer', 'B2B', 'Energy', 'Real Estate', 'Media', 'Agriculture', 'Transportation', 'Other'];
   const stages = [
     { value: 'idea', label: 'Idea' },
     { value: 'mvp', label: 'MVP' },
@@ -19,6 +22,14 @@
     { value: 'growth', label: 'Growth' },
     { value: 'scale', label: 'Scale' },
     { value: 'established', label: 'Established' }
+  ];
+  const fundingStages = [
+    { value: 'bootstrapped', label: 'Bootstrapped' },
+    { value: 'pre_seed', label: 'Pre-Seed' },
+    { value: 'seed', label: 'Seed' },
+    { value: 'series_a', label: 'Series A' },
+    { value: 'series_b', label: 'Series B' },
+    { value: 'series_c_plus', label: 'Series C+' }
   ];
 
   onMount(async () => {
@@ -33,12 +44,14 @@
       const params = new URLSearchParams();
       if (selectedIndustry !== 'all') params.append('industry', selectedIndustry);
       if (selectedStage !== 'all') params.append('stage', selectedStage);
+      if (selectedFunding !== 'all') params.append('fundingStage', selectedFunding);
 
       const response = await fetch(`${PUBLIC_API_URL}/companies?${params.toString()}`);
       const data = await response.json();
 
       if (data.success) {
         companies = data.data;
+        applySearch();
       } else {
         error = data.message || 'Failed to fetch companies';
       }
@@ -47,6 +60,29 @@
     } finally {
       isLoading = false;
     }
+  }
+
+  function applySearch() {
+    if (!searchQuery.trim()) {
+      filteredCompanies = companies;
+      return;
+    }
+
+    const query = searchQuery.toLowerCase();
+    filteredCompanies = companies.filter(company => {
+      return (
+        company.name.toLowerCase().includes(query) ||
+        company.description?.toLowerCase().includes(query) ||
+        company.industry?.toLowerCase().includes(query) ||
+        company.location?.toLowerCase().includes(query) ||
+        company.tags?.some((tag: string) => tag.toLowerCase().includes(query))
+      );
+    });
+  }
+
+  function clearSearch() {
+    searchQuery = '';
+    applySearch();
   }
 
   function viewCompany(id: string) {
@@ -62,8 +98,14 @@
   }
 
   $effect(() => {
-    if (selectedIndustry || selectedStage) {
+    if (selectedIndustry || selectedStage || selectedFunding) {
       fetchCompanies();
+    }
+  });
+
+  $effect(() => {
+    if (searchQuery !== undefined) {
+      applySearch();
     }
   });
 </script>
@@ -92,7 +134,27 @@
 
     <!-- Filters -->
     <div class="glass-subtle rounded-2xl p-6 mb-8">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- Search Bar -->
+      <div class="relative mb-6">
+        <Search class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+        <input
+          type="text"
+          bind:value={searchQuery}
+          placeholder="Search companies by name, description, industry, location, or tags..."
+          class="w-full pl-12 pr-12 py-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+        />
+        {#if searchQuery}
+          <button
+            onclick={clearSearch}
+            class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            <X class="w-5 h-5" />
+          </button>
+        {/if}
+      </div>
+
+      <!-- Filter Selects -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <label class="label" for="industry-select">
             <span class="label-text">Industry</span>
@@ -124,7 +186,46 @@
             {/each}
           </select>
         </div>
+
+        <div>
+          <label class="label" for="funding-select">
+            <span class="label-text">Funding Stage</span>
+          </label>
+          <select 
+            id="funding-select"
+            class="select select-bordered w-full"
+            bind:value={selectedFunding}
+          >
+            <option value="all">All Funding Stages</option>
+            {#each fundingStages as funding}
+              <option value={funding.value}>{funding.label}</option>
+            {/each}
+          </select>
+        </div>
       </div>
+
+      <!-- Results Count and Clear Filters -->
+      {#if !isLoading && !error}
+        <div class="mt-6 pt-6 border-t border-gray-200 flex items-center justify-between">
+          <p class="text-sm text-gray-600">
+            Showing <span class="font-semibold">{filteredCompanies.length}</span> {filteredCompanies.length === 1 ? 'company' : 'companies'}
+          </p>
+          {#if searchQuery || selectedIndustry !== 'all' || selectedStage !== 'all' || selectedFunding !== 'all'}
+            <button
+              onclick={() => {
+                searchQuery = '';
+                selectedIndustry = 'all';
+                selectedStage = 'all';
+                selectedFunding = 'all';
+                fetchCompanies();
+              }}
+              class="text-sm text-purple-600 hover:text-purple-700 font-medium"
+            >
+              Clear all filters
+            </button>
+          {/if}
+        </div>
+      {/if}
     </div>
 
     <!-- Loading State -->
@@ -142,9 +243,9 @@
     {/if}
 
     <!-- Companies Grid -->
-    {#if !isLoading && companies.length > 0}
+    {#if !isLoading && filteredCompanies.length > 0}
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {#each companies as company}
+        {#each filteredCompanies as company}
           <button
             class="glass-subtle rounded-2xl p-6 hover:scale-[1.02] transition-all text-left"
             onclick={() => viewCompany(company.id)}
@@ -217,14 +318,38 @@
     {/if}
 
     <!-- Empty State -->
-    {#if !isLoading && !error && companies.length === 0}
+    {#if !isLoading && !error && filteredCompanies.length === 0}
       <div class="text-center py-12">
         <Building2 class="w-16 h-16 mx-auto mb-4 opacity-50" />
-        <h3 class="text-2xl font-bold mb-2">No companies found</h3>
-        <p class="opacity-70 mb-6">Try adjusting your filters or be the first to register your company!</p>
-        <button class="btn btn-primary" onclick={registerCompany}>
-          Register Your Company
-        </button>
+        <h3 class="text-2xl font-bold mb-2">
+          {searchQuery || selectedIndustry !== 'all' || selectedStage !== 'all' || selectedFunding !== 'all' 
+            ? 'No companies match your search' 
+            : 'No companies found'}
+        </h3>
+        <p class="opacity-70 mb-6">
+          {searchQuery || selectedIndustry !== 'all' || selectedStage !== 'all' || selectedFunding !== 'all'
+            ? 'Try adjusting your filters or search query'
+            : 'Be the first to register your company!'}
+        </p>
+        <div class="flex gap-3 justify-center">
+          {#if searchQuery || selectedIndustry !== 'all' || selectedStage !== 'all' || selectedFunding !== 'all'}
+            <button
+              class="btn btn-outline"
+              onclick={() => {
+                searchQuery = '';
+                selectedIndustry = 'all';
+                selectedStage = 'all';
+                selectedFunding = 'all';
+                fetchCompanies();
+              }}
+            >
+              Clear Filters
+            </button>
+          {/if}
+          <button class="btn btn-primary" onclick={registerCompany}>
+            Register Your Company
+          </button>
+        </div>
       </div>
     {/if}
   </div>

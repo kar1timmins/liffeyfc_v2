@@ -85,6 +85,7 @@
   }
   
   // Icons
+  import { Building2 } from 'lucide-svelte';
   // FAB logic
   let fabOpen = $state(false);
   
@@ -327,14 +328,21 @@
           <Home size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/> 
           <span class="flex-1 text-center">Home</span>
         </button>
-        <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/pitch')}>
-          <Mic size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/> 
-          <span class="flex-1 text-center">Pitch</span>
-        </button>
-        <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/learnMore')}>
-          <Info size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/> 
-          <span class="flex-1 text-center">Learn More</span>
-        </button>
+        {#if $authStore.isAuthenticated}
+          <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/companies')}>
+            <Building2 size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/> 
+            <span class="flex-1 text-center">Companies</span>
+          </button>
+        {:else}
+          <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/pitch')}>
+            <Mic size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/> 
+            <span class="flex-1 text-center">Pitch</span>
+          </button>
+          <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/learnMore')}>
+            <Info size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/> 
+            <span class="flex-1 text-center">Learn More</span>
+          </button>
+        {/if}
         {#if $authStore.isAuthenticated}
           <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/dashboard')}>
             <Grid size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/>
