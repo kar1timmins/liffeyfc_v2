@@ -6,10 +6,12 @@
 
   let {
     companyId,
-    onItemAdded = () => {}
+    onItemAdded = () => {},
+    onCreateBounty = null
   }: {
     companyId: string;
     onItemAdded?: () => void;
+    onCreateBounty?: ((item: any) => void) | null;
   } = $props();
 
   let isFormOpen = $state(false);
@@ -20,7 +22,8 @@
     description: '',
     value: '',
     category: 'funding',
-    priority: 'medium'
+    priority: 'medium',
+    createBountyAfter: false
   });
 
   const categories = [
@@ -47,7 +50,8 @@
       description: '',
       value: '',
       category: 'funding',
-      priority: 'medium'
+      priority: 'medium',
+      createBountyAfter: false
     };
   }
 
@@ -108,9 +112,19 @@
           type: 'success',
           ttl: 3000 
         });
+        
+        const createdItem = result.data;
+        const shouldCreateBounty = formData.createBountyAfter;
+        
         resetForm();
         isFormOpen = false;
         onItemAdded();
+        
+        // If user wants to create bounty and callback is provided
+        if (shouldCreateBounty && onCreateBounty && createdItem) {
+          // Small delay to let the UI update
+          setTimeout(() => onCreateBounty(createdItem), 100);
+        }
       } else {
         toastStore.add({ 
           message: result.message || 'Failed to add wishlist item', 
@@ -266,6 +280,26 @@
             </p>
           {/if}
         </div>
+
+        <!-- Create Bounty Option -->
+        {#if onCreateBounty && formData.value && parseFloat(formData.value) > 0}
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3 px-0">
+              <input
+                type="checkbox"
+                bind:checked={formData.createBountyAfter}
+                class="checkbox checkbox-primary checkbox-sm"
+                disabled={isSubmitting}
+              />
+              <div class="flex-1">
+                <span class="label-text font-semibold text-sm">🎯 Create bounty campaign after adding</span>
+                <p class="text-xs opacity-60 mt-1">
+                  Enable blockchain crowdfunding for this item immediately
+                </p>
+              </div>
+            </label>
+          </div>
+        {/if}
 
         <!-- Section Divider -->
         <div class="divider my-2"></div>

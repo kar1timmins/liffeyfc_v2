@@ -50,6 +50,7 @@ liffeyfc_v2/
 - **Framework**: NestJS 11
 - **Runtime**: Node.js with TypeScript
 - **Architecture**: Modular (Controllers, Services, Modules)
+- **Validation**: class-validator decorators for DTO validation (NestJS ValidationPipe)
 - **Features**: 
   - Contact form handling with reCAPTCHA validation
   - Company management with wishlist system
@@ -165,6 +166,30 @@ liffeyfc_v2/
 #### API Design
 - **REST**: Follow RESTful conventions
 - **Validation**: Use NestJS validation pipes and `class-validator`
+- **DTO Decorators**: All DTOs must use class-validator decorators for properties
+  - `@IsString()` - Validates string types
+  - `@IsNumber()` - Validates numeric types
+  - `@IsBoolean()` - Validates boolean types
+  - `@IsArray()` - Validates array types
+  - `@IsOptional()` - Marks field as optional
+  - `@IsNotEmpty()` - Ensures required fields are not empty
+  - `@IsEmail()` - Validates email format
+  - `@Min()`, `@Max()` - Numeric range validation
+  - Example:
+    ```typescript
+    class CreateBountyDto {
+      @IsString()
+      @IsNotEmpty()
+      wishlistItemId: string;
+      
+      @IsNumber()
+      targetAmountEur: number;
+      
+      @IsString()
+      @IsOptional()
+      description?: string;
+    }
+    ```
 - **Error Handling**: Use `HttpException` with appropriate status codes
 - **CORS**: Configured in `main.ts` for frontend origins
 - **Protected Routes**: Use `AuthGuard('jwt')` and `CurrentUser` decorator to access user payload

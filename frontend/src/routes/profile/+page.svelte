@@ -63,6 +63,11 @@
       const data = await response.json();
       if (data.success) {
         companies = data.data;
+        
+        // Dispatch event to refresh FAB navigation
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('refresh-user-companies'));
+        }
       }
     } catch (err) {
       console.error('Failed to fetch companies:', err);

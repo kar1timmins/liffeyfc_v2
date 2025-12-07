@@ -4,6 +4,7 @@
   import { PUBLIC_API_URL } from '$env/static/public';
   import { authStore } from '$lib/stores/auth';
   import WishlistForm from './WishlistForm.svelte';
+  import CreateBountyModal from './CreateBountyModal.svelte';
 
   interface Company {
     id: string;
@@ -44,6 +45,9 @@
   let isCheckingWallet = $state(false);
   let walletAddresses = $state<{ eth: string; avax: string } | null>(null);
   let expandedWishlistId = $state<string | null>(null);
+  let bountyModalOpen = $state(false);
+  let selectedWishlistItem = $state<any | null>(null);
+  let selectedCompany = $state<Company | null>(null);
   
   // Form fields
   let name = $state('');
@@ -203,6 +207,20 @@
 
   function handleWishlistItemAdded() {
     // Refresh companies to show updated wishlist
+    onUpdate();
+  }
+
+  function openBountyModal(item: any, company: Company) {
+    selectedWishlistItem = item;
+    selectedCompany = company;
+    bountyModalOpen = true;
+  }
+
+  function handleBountySuccess() {
+    bountyModalOpen = false;
+    selectedWishlistItem = null;
+    selectedCompany = null;
+    // Refresh companies to show updated bounty status
     onUpdate();
   }
 
@@ -724,6 +742,52 @@
                 {/if}
               </div>
 
+              <!-- Wallet Addresses Section -->
+              {#if company.ethAddress || company.avaxAddress}
+                <div class="mt-4 p-3 bg-base-200/50 rounded-lg">
+                  <div class="flex items-center gap-2 mb-2">
+                    <Wallet class="w-4 h-4 text-primary" />
+                    <span class="text-sm font-semibold">Wallet Addresses</span>
+                  </div>
+                  <div class="space-y-2">
+                    {#if company.ethAddress}
+                      <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2 flex-1 min-w-0">
+                          <span class="badge badge-primary badge-xs">ETH</span>
+                          <code class="text-xs font-mono truncate flex-1" title={company.ethAddress}>
+                            {company.ethAddress}
+                          </code>
+                        </div>
+                        <button
+                          class="btn btn-ghost btn-xs"
+                          onclick={() => navigator.clipboard.writeText(company.ethAddress || '')}
+                          title="Copy Ethereum address"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                        </button>
+                      </div>
+                    {/if}
+                    {#if company.avaxAddress}
+                      <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2 flex-1 min-w-0">
+                          <span class="badge badge-error badge-xs">AVAX</span>
+                          <code class="text-xs font-mono truncate flex-1" title={company.avaxAddress}>
+                            {company.avaxAddress}
+                          </code>
+                        </div>
+                        <button
+                          class="btn btn-ghost btn-xs"
+                          onclick={() => navigator.clipboard.writeText(company.avaxAddress || '')}
+                          title="Copy Avalanche address"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                        </button>
+                      </div>
+                    {/if}
+                  </div>
+                </div>
+              {/if}
+
               <!-- Wishlist Section - Expandable -->
               <div class="mt-4">
                 <button
@@ -750,6 +814,7 @@
                     <WishlistForm 
                       companyId={company.id}
                       onItemAdded={handleWishlistItemAdded}
+                      onCreateBounty={(item) => openBountyModal(item, company)}
                     />
 
                     <!-- Existing Wishlist Items -->
@@ -801,6 +866,43 @@
                                 Raised: ${(item.amountRaised || 0).toLocaleString()}
                               </p>
                             {/if}
+
+                            <!-- Create Bounty Button - Debug Version -->
+                            {#if !item.isEscrowActive}
+                              <div class="mt-3 pt-3 border-t border-base-300">
+                                {#if item.value && (company.ethAddress || company.avaxAddress)}
+                                  <button
+                                    class="btn btn-sm btn-primary w-full gap-2"
+                                    onclick={() => openBountyModal(item, company)}
+                                  >
+                                    <Target class="w-4 h-4" />
+                                    Create Bounty Campaign
+                                  </button>
+                                  <p class="text-xs opacity-60 mt-1 text-center">
+                                    Enable blockchain crowdfunding for this item
+                                  </p>
+                                {:else}
+                                  <div class="alert alert-warning py-2">
+                                    <div class="text-xs">
+                                      {#if !item.value}
+                                        ⚠️ Set a target value to enable bounty creation
+                                      {:else if !company.ethAddress && !company.avaxAddress}
+                                        ⚠️ Add a wallet address to your company to enable bounties
+                                      {/if}
+                                    </div>
+                                  </div>
+                                {/if}
+                              </div>
+                            {:else}
+                              <div class="mt-3 pt-3 border-t border-base-300">
+                                <div class="alert alert-success py-2">
+                                  <div class="flex items-center gap-2 text-xs">
+                                    <Target class="w-4 h-4" />
+                                    <span class="font-semibold">Active Bounty Campaign</span>
+                                  </div>
+                                </div>
+                              </div>
+                            {/if}
                           </div>
                         {/each}
                       </div>
@@ -835,3 +937,14 @@
     </div>
   {/if}
 </div>
+
+<!-- Create Bounty Modal -->
+{#if selectedWishlistItem && selectedCompany}
+  <CreateBountyModal
+    bind:isOpen={bountyModalOpen}
+    wishlistItem={selectedWishlistItem}
+    companyName={selectedCompany.name}
+    companyWallet={selectedCompany.ethAddress || selectedCompany.avaxAddress || ''}
+    onSuccess={handleBountySuccess}
+  />
+{/if}

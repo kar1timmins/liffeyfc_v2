@@ -25,6 +25,12 @@
   let userCompanies = $state<any[]>([]);
   let companiesFetched = $state(false);
   
+  // Force refresh companies (exported for use after company creation)
+  export function refreshUserCompanies() {
+    companiesFetched = false;
+    fetchUserCompanies();
+  }
+  
   function openWeb3Modal() {
     showWeb3Modal = true;
     fabOpen = false;
@@ -37,7 +43,7 @@
   
   // Fetch user's companies to determine bounties access
   async function fetchUserCompanies() {
-    if (!$authStore.isAuthenticated || companiesFetched) return;
+    if (!$authStore.isAuthenticated) return;
     
     try {
       const response = await fetch(`${PUBLIC_API_URL}/companies/my-companies`, {
@@ -49,6 +55,7 @@
         const result = await response.json();
         userCompanies = result.data || [];
         companiesFetched = true;
+        console.log('Fetched user companies:', userCompanies.length);
       }
     } catch (error) {
       console.error('Failed to fetch user companies:', error);
@@ -62,6 +69,14 @@
     if ($authStore.isAuthenticated) {
       fetchUserCompanies();
     }
+    
+    // Listen for custom event to refresh companies
+    const handleRefresh = () => {
+      console.log('Refreshing user companies from event');
+      companiesFetched = false;
+      fetchUserCompanies();
+    };
+    window.addEventListener('refresh-user-companies', handleRefresh);
     
     // Initialize theme
     if (typeof window !== 'undefined') {
@@ -102,6 +117,7 @@
     return () => {
       document.removeEventListener('click', handleClickOutside);
       window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('refresh-user-companies', handleRefresh);
     };
   });
   

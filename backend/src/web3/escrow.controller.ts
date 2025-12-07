@@ -9,6 +9,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import { IsString, IsNumber, IsOptional, IsArray, IsNotEmpty, IsIn } from 'class-validator';
 import { AuthGuard } from '@nestjs/passport';
 import { EscrowContractService } from './escrow-contract.service';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -18,9 +19,18 @@ import { Company } from '../entities/company.entity';
 import { CurrentUser } from '../auth/current-user.decorator';
 
 class CreateEscrowDto {
+  @IsString()
+  @IsNotEmpty()
   wishlistItemId: string;
+
+  @IsNumber()
   targetAmountEth: number;
+
+  @IsNumber()
   durationInDays: number;
+
+  @IsArray()
+  @IsOptional()
   chains?: ('ethereum' | 'avalanche')[];
 }
 

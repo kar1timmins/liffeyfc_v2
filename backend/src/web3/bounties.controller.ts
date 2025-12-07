@@ -10,14 +10,24 @@ import {
   Logger,
   Query,
 } from '@nestjs/common';
+import { IsString, IsNumber, IsOptional, IsNotEmpty } from 'class-validator';
 import { BountiesService } from './bounties.service';
 import { AuthGuard } from '@nestjs/passport';
 import { CurrentUser } from '../auth/current-user.decorator';
 
 class CreateBountyDto {
+  @IsString()
+  @IsNotEmpty()
   wishlistItemId: string;
+
+  @IsNumber()
   targetAmountEur: number;
+
+  @IsNumber()
   durationInDays: number;
+
+  @IsString()
+  @IsOptional()
   description?: string;
 }
 
