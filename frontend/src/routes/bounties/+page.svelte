@@ -18,9 +18,6 @@
     X
   } from 'lucide-svelte';
   import { PUBLIC_API_URL } from '$env/static/public';
-  
-  // Disable prerendering for pages that need dynamic API data
-  export const prerender = false;
   import { authStore } from '$lib/stores/auth';
 
   let bounties = $state<any[]>([]);

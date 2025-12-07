@@ -18,9 +18,6 @@
     ExternalLink
   } from 'lucide-svelte';
   import { PUBLIC_API_URL } from '$env/static/public';
-  
-  // Disable prerendering for dynamic routes
-  export const prerender = false;
   import { authStore } from '$lib/stores/auth';
   import { toastStore } from '$lib/stores/toast';
 
