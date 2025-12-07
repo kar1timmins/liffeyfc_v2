@@ -4,12 +4,13 @@
   import '../app.css';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
-  import { Home, Mic, Info, Sun, Moon, X, Menu, Wallet, User, Grid } from 'lucide-svelte';
+  import { Home, Mic, Info, Sun, Moon, X, Menu, Wallet, User, Grid, Building2, Target } from 'lucide-svelte';
   import Web3Modal from '$lib/components/Web3Modal.svelte';
   import { walletStore, formattedAddress } from '$lib/stores/walletStore';
   import { authStore } from '$lib/stores/auth';
   import Toast from '$lib/components/Toast.svelte';
   import type { Snippet } from 'svelte';
+  import { PUBLIC_API_URL } from '$env/static/public';
   
   interface Props {
     children: Snippet;
@@ -19,6 +20,10 @@
   
   // Web3 Modal state
   let showWeb3Modal = $state(false);
+  
+  // User companies state for bounties access control
+  let userCompanies = $state<any[]>([]);
+  let companiesFetched = $state(false);
   
   function openWeb3Modal() {
     showWeb3Modal = true;
@@ -30,8 +35,33 @@
   let bannerVisible = $state(true);
   let lastScrollY = 0;
   
+  // Fetch user's companies to determine bounties access
+  async function fetchUserCompanies() {
+    if (!$authStore.isAuthenticated || companiesFetched) return;
+    
+    try {
+      const response = await fetch(`${PUBLIC_API_URL}/companies/my-companies`, {
+        headers: { Authorization: `Bearer ${$authStore.accessToken}` },
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        userCompanies = result.data || [];
+        companiesFetched = true;
+      }
+    } catch (error) {
+      console.error('Failed to fetch user companies:', error);
+    }
+  }
+  
   onMount(() => { 
     mounted = true;
+    
+    // Fetch companies if user is authenticated
+    if ($authStore.isAuthenticated) {
+      fetchUserCompanies();
+    }
     
     // Initialize theme
     if (typeof window !== 'undefined') {
@@ -84,8 +114,6 @@
     }
   }
   
-  // Icons
-  import { Building2 } from 'lucide-svelte';
   // FAB logic
   let fabOpen = $state(false);
   
@@ -117,6 +145,17 @@
     showShell = true; // re-show wrapper for next route
     if (target) goto(target);
   }
+  
+  // Reactive effect to fetch companies when auth state changes
+  $effect(() => {
+    if ($authStore.isAuthenticated && !companiesFetched) {
+      fetchUserCompanies();
+    } else if (!$authStore.isAuthenticated) {
+      // Reset companies when logged out
+      userCompanies = [];
+      companiesFetched = false;
+    }
+  });
 </script>
 
 <svelte:head>
@@ -333,6 +372,12 @@
             <Building2 size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/> 
             <span class="flex-1 text-center">Companies</span>
           </button>
+          {#if userCompanies.length > 0}
+            <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/bounties')}>
+              <Target size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/> 
+              <span class="flex-1 text-center">Bounties</span>
+            </button>
+          {/if}
         {:else}
           <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/pitch')}>
             <Mic size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/> 

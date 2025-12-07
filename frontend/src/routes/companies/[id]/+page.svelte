@@ -24,6 +24,13 @@
   let donatingItemId = $state<string | null>(null);
   let donationSuccess = $state<string | null>(null);
   let donationError = $state<string | null>(null);
+  
+  // Bounty contribution state (for escrow-enabled wishlist items)
+  let bountyContributions = $state<Record<string, string>>({});
+  let contributingBountyId = $state<string | null>(null);
+  let selectedBountyChain = $state<Record<string, 'ethereum' | 'avalanche'>>({});
+  let bountyContributionSuccess = $state<string | null>(null);
+  let bountyContributionError = $state<string | null>(null);
 
   const companyId = $derived($page.params.id);
   const isInvestor = $derived($authStore.user?.role === 'investor');
@@ -195,6 +202,91 @@
       donatingItemId = null;
     }
   }
+  
+  async function contributeToEscrow(itemId: string, chain: 'ethereum' | 'avalanche') {
+    const amount = bountyContributions[itemId];
+    if (!amount || parseFloat(amount) <= 0) {
+      bountyContributionError = 'Please enter a valid amount';
+      setTimeout(() => bountyContributionError = null, 3000);
+      return;
+    }
+
+    const item = wishlistItems.find(i => i.id === itemId);
+    if (!item) {
+      bountyContributionError = 'Bounty not found';
+      setTimeout(() => bountyContributionError = null, 3000);
+      return;
+    }
+
+    const escrowAddress = chain === 'ethereum' ? item.ethereumEscrowAddress : item.avalancheEscrowAddress;
+    if (!escrowAddress) {
+      bountyContributionError = `No ${chain} escrow contract deployed for this bounty`;
+      setTimeout(() => bountyContributionError = null, 3000);
+      return;
+    }
+
+    if (typeof window === 'undefined' || !window.ethereum) {
+      bountyContributionError = 'MetaMask not detected. Please install MetaMask.';
+      setTimeout(() => bountyContributionError = null, 3000);
+      return;
+    }
+
+    contributingBountyId = itemId;
+    bountyContributionError = null;
+    bountyContributionSuccess = null;
+
+    try {
+      // Request accounts
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      if (!accounts || accounts.length === 0) {
+        throw new Error('No wallet connected');
+      }
+
+      // Network switching
+      const chainId = chain === 'ethereum' ? '0xaa36a7' : '0xa869'; // Sepolia or Fuji
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId }],
+        });
+      } catch (switchError: any) {
+        if (switchError.code === 4902) {
+          throw new Error(`Please add ${chain === 'ethereum' ? 'Sepolia' : 'Fuji'} network to MetaMask`);
+        }
+        throw switchError;
+      }
+
+      // Convert to wei
+      const amountInWei = BigInt(Math.floor(parseFloat(amount) * 1e18)).toString(16);
+
+      // Send transaction to escrow contract
+      const txHash = await window.ethereum.request({
+        method: 'eth_sendTransaction',
+        params: [{
+          from: accounts[0],
+          to: escrowAddress,
+          value: '0x' + amountInWei,
+          data: '0xd7bb99ba', // contribute() function selector
+        }],
+      });
+
+      bountyContributionSuccess = `Contribution successful! Transaction: ${txHash.slice(0, 10)}...`;
+      bountyContributions[itemId] = '';
+      
+      // Refresh company data after a delay
+      setTimeout(async () => {
+        await fetchCompany();
+        bountyContributionSuccess = null;
+      }, 3000);
+      
+    } catch (err: any) {
+      bountyContributionError = err.message || 'Transaction failed';
+      setTimeout(() => bountyContributionError = null, 5000);
+    } finally {
+      contributingBountyId = null;
+    }
+  }
+
 </script>
 
 <svelte:head>
@@ -655,8 +747,87 @@
                             </p>
                           {/if}
 
-                          <!-- Donate Button for Investors -->
-                          {#if isInvestor && !isOwner && remaining > 0}
+                          <!-- Escrow Contribution for Investors (Blockchain) -->
+                          {#if item.isEscrowActive && isInvestor && !isOwner && remaining > 0}
+                            <div class="mt-4 p-4 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-lg border-2 border-primary/20">
+                              <div class="flex items-center gap-2 mb-3">
+                                <span class="badge badge-primary badge-sm">🔗 Blockchain Escrow</span>
+                                <span class="text-xs opacity-70">Time-locked smart contract</span>
+                              </div>
+                              
+                              {#if bountyContributionSuccess}
+                                <div class="alert alert-success mb-3">
+                                  <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                  <span class="text-sm">{bountyContributionSuccess}</span>
+                                </div>
+                              {/if}
+                              
+                              {#if bountyContributionError}
+                                <div class="alert alert-error mb-3">
+                                  <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                  <span class="text-sm">{bountyContributionError}</span>
+                                </div>
+                              {/if}
+                              
+                              <p class="text-sm font-semibold mb-3">Contribute via Smart Contract:</p>
+                              
+                              <!-- Network Selector -->
+                              <div class="flex gap-2 mb-3">
+                                {#if item.ethereumEscrowAddress}
+                                  <button
+                                    class="btn btn-sm flex-1 {selectedBountyChain[item.id] === 'ethereum' ? 'btn-primary' : 'btn-outline'}"
+                                    onclick={() => selectedBountyChain[item.id] = 'ethereum'}
+                                    disabled={contributingBountyId === item.id}
+                                  >
+                                    Ethereum
+                                  </button>
+                                {/if}
+                                {#if item.avalancheEscrowAddress}
+                                  <button
+                                    class="btn btn-sm flex-1 {selectedBountyChain[item.id] === 'avalanche' ? 'btn-primary' : 'btn-outline'}"
+                                    onclick={() => selectedBountyChain[item.id] = 'avalanche'}
+                                    disabled={contributingBountyId === item.id}
+                                  >
+                                    Avalanche
+                                  </button>
+                                {/if}
+                              </div>
+                              
+                              {#if selectedBountyChain[item.id]}
+                                <div class="flex gap-2">
+                                  <input
+                                    type="number"
+                                    bind:value={bountyContributions[item.id]}
+                                    placeholder={`Amount in ${selectedBountyChain[item.id] === 'ethereum' ? 'ETH' : 'AVAX'}`}
+                                    step="0.01"
+                                    min="0.01"
+                                    class="input input-bordered input-sm flex-1"
+                                    disabled={contributingBountyId === item.id}
+                                  />
+                                  <button 
+                                    class="btn btn-primary btn-sm"
+                                    onclick={() => contributeToEscrow(item.id, selectedBountyChain[item.id])}
+                                    disabled={contributingBountyId === item.id || !bountyContributions[item.id]}
+                                  >
+                                    {#if contributingBountyId === item.id}
+                                      <span class="loading loading-spinner loading-xs"></span>
+                                    {:else}
+                                      <Wallet class="w-4 h-4" />
+                                    {/if}
+                                    Contribute
+                                  </button>
+                                </div>
+                                <p class="text-xs opacity-60 mt-2">
+                                  ⚠️ Funds locked until {new Date(item.campaignDeadline).toLocaleDateString()}. Refunded if target not met (minus gas fees split among contributors).
+                                </p>
+                              {:else}
+                                <p class="text-xs opacity-60 text-center py-2">
+                                  ↑ Select a network to contribute
+                                </p>
+                              {/if}
+                            </div>
+                          <!-- Regular Donation for Investors (Non-escrow) -->
+                          {:else if !item.isEscrowActive && isInvestor && !isOwner && remaining > 0}
                             <div class="mt-4 p-4 bg-base-200/50 rounded-lg">
                               <p class="text-sm font-semibold mb-2">Support this need:</p>
                               <div class="flex gap-2">

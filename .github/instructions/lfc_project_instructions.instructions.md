@@ -30,6 +30,7 @@ liffeyfc_v2/
 ├── frontend/          # SvelteKit static site
 ├── backend/           # NestJS API server
 ├── email-server/      # Node.js email service (Railway)
+├── hardhat/           # Hardhat smart contracts (Ethereum/Avalanche)
 ├── docker-compose.yml # Local development orchestration
 └── deploy.sh          # Deployment script
 ```
@@ -49,8 +50,27 @@ liffeyfc_v2/
 - **Framework**: NestJS 11
 - **Runtime**: Node.js with TypeScript
 - **Architecture**: Modular (Controllers, Services, Modules)
-- **Features**: Contact form handling, reCAPTCHA validation, Web3Forms integration
+- **Features**: 
+  - Contact form handling with reCAPTCHA validation
+  - Company management with wishlist system
+  - Bounties system for crowdfunding wishlist items
+  - Web3 signature verification and nonce management
+  - File upload with GCP Cloud Storage integration
 - **Package Manager**: pnpm
+
+#### Smart Contracts (`/hardhat/`)
+- **Framework**: Hardhat with TypeScript
+- **Language**: Solidity 0.8.x
+- **Contracts**:
+  - `CompanyWishlistEscrow.sol`: Time-bound escrow with proportional gas fee distribution
+  - `EscrowFactory.sol`: Factory pattern for deploying escrow instances
+- **Networks**: Ethereum Sepolia (testnet), Avalanche Fuji (testnet)
+- **Features**:
+  - Multi-contributor crowdfunding
+  - Time-bound campaigns with refund mechanism
+  - Fair gas fee distribution on failed campaigns (0.1% split proportionally)
+  - Milestone-based fund release (planned)
+- **TypeChain**: Auto-generated TypeScript types for contracts
 
 #### Email Service (`/email-server/`)
 - **Runtime**: Node.js (Express)
@@ -64,6 +84,13 @@ liffeyfc_v2/
 - **Migrations**: TypeORM CLI (`pnpm run migration:*` scripts in backend)
 - **Cache/Store**: Redis 7 (Alpine image) for nonce storage & multi-instance deployments
 - **Config**: `.env` file controls `DATABASE_URL`, `POSTGRES_*` vars, `REDIS_URL`, and `TYPEORM_SYNCHRONIZE`
+- **Key Entities**:
+  - `User`: User accounts with role-based access (user, investor, staff)
+  - `Wallet`: Web3 wallet addresses linked to users
+  - `RefreshToken`: JWT refresh tokens with rotation and revocation
+  - `Company`: Business profiles with owner relationships
+  - `WishlistItem`: Company wishlists with escrow integration
+  - `Bounty`: Crowdfunding campaigns linked to wishlist items
 
 #### Authentication & Authorization
 - **Strategy**: JWT + Passport.js (passport-jwt strategy)
@@ -131,6 +158,8 @@ liffeyfc_v2/
 - **Auth Module**: Handles SIWE, email/password, JWT, and refresh tokens
 - **Users Module**: User registration, profile, wallet management
 - **Web3 Module**: Signature verification, nonce management, chain information
+- **Companies Module**: Company CRUD, wishlist management, owner verification
+- **Bounties Module**: Crowdfunding campaigns with smart contract integration
 - **JWT Strategy**: Configured in `auth/jwt.strategy.ts`; use `@UseGuards(AuthGuard('jwt'))` or global guard
 
 #### API Design
@@ -163,24 +192,58 @@ liffeyfc_v2/
 - **Logging**: Use `console.error()` for errors, avoid `console.log()` in production
 - **User Feedback**: Provide clear error messages to users
 
-## 4. Web3 Integration (Planned)
+## 4. Web3 Integration
 
-### Current Implementation
+### Smart Contract Architecture
+
+#### CompanyWishlistEscrow.sol
+- **Purpose**: Time-bound crowdfunding escrow for company wishlist items
+- **Key Features**:
+  - Multi-contributor support with contribution tracking
+  - Deadline-based funding goals
+  - Proportional gas fee distribution (0.1% of total, 0.001-0.1 ETH cap)
+  - Refund mechanism with fair gas cost sharing
+  - Owner fund release on successful campaigns
+- **Networks**: Ethereum Sepolia (testnet), Avalanche Fuji (testnet)
+- **Gas Fee Distribution**: When campaign fails and contributors claim refunds:
+  - Gas reserve calculated as 0.1% of total raised
+  - Minimum 0.001 ETH, maximum 0.1 ETH
+  - Each contributor pays proportional share: `(contribution × gasReserve) / totalRaised`
+  - Prevents single contributor from bearing all gas costs
+
+#### EscrowFactory.sol
+- **Purpose**: Factory pattern for deploying escrow contract instances
+- **Benefits**: Standardized deployment, reduced gas costs, easier contract management
+
+### Frontend Web3 Integration
 - **Location**: `/frontend/src/lib/web3/web3.ts`
-- **Provider**: Direct `window.ethereum` interaction
-- **Chains**: Ethereum and Avalanche (planned)
+- **Provider**: Direct `window.ethereum` interaction (MetaMask)
+- **Features**:
+  - Wallet connection management
+  - Network switching (Ethereum Sepolia, Avalanche Fuji)
+  - Transaction signing and sending
+  - Contract interaction via ABI
+  - Balance checking and address formatting
+- **Implementation**: Integrated into company pages for escrow contributions
 
-### Future Enhancements
-- Smart contract integration
-- Wallet connection management
-- Multi-chain support (Ethereum, Avalanche)
-- Transaction handling and state management
+### Backend Web3 Integration
+- **Bounties API**: 5 REST endpoints for campaign management
+  - `GET /bounties` - List all active bounties
+  - `GET /bounties/:id` - Get bounty details
+  - `POST /bounties` - Create new bounty (links wishlist item to contract)
+  - `POST /bounties/:id/sync` - Sync on-chain data with database
+  - `GET /bounties/company/:id` - Get bounties for specific company
+- **Contract Sync**: Background sync of on-chain state (totalRaised, contributors, status)
+- **Access Control**: Only company owners can create bounties for their wishlist items
 
 ### Guidelines for Web3 Features
-- Keep Web3 code modular and isolated
-- Handle wallet connection errors gracefully
-- Provide clear user feedback for blockchain interactions
-- Support multiple wallet providers (MetaMask, WalletConnect, etc.)
+- Keep Web3 code modular and isolated in `/frontend/src/lib/web3/`
+- Handle wallet connection errors gracefully with user-friendly messages
+- Always check network before transactions (show network switch prompt)
+- Validate contract addresses and function selectors
+- Use TypeChain-generated types for type-safe contract interactions
+- Log transaction hashes for user reference
+- Provide clear feedback during transaction states (pending, success, error)
 
 ## 5. Development Workflow
 
@@ -208,6 +271,27 @@ cd frontend && pnpm dev
 
 # Backend only (port 3000) — requires Postgres & Redis running separately
 cd backend && pnpm start:dev
+
+# Smart contracts development
+cd hardhat && npx hardhat compile
+```
+
+### Smart Contract Development
+```bash
+# Compile contracts
+cd hardhat && npx hardhat compile
+
+# Run tests
+npx hardhat test
+
+# Deploy to testnet (Sepolia)
+npx hardhat run scripts/deploy-factory.ts --network sepolia
+
+# Deploy to testnet (Fuji)
+npx hardhat run scripts/deploy-factory.ts --network fuji
+
+# Test escrow system end-to-end
+npx hardhat run scripts/test-escrow-system.ts --network sepolia
 ```
 
 ### Database Initialization & Migrations
@@ -230,21 +314,30 @@ cd frontend && pnpm build
 
 # Backend production build
 cd backend && pnpm build
+
+# Smart contracts compile (generates TypeChain types)
+cd hardhat && npx hardhat compile
 ```
 
 ### Testing
 ```bash
-# Run unit tests
+# Backend unit tests
 cd backend && pnpm test
 
-# Run tests in watch mode
+# Backend tests in watch mode
 pnpm test:watch
 
-# Run e2e tests
+# Backend e2e tests
 pnpm test:e2e
 
 # Generate coverage report
 pnpm test:cov
+
+# Smart contract tests
+cd hardhat && npx hardhat test
+
+# Frontend type checking
+cd frontend && pnpm run check
 ```
 
 ## 6. Configuration & Environment
@@ -360,3 +453,322 @@ pnpm run migration:run
 - **Email service setup**: `/email-server/README.md`
 - **Root project overview**: `/README.md` (to be created)
 - **Migrations**: Auto-generated by TypeORM CLI; stored in `backend/src/migrations/`
+- **Bounties System**:
+  - Implementation guide: `/frontend/docs/BOUNTIES_IMPLEMENTATION.md`
+  - Quick start: `/frontend/docs/BOUNTIES_QUICKSTART.md`
+  - Recent updates: `/frontend/docs/BOUNTIES_UPDATE.md`
+  - API documentation: `/backend/docs/BOUNTIES_API.md`
+  - FAB navigation: `/frontend/FAB_BOUNTIES_UPDATE.md`
+- **Smart Contracts**: 
+  - Test results: `/hardhat/TEST_RESULTS.md`
+  - Escrow architecture: `/frontend/docs/ESCROW_SYSTEM.md`
+
+## 10. Key Features & User Flows
+
+### Companies & Wishlist Management
+- **Company Profiles**: Users can create and manage company profiles with descriptions, industries, and contact info
+- **Wishlist Items**: Companies can add wishlist items (needs/wants like funding, partnerships, services)
+- **Owner Verification**: Only company owners can edit their company profiles and manage wishlists
+- **Public Discovery**: All companies and wishlists are publicly browsable
+
+### Bounties System (Crowdfunding)
+- **Purpose**: Enable crowdfunding for specific company wishlist items using blockchain escrow
+- **Flow**:
+  1. Company owner creates wishlist item (e.g., "Need $5000 for marketing campaign")
+  2. Owner creates bounty linking wishlist item to smart contract escrow
+  3. Bounty appears on public bounties page with goal amount and deadline
+  4. Investors browse bounties and contribute ETH/AVAX via MetaMask
+  5. Contributions held in escrow contract until goal met or deadline passes
+  6. If successful: Owner claims funds; contributors get recognition
+  7. If failed: Contributors claim refunds with proportional gas fee deduction
+- **Access Control**:
+  - Only investors can contribute to bounties (not other company owners)
+  - Only company owners can create bounties for their wishlist items
+  - Bounties link visible in FAB only for users with registered companies
+
+### Navigation & Access Patterns
+- **FAB (Floating Action Button)**: Main navigation with conditional items
+  - Home (always visible)
+  - Companies (authenticated users)
+  - **Bounties** (authenticated users with registered companies only)
+  - Dashboard (authenticated users)
+  - Profile (authenticated users)
+  - Sign In/Out
+- **Bounties Page**: Browse all active crowdfunding campaigns
+  - Filter by status (active, funded, expired)
+  - Search by company or description
+  - View progress bars and contributor counts
+  - Click through to bounty detail page
+- **Bounty Detail Page**: View-only information display
+  - Campaign details (goal, raised, deadline, status)
+  - Company information with link to profile
+  - Contributor list and progress visualization
+  - **CTA**: "Go to Company Page to Contribute" button
+- **Company Page**: Main interaction point for contributions
+  - Company profile at top
+  - Wishlist items below with status badges
+  - Escrow-enabled items show contribution form (investors only)
+  - Network selector (Ethereum Sepolia / Avalanche Fuji)
+  - MetaMask integration for transactions
+  - Auto-refresh after successful contribution
+
+### Role-Based Features
+- **User Role (Default)**:
+  - Browse companies and bounties
+  - Create own company profile
+  - Add wishlist items to own company
+  - Create bounties for own wishlist items
+- **Investor Role**:
+  - All user role features
+  - Contribute to bounties via MetaMask
+  - View contribution history
+  - Cannot contribute to own company's bounties
+- **Staff Role** (Admin):
+  - All features plus moderation capabilities
+  - Manage users and companies (planned)
+
+## 11. Frontend Architecture Details
+
+### Key Pages & Routes
+- `/` - Home page with intro and call-to-action
+- `/pitch` - Pitch deck/presentation page
+- `/learnMore` - Detailed information about the club
+- `/auth` - Combined login/register page with animated toggle
+- `/dashboard` - User dashboard with personalized content
+- `/profile` - User profile management with avatar upload
+- `/companies` - Browse all companies
+- `/companies/[id]` - Company detail page with wishlist and contribution UI
+- `/bounties` - Browse all bounties/crowdfunding campaigns
+- `/bounties/[id]` - Bounty detail page (view-only, redirects to company for contribution)
+- `/forgot-password` - Password reset request
+- `/reset-password` - Password reset confirmation
+
+### State Management
+- **Auth Store** (`/src/lib/stores/auth.ts`):
+  - User authentication state
+  - JWT access token (memory only)
+  - Refresh token (httpOnly cookie)
+  - User profile data
+  - Login/logout/register methods
+- **Wallet Store** (`/src/lib/stores/walletStore.ts`):
+  - Web3 wallet connection state
+  - Current chain and network
+  - Balance information
+  - Formatted address display
+- **Component-Level State**: Svelte 5 runes (`$state`, `$derived`, `$effect`)
+
+### Web3 Integration Layer
+- **Location**: `/src/lib/web3/web3.ts`
+- **Capabilities**:
+  - Detect MetaMask presence
+  - Request wallet connection
+  - Get current account and balance
+  - Switch networks (Sepolia 0xaa36a7, Fuji 0xa869)
+  - Send transactions with custom data
+  - Format addresses for display
+- **Contract Interaction**:
+  - Contribution function selector: `0xd7bb99ba`
+  - ABI encoding for transaction data
+  - Transaction receipt monitoring
+  - Error handling and user feedback
+
+### Component Library
+- **Layout Components**: `+layout.svelte` with FAB navigation
+- **UI Components**:
+  - `Web3Modal.svelte` - Wallet connection modal
+  - `Toast.svelte` - Toast notifications for feedback
+- **Icons**: Lucide Svelte icon library
+- **Styling**: 
+  - Tailwind CSS utility classes
+  - Custom glass morphism effects (`glass-fab`)
+  - Neon accent colors (`btn-neon-cool`)
+  - Dark/light theme support
+
+## 12. Backend Architecture Details
+
+### Module Organization
+```
+src/
+├── auth/              # Authentication & authorization
+├── users/             # User management & profiles
+├── companies/         # Company CRUD & wishlist
+├── bounties/          # Crowdfunding campaigns
+├── web3/              # Blockchain integration
+├── contact/           # Contact form handling
+├── uploads/           # File upload management
+├── entities/          # TypeORM entity definitions
+├── migrations/        # Database migrations
+├── common/            # Shared utilities & filters
+└── config/            # Configuration modules
+```
+
+### Bounties Module
+- **Controller** (`bounties.controller.ts`):
+  - 5 REST endpoints for bounty management
+  - JWT authentication required
+  - Owner verification for bounty creation
+- **Service** (`bounties.service.ts`):
+  - Database operations for bounties
+  - Contract address validation
+  - Chain ID validation
+  - Sync on-chain state with database
+- **DTOs**:
+  - `CreateBountyDto`: Validate bounty creation input
+  - `SyncBountyDto`: Sync contract state updates
+- **Entity** (`Bounty`):
+  - Relationships: ManyToOne with WishlistItem and Company
+  - Fields: contractAddress, chainId, goalAmount, deadline, status
+  - Timestamps: createdAt, updatedAt
+
+### Companies Module
+- **Controller** (`companies.controller.ts`):
+  - CRUD operations for companies
+  - Wishlist item management
+  - Owner verification middleware
+  - Public read, authenticated write
+- **Service** (`companies.service.ts`):
+  - Database operations with TypeORM
+  - Owner verification logic
+  - Wishlist item CRUD
+- **Entities**:
+  - `Company`: Business profiles with owner relationship
+  - `WishlistItem`: Needs/wants with optional escrow integration
+
+### Web3 Module
+- **Signature Verification** (`web3.service.ts`):
+  - SIWE message validation
+  - Ethereum signature recovery
+  - Nonce verification with Redis
+- **Nonce Service** (`nonce.redis.service.ts`):
+  - Redis-backed nonce storage
+  - Atomic consume operation (Lua script)
+  - TTL-based expiration (5 minutes)
+  - Fallback to in-memory for single-instance dev
+
+## 13. Smart Contract Architecture
+
+### CompanyWishlistEscrow.sol
+```solidity
+// Key functions:
+function contribute() external payable              // Accept contributions
+function releaseFunds() external                    // Owner claims on success
+function claimRefund() external                     // Contributors get refund on failure
+function _calculateGasReserve() internal pure       // Fair gas fee calculation
+```
+
+**State Variables**:
+- `address public owner` - Company receiving funds
+- `uint256 public goalAmount` - Target funding amount
+- `uint256 public deadline` - Campaign end timestamp
+- `uint256 public totalRaised` - Current contributions sum
+- `mapping(address => uint256) public contributions` - Contributor balances
+- `address[] public contributorList` - List of all contributors
+
+**Events**:
+- `ContributionReceived(address indexed contributor, uint256 amount)`
+- `FundsReleased(address indexed owner, uint256 amount)`
+- `RefundClaimed(address indexed contributor, uint256 refundAmount, uint256 gasFee)`
+
+**Gas Fee Logic**:
+```solidity
+// When campaign fails, calculate fair gas reserve:
+uint256 gasReserve = (totalRaised * 10) / 10000;  // 0.1%
+if (gasReserve < 0.001 ether) gasReserve = 0.001 ether;
+if (gasReserve > 0.1 ether) gasReserve = 0.1 ether;
+
+// Each contributor pays proportional share:
+uint256 contributorShare = (contribution * gasReserve) / totalRaised;
+uint256 refund = contribution - contributorShare;
+```
+
+### EscrowFactory.sol
+```solidity
+function createEscrow(
+    address _owner,
+    uint256 _goalAmount,
+    uint256 _deadline
+) external returns (address)
+```
+
+**Purpose**: Standardized escrow deployment with predictable addresses and reduced gas costs
+
+## 14. Deployment & Production
+
+### Frontend Deployment
+- **Platform**: Static hosting (Blacknight, Netlify, Vercel, etc.)
+- **Build**: `pnpm build` generates static files in `/build`
+- **Configuration**: 
+  - SvelteKit adapter-static with fallback for SPA routing
+  - Prerendering for SEO-friendly pages
+  - Brotli compression enabled (`precompress: true`)
+- **Environment**: Set `PUBLIC_API_URL` to production backend URL
+
+### Backend Deployment
+- **Platform**: Railway, Heroku, AWS, or similar
+- **Configuration**:
+  - Set `TYPEORM_SYNCHRONIZE=false` in production
+  - Run migrations during deployment: `pnpm run migration:run`
+  - Use managed Postgres and Redis services
+- **Environment**: Configure all secrets via platform environment variables
+
+### Smart Contract Deployment
+- **Networks**:
+  - Ethereum Sepolia (testnet): For testing and development
+  - Avalanche Fuji (testnet): For testing and development
+  - Mainnet deployment: Planned for production launch
+- **Process**:
+  ```bash
+  cd hardhat
+  npx hardhat run scripts/deploy-factory.ts --network sepolia
+  npx hardhat run scripts/deploy-factory.ts --network fuji
+  ```
+- **Verification**: Submit contract source to Etherscan/Snowtrace for transparency
+
+### Environment Variables Summary
+
+**Frontend (`.env`)**:
+```bash
+PUBLIC_API_URL=https://api.liffeyfc.com
+PUBLIC_RECAPTCHA_SITE_KEY=...
+```
+
+**Backend (`.env`)**:
+```bash
+# Database
+DATABASE_URL=postgresql://user:pass@host:5432/db
+TYPEORM_SYNCHRONIZE=false
+
+# Auth
+JWT_SECRET=strong_random_secret
+JWT_EXPIRES_IN=15m
+REFRESH_TOKEN_EXPIRES_IN=7d
+
+# Redis
+REDIS_URL=redis://redis:6379
+
+# External Services
+RECAPTCHA_SECRET_KEY=...
+WEB3FORMS_ACCESS_KEY=...
+GCP_BUCKET_NAME=...
+GCP_SERVICE_ACCOUNT_KEY=...
+
+# SMTP
+SMTP_HOST=smtp.zoho.com
+SMTP_PORT=465
+SMTP_USER=...
+SMTP_PASS=...
+```
+
+**Hardhat (`.env`)**:
+```bash
+# Sepolia (Ethereum testnet)
+SEPOLIA_RPC_URL=https://sepolia.infura.io/v3/...
+SEPOLIA_PRIVATE_KEY=...
+
+# Fuji (Avalanche testnet)
+FUJI_RPC_URL=https://api.avax-test.network/ext/bc/C/rpc
+FUJI_PRIVATE_KEY=...
+
+# Etherscan API (for verification)
+ETHERSCAN_API_KEY=...
+```
