@@ -106,7 +106,7 @@ export class BountiesController {
         dto.wishlistItemId,
         dto.targetAmountEur,
         dto.durationInDays,
-        user.id,
+        user.sub,
       );
 
       this.logger.log(`✅ Bounty created: ${bounty.id}`);

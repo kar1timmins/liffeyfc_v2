@@ -52,11 +52,13 @@
   const ETH_EUR_RATE = 3200; // Approximate rate for estimation
 
   function updateEthAmount() {
-    targetAmountEth = parseFloat((targetAmountEur / ETH_EUR_RATE).toFixed(4));
+    // Round to 4 decimal places for crypto precision
+    targetAmountEth = Math.round(targetAmountEur / ETH_EUR_RATE * 10000) / 10000;
   }
 
   function updateEurAmount() {
-    targetAmountEur = parseFloat((targetAmountEth * ETH_EUR_RATE).toFixed(2));
+    // Round to 2 decimal places for currency
+    targetAmountEur = Math.round(targetAmountEth * ETH_EUR_RATE * 100) / 100;
   }
 
   function close() {
@@ -112,6 +114,11 @@
       if (deployToEthereum) chains.push('ethereum');
       if (deployToAvalanche) chains.push('avalanche');
 
+      // Ensure values are properly rounded before sending
+      const roundedEurAmount = Math.round(targetAmountEur * 100) / 100;
+      const roundedEthAmount = Math.round(targetAmountEth * 10000) / 10000;
+      const roundedDurationDays = Math.round(durationDays);
+
       // Step 1: Create bounty record
       const bountyResponse = await fetch(`${PUBLIC_API_URL}/bounties`, {
         method: 'POST',
@@ -121,8 +128,8 @@
         },
         body: JSON.stringify({
           wishlistItemId: wishlistItem.id,
-          targetAmountEur,
-          durationInDays: durationDays,
+          targetAmountEur: roundedEurAmount,
+          durationInDays: roundedDurationDays,
         }),
       });
 
@@ -141,8 +148,8 @@
         },
         body: JSON.stringify({
           wishlistItemId: wishlistItem.id,
-          targetAmountEth,
-          durationInDays: durationDays,
+          targetAmountEth: roundedEthAmount,
+          durationInDays: roundedDurationDays,
           chains,
         }),
       });
@@ -228,17 +235,18 @@
 
           <!-- Target Amount -->
           <div class="form-control mb-4">
-            <label class="label">
+            <div class="label">
               <span class="label-text font-semibold">Target Amount</span>
-            </label>
+            </div>
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="label">
+                <label class="label" for="target-amount-eur">
                   <span class="label-text text-xs">EUR (Fiat)</span>
                 </label>
                 <div class="relative">
                   <DollarSign class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-50" />
                   <input
+                    id="target-amount-eur"
                     type="number"
                     class="input input-bordered w-full pl-10"
                     bind:value={targetAmountEur}
@@ -249,10 +257,11 @@
                 </div>
               </div>
               <div>
-                <label class="label">
+                <label class="label" for="target-amount-eth">
                   <span class="label-text text-xs">ETH/AVAX (Crypto)</span>
                 </label>
                 <input
+                  id="target-amount-eth"
                   type="number"
                   class="input input-bordered w-full"
                   bind:value={targetAmountEth}
@@ -262,16 +271,16 @@
                 />
               </div>
             </div>
-            <label class="label">
+            <div class="label">
               <span class="label-text-alt opacity-70">
                 Approximate conversion: 1 ETH ≈ €{ETH_EUR_RATE.toLocaleString()}
               </span>
-            </label>
+            </div>
           </div>
 
           <!-- Duration -->
           <div class="form-control mb-4">
-            <label class="label">
+            <label class="label" for="duration-days">
               <span class="label-text font-semibold">Campaign Duration</span>
             </label>
             <div class="flex gap-2 mb-2">
@@ -288,6 +297,7 @@
             <div class="relative">
               <Calendar class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-50" />
               <input
+                id="duration-days"
                 type="number"
                 class="input input-bordered w-full pl-10"
                 bind:value={durationDays}
@@ -295,18 +305,18 @@
                 max="365"
               />
             </div>
-            <label class="label">
+            <div class="label">
               <span class="label-text-alt">
                 Campaign will end on: {new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toLocaleDateString()}
               </span>
-            </label>
+            </div>
           </div>
 
           <!-- Network Selection -->
           <div class="form-control mb-4">
-            <label class="label">
+            <div class="label">
               <span class="label-text font-semibold">Deploy to Networks</span>
-            </label>
+            </div>
             <div class="space-y-2">
               <label class="cursor-pointer label">
                 <div class="flex items-center gap-3">
@@ -474,6 +484,12 @@
         </div>
       {/if}
     </div>
-    <div class="modal-backdrop" onclick={close}></div>
+    <div 
+      class="modal-backdrop" 
+      role="button"
+      tabindex="0"
+      onclick={close}
+      onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') close(); }}
+    ></div>
   </div>
 {/if}

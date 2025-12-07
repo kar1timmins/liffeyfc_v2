@@ -71,7 +71,7 @@ export class EscrowController {
         where: { id: wishlistItem.companyId },
       });
 
-      if (!company || company.ownerId !== user.id) {
+      if (!company || company.ownerId !== user.sub) {
         throw new HttpException(
           'You do not have permission to create escrow for this company',
           HttpStatus.FORBIDDEN
