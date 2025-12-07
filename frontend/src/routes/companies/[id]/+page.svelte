@@ -5,7 +5,6 @@
   import { Building2, MapPin, Users, TrendingUp, DollarSign, Calendar, Globe, Linkedin, Twitter, Target, CheckCircle, Circle, ArrowLeft, Wallet, Eye, EyeOff, Copy, Send } from 'lucide-svelte';
   import { PUBLIC_API_URL } from '$env/static/public';
   import { authStore } from '$lib/stores/auth';
-  import WishlistForm from '$lib/components/WishlistForm.svelte';
 
   let company = $state<any>(null);
   let wishlistItems = $state<any[]>([]);
@@ -659,19 +658,12 @@
       {/if}
 
       <!-- Wishlist -->
-      {#if wishlistItems.length > 0 || isOwner}
+      {#if wishlistItems.length > 0}
         <div class="glass-subtle rounded-2xl p-6 mb-6">
           <div class="flex items-center gap-3 mb-6">
             <Target class="w-6 h-6 text-primary" />
             <h2 class="text-2xl font-bold">Company Wishlist</h2>
           </div>
-
-          {#if isOwner && companyId}
-            <WishlistForm 
-              companyId={companyId} 
-              onItemAdded={fetchCompany}
-            />
-          {/if}
 
           {#if wishlistItems.length > 0}
             <p class="opacity-80 mb-6">
@@ -874,7 +866,7 @@
                 </div>
               {/each}
             </div>
-          {:else if !isOwner}
+          {:else}
             <p class="opacity-60 text-center py-8">No wishlist items yet</p>
           {/if}
         </div>
