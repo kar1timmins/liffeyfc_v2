@@ -12,6 +12,10 @@ services:
       # JWT Configuration (required for authentication)
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-15m}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - JWT_REFRESH_EXPIRES_IN=${JWT_REFRESH_EXPIRES_IN:-30d}
+      # Web3 & Wallet Configuration
+      - WALLET_ENCRYPTION_KEY=${WALLET_ENCRYPTION_KEY}
       # Database / TypeORM — read from root .env; prefer DATABASE_URL; fall back to DB_* vars
       - DATABASE_URL=${DATABASE_URL}
       - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
@@ -33,6 +37,9 @@ services:
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - GOOGLE_CALLBACK_URL=${GOOGLE_CALLBACK_URL}
       - FRONTEND_URL=${FRONTEND_URL}
+      # Email Configuration
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - EMAIL_FROM=${EMAIL_FROM}
     ports:
       - "3000:3000"
     volumes:

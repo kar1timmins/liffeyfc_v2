@@ -31,7 +31,7 @@ export class UserWallet {
   encryptedPrivateKey: string;
 
   // Derivation path used (e.g., "m/44'/60'/0'/0/0" for Ethereum)
-  @Column({ type: 'varchar', default: "m/44'/60'/0'/0/0" })
+  @Column({ type: 'varchar' })
   derivationPath: string;
 
   // Track next child index for company wallet derivation
