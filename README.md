@@ -16,9 +16,10 @@ A modern full-stack web application for the Liffey Founders Club community, buil
    - [Backend Deployment (Railway)](#backend-deployment-railway)
    - [Frontend Deployment (Blacknight)](#frontend-deployment-blacknight)
 5. [Web3 Integration](#-web3-integration)
-6. [Environment Variables](#-environment-variables)
-7. [Development](#-development)
-8. [Troubleshooting](#-troubleshooting)
+6. [Blockchain Escrow System](#-blockchain-escrow-system) **✨ NEW**
+7. [Environment Variables](#-environment-variables)
+8. [Development](#-development)
+9. [Troubleshooting](#-troubleshooting)
 
 ---
 
@@ -551,6 +552,236 @@ Complete Web3 wallet integration with MetaMask support and blockchain interactio
 
 <Web3Modal bind:show={showModal} />
 ```
+
+---
+
+## 💰 Blockchain Escrow System
+
+### Overview
+
+Complete smart contract-based escrow system for company wishlist funding on Ethereum and Avalanche blockchains.
+
+**Status**: ✅ **Implementation Complete** - Ready for testnet deployment
+
+**Features:**
+- ✅ Time-bound fundraising campaigns with deadlines
+- ✅ All-or-nothing funding (target must be met)
+- ✅ Automatic fund release when successful
+- ✅ Refund mechanism for failed campaigns
+- ✅ Multi-chain support (Ethereum + Avalanche)
+- ✅ Factory pattern for deploying unlimited campaigns
+- ✅ Comprehensive security features (reentrancy protection, access control)
+
+### Architecture
+
+```
+┌─────────────────┐
+│ EscrowFactory   │  (Singleton per network)
+└────────┬────────┘
+         │ creates
+         ▼
+┌─────────────────┐
+│ Escrow #1       │  (One per campaign)
+│ - Company A     │
+│ - Target: 1 ETH │
+│ - 7 days        │
+└─────────────────┘
+```
+
+### Smart Contracts
+
+#### CompanyWishlistEscrow.sol
+Individual campaign contract that holds funds for a specific fundraising goal.
+
+**Key Functions:**
+```solidity
+contribute() payable           // Accept investor contributions
+finalize()                     // End campaign (auto-releases or enables refunds)
+claimRefund()                  // Allow contributors to reclaim funds if failed
+getCampaignStatus() view       // Get complete campaign state
+getProgressPercentage() view   // Calculate funding completion %
+isActive() view                // Check if accepting contributions
+```
+
+#### EscrowFactory.sol
+Factory contract for deploying multiple escrow contracts.
+
+**Key Functions:**
+```solidity
+createEscrow() returns address     // Deploy new escrow contract
+getCompanyEscrows() view           // Get all company campaigns
+getEscrowDetails() view            // Query campaign status
+```
+
+### Backend API Endpoints
+
+#### 1. Create Escrow Campaign
+**POST** `/escrow/create` (JWT auth required)
+
+```json
+// Request
+{
+  "wishlistItemId": 123,
+  "targetAmount": "1.0",      // ETH
+  "durationInDays": 7
+}
+
+// Response
+{
+  "success": true,
+  "addresses": {
+    "ethereum": "0x1234...",
+    "avalanche": "0x5678..."
+  },
+  "wishlistItemId": 123,
+  "targetAmount": "1.0",
+  "deadline": "2024-01-15T10:30:00Z"
+}
+```
+
+#### 2. Get Campaign Status
+**GET** `/escrow/status/:wishlistItemId`
+
+```json
+// Response
+{
+  "ethereum": {
+    "totalRaised": "0.75",
+    "targetAmount": "1.0",
+    "deadline": "2024-01-15T10:30:00Z",
+    "isActive": true,
+    "isFinalized": false,
+    "isSuccessful": false,
+    "contributorCount": 5,
+    "progressPercentage": 75
+  },
+  "avalanche": { ... }
+}
+```
+
+#### 3. Sync with Blockchain
+**POST** `/escrow/sync/:wishlistItemId`
+
+Syncs database with current on-chain state.
+
+#### 4. List Company Escrows
+**GET** `/escrow/company/:companyId`
+
+Returns all escrow campaigns for a company.
+
+#### 5. Health Check
+**GET** `/escrow/health`
+
+```json
+{
+  "configured": true,
+  "networks": {
+    "ethereum": {
+      "factoryAddress": "0x...",
+      "hasPrivateKey": true,
+      "hasRpcUrl": true
+    },
+    "avalanche": { ... }
+  }
+}
+```
+
+### Database Schema Updates
+
+**WishlistItem Entity** (New Fields):
+```typescript
+ethereumEscrowAddress: string       // Contract address on Ethereum
+avalancheEscrowAddress: string      // Contract address on Avalanche
+campaignDeadline: Date              // Campaign end time
+campaignDurationDays: number        // Duration in days
+isEscrowActive: boolean             // Is campaign currently running
+isEscrowFinalized: boolean          // Has campaign ended
+```
+
+### Testing
+
+The system has been successfully tested with comprehensive test scenarios:
+
+✅ **Test Scenario 1: Successful Campaign**
+- Factory deployed
+- Escrow created with 1.0 ETH target
+- Multiple contributions accepted (0.3 + 0.4 + 0.2 + 0.1 ETH)
+- Target reached (100%)
+- Funds automatically released to company
+
+✅ **Test Scenario 2: Failed Campaign**
+- Escrow created with 2.0 ETH target
+- Partial contribution (0.5 ETH, 25%)
+- Deadline passed
+- Campaign finalized as failed
+- Investor claimed full refund
+
+### Quick Start
+
+#### 1. Compile Contracts
+```bash
+cd hardhat
+pnpm install
+npx hardhat compile
+```
+
+#### 2. Test Locally
+```bash
+npx hardhat run scripts/test-escrow-system.ts --network hardhat
+```
+
+#### 3. Deploy to Testnet
+```bash
+# Interactive deployment helper
+./deploy-escrow.sh
+
+# Or deploy manually
+npx hardhat run scripts/deploy-factory.ts --network sepolia
+npx hardhat run scripts/deploy-factory.ts --network fuji
+```
+
+#### 4. Configure Backend
+Add to `backend/.env`:
+```bash
+ETHEREUM_FACTORY_ADDRESS=0x...
+AVALANCHE_FACTORY_ADDRESS=0x...
+WEB3_PRIVATE_KEY=your_private_key_here
+ETHEREUM_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY
+AVALANCHE_RPC_URL=https://api.avax-test.network/ext/bc/C/rpc
+```
+
+#### 5. Run Database Migration
+```bash
+cd backend
+pnpm run migration:generate -- src/migrations/AddEscrowFields
+pnpm run migration:run
+```
+
+### Complete Documentation
+
+For detailed documentation, see:
+- **[ESCROW_SYSTEM.md](./ESCROW_SYSTEM.md)** - Complete technical documentation
+- **[QUICK_START.md](./QUICK_START.md)** - Step-by-step deployment guide
+- **[IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md)** - Full implementation details
+- **[DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md)** - Phase-by-phase checklist
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Visual architecture diagrams
+- **[hardhat/TEST_RESULTS.md](./hardhat/TEST_RESULTS.md)** - Test validation report
+
+### Networks Configured
+
+- **Ethereum Sepolia** (Testnet) - Ready to deploy
+- **Avalanche Fuji** (Testnet) - Ready to deploy
+- **Ethereum Mainnet** (Production) - Configured (requires security audit)
+- **Avalanche C-Chain** (Production) - Configured (requires security audit)
+
+### Roadmap
+
+- **Phase 1**: Core Implementation ✅ **COMPLETE**
+- **Phase 2**: Testnet Deployment ⏸️ **NEXT**
+- **Phase 3**: Frontend Integration ⏸️ Pending
+- **Phase 4**: Testing & Optimization ⏸️ Pending
+- **Phase 5**: Security Audit ⏸️ Pending
+- **Phase 6**: Mainnet Deployment ⏸️ Pending
 
 ---
 

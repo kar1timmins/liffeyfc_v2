@@ -45,6 +45,25 @@ export class WishlistItem {
   @Column({ type: 'boolean', default: false })
   isFulfilled: boolean;
 
+  // Smart contract escrow fields
+  @Column({ type: 'varchar', length: 42, nullable: true })
+  ethereumEscrowAddress?: string;
+
+  @Column({ type: 'varchar', length: 42, nullable: true })
+  avalancheEscrowAddress?: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  campaignDeadline?: Date;
+
+  @Column({ type: 'int', nullable: true })
+  campaignDurationDays?: number;
+
+  @Column({ type: 'boolean', default: false })
+  isEscrowActive: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  isEscrowFinalized: boolean;
+
   @Column({ type: 'uuid' })
   companyId: string;
 
