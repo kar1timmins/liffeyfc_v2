@@ -130,6 +130,7 @@ contract CompanyWishlistEscrow {
     /**
      * @notice Claim refund if campaign failed
      * @dev Contributors can claim refund if target was not reached
+     * Gas costs are split proportionally among all contributors
      */
     function claimRefund() external {
         if (!isFinalized) {
@@ -144,10 +145,31 @@ contract CompanyWishlistEscrow {
         
         contributions[msg.sender] = 0;
         
-        (bool success, ) = msg.sender.call{value: contribution}("");
+        // Calculate proportional gas fee deduction
+        // Each contributor pays their share based on contribution percentage
+        uint256 gasReserve = _calculateGasReserve();
+        uint256 contributorShare = (contribution * gasReserve) / totalRaised;
+        uint256 refundAmount = contribution - contributorShare;
+        
+        (bool success, ) = msg.sender.call{value: refundAmount}("");
         if (!success) revert TransferFailed();
         
-        emit RefundIssued(msg.sender, contribution);
+        emit RefundIssued(msg.sender, refundAmount);
+    }
+    
+    /**
+     * @notice Calculate gas reserve for refunds
+     * @dev Reserves approximately 0.1% of total raised for gas costs, capped at reasonable amount
+     */
+    function _calculateGasReserve() private view returns (uint256) {
+        // Reserve 0.1% of total for gas, with minimum 0.001 ETH and maximum 0.1 ETH
+        uint256 reserve = totalRaised / 1000; // 0.1%
+        uint256 minReserve = 0.001 ether;
+        uint256 maxReserve = 0.1 ether;
+        
+        if (reserve < minReserve) return minReserve;
+        if (reserve > maxReserve) return maxReserve;
+        return reserve;
     }
     
     /**

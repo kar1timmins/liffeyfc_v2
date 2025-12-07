@@ -17,7 +17,8 @@ const config = {
 			strict: false
 		}),
 		prerender: {
-			entries: ['*', '/pitch', '/learnMore']
+			entries: ['*', '/pitch', '/learnMore'],
+			handleUnseenRoutes: 'ignore' // Ignore unseen dynamic routes during prerender
 		}
 	}
 };

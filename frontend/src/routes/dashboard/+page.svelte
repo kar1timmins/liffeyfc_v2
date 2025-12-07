@@ -4,7 +4,7 @@
 	import { authStore } from '$lib/stores/auth';
 	import { walletStore, isConnected, formattedAddress } from '$lib/stores/walletStore';
 	import { toastStore } from '$lib/stores/toast';
-	import { User, Settings, Wallet, LogOut, UserCircle, Briefcase } from 'lucide-svelte';
+	import { User, Settings, Wallet, LogOut, UserCircle, Briefcase, Home, Building2, Target, TrendingUp } from 'lucide-svelte';
 	import { PUBLIC_API_URL } from '$env/static/public';
 
 	let user = $state<any>(null);
@@ -136,18 +136,74 @@
 
 	<!-- Quick Actions Grid -->
 	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-		<!-- Profile Card -->
-		<div class="card bg-base-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border border-base-300">
+		<!-- Home Card -->
+		<div class="card bg-base-100 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
 			<div class="card-body">
 				<div class="flex items-center gap-3 mb-4">
-					<div class="p-3 rounded-lg bg-primary/10">
-						<User size={24} class="text-primary" />
+					<div class="p-3 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10">
+						<Home size={24} class="text-primary" />
+					</div>
+					<h2 class="card-title text-xl">Home</h2>
+				</div>
+				<p class="text-base-content/70 mb-4 flex-grow">Return to the main landing page to explore the Liffey Founders Club.</p>
+				<div class="card-actions">
+					<button class="btn btn-primary btn-block" onclick={() => goto('/')}>
+						Go Home
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- Companies Card -->
+		<div class="card bg-base-100 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
+			<div class="card-body">
+				<div class="flex items-center gap-3 mb-4">
+					<div class="p-3 rounded-lg bg-gradient-to-br from-secondary/20 to-secondary/10">
+						<Building2 size={24} class="text-secondary" />
+					</div>
+					<h2 class="card-title text-xl">Companies</h2>
+				</div>
+				<p class="text-base-content/70 mb-4 flex-grow">Browse all companies in the network, view profiles, and discover opportunities.</p>
+				<div class="card-actions">
+					<button class="btn btn-secondary btn-block" onclick={() => goto('/companies')}>
+						View Companies
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- Bounties Card -->
+		{#if user?.role === 'user' || user?.role === 'investor' || user?.role === 'staff'}
+			<div class="card bg-base-100 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
+				<div class="card-body">
+					<div class="flex items-center gap-3 mb-4">
+						<div class="p-3 rounded-lg bg-gradient-to-br from-accent/20 to-accent/10">
+							<Target size={24} class="text-accent" />
+						</div>
+						<h2 class="card-title text-xl">Bounties</h2>
+					</div>
+					<p class="text-base-content/70 mb-4 flex-grow">Explore crowdfunding campaigns and support companies with blockchain escrow.</p>
+					<div class="card-actions">
+						<button class="btn btn-accent btn-block" onclick={() => goto('/bounties')}>
+							View Bounties
+						</button>
+					</div>
+				</div>
+			</div>
+		{/if}
+
+		<!-- Profile Card -->
+		<div class="card bg-base-100 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
+			<div class="card-body">
+				<div class="flex items-center gap-3 mb-4">
+					<div class="p-3 rounded-lg bg-gradient-to-br from-info/20 to-info/10">
+						<User size={24} class="text-info" />
 					</div>
 					<h2 class="card-title text-xl">Profile</h2>
 				</div>
 				<p class="text-base-content/70 mb-4 flex-grow">View and edit your profile information, upgrade to investor account, and manage your details.</p>
 				<div class="card-actions">
-					<button class="btn btn-primary btn-block" onclick={() => goto('/profile')}>
+					<button class="btn btn-info btn-block" onclick={() => goto('/profile')}>
 						View Profile
 					</button>
 				</div>
@@ -155,17 +211,17 @@
 		</div>
 
 		<!-- Settings Card -->
-		<div class="card bg-base-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border border-base-300">
+		<div class="card bg-base-100 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
 			<div class="card-body">
 				<div class="flex items-center gap-3 mb-4">
-					<div class="p-3 rounded-lg bg-secondary/10">
-						<Settings size={24} class="text-secondary" />
+					<div class="p-3 rounded-lg bg-gradient-to-br from-warning/20 to-warning/10">
+						<Settings size={24} class="text-warning" />
 					</div>
 					<h2 class="card-title text-xl">Settings</h2>
 				</div>
 				<p class="text-base-content/70 mb-4 flex-grow">Manage your account settings, preferences, and security options.</p>
 				<div class="card-actions">
-					<button class="btn btn-secondary btn-block" disabled>
+					<button class="btn btn-outline btn-block" disabled>
 						Coming Soon
 					</button>
 				</div>
@@ -173,11 +229,11 @@
 		</div>
 
 		<!-- Wallets Card -->
-		<div class="card bg-base-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border border-base-300">
+		<div class="card bg-base-100 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
 			<div class="card-body">
 				<div class="flex items-center gap-3 mb-4">
-					<div class="p-3 rounded-lg bg-accent/10">
-						<Wallet size={24} class="text-accent" />
+					<div class="p-3 rounded-lg bg-gradient-to-br from-success/20 to-success/10">
+						<Wallet size={24} class="text-success" />
 					</div>
 					<h2 class="card-title text-xl">Web3 Wallets</h2>
 				</div>
@@ -195,7 +251,7 @@
 								</button>
 							</div>
 						{:else}
-							<button class="btn btn-accent btn-block" onclick={connectWallet}>
+							<button class="btn btn-success btn-block" onclick={connectWallet}>
 								Connect Wallet
 							</button>
 						{/if}

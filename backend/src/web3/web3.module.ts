@@ -3,9 +3,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Web3Controller } from './web3.controller';
 import { WalletController } from './wallet.controller';
 import { EscrowController } from './escrow.controller';
+import { BountiesController } from './bounties.controller';
 import { Web3Service } from './web3.service';
 import { WalletGenerationService } from './wallet-generation.service';
 import { EscrowContractService } from './escrow-contract.service';
+import { BountiesService } from './bounties.service';
 import { NonceService } from './nonce.service';
 import { RedisNonceService } from './nonce.redis.service';
 import { UserWallet } from '../entities/user-wallet.entity';
@@ -29,8 +31,8 @@ const nonceProvider: Provider = {
   imports: [
     TypeOrmModule.forFeature([UserWallet, CompanyWallet, WishlistItem, User, Company]),
   ],
-  controllers: [Web3Controller, WalletController, EscrowController],
-  providers: [Web3Service, WalletGenerationService, EscrowContractService, nonceProvider],
-  exports: [Web3Service, WalletGenerationService, EscrowContractService, NonceService],
+  controllers: [Web3Controller, WalletController, EscrowController, BountiesController],
+  providers: [Web3Service, WalletGenerationService, EscrowContractService, BountiesService, nonceProvider],
+  exports: [Web3Service, WalletGenerationService, EscrowContractService, BountiesService, NonceService],
 })
 export class Web3Module {}
