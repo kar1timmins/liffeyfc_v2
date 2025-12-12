@@ -20,8 +20,13 @@ export class CryptoPricesService implements OnModuleInit {
   private readonly AVAX_USD_FEED = '0xFF3EEb22B5E3dE6e705b44749C2559d704923FD7';
   private readonly EUR_USD_FEED = '0xb49f677943BC038e9857d61E7d053CaA2C1734C1';
   
-  // RPC endpoint for Ethereum mainnet (for Chainlink price feeds)
-  private readonly mainnetRpc = 'https://eth.llamarpc.com'; // Free, reliable RPC
+  // Multiple RPC endpoints for Ethereum mainnet (with fallbacks)
+  private readonly mainnetRpcs = [
+    'https://eth.llamarpc.com',
+    'https://rpc.ankr.com/eth',
+    'https://cloudflare-eth.com',
+    'https://ethereum-rpc.publicnode.com'
+  ];
 
   constructor() {
     const url = process.env.REDIS_URL;
@@ -85,39 +90,50 @@ export class CryptoPricesService implements OnModuleInit {
   }
 
   /**
-   * Fetch prices from Chainlink price feeds
+   * Fetch prices from Chainlink price feeds with RPC fallback
    */
   private async fetchFromChainlink(): Promise<{ ethEur: number; avaxEur: number }> {
-    try {
-      this.logger.log(`Connecting to Ethereum mainnet via ${this.mainnetRpc}...`);
-      const provider = new ethers.JsonRpcProvider(this.mainnetRpc);
+    let lastError: Error | undefined;
+    
+    // Try each RPC endpoint until one succeeds
+    for (const rpcUrl of this.mainnetRpcs) {
+      try {
+        this.logger.log(`Trying RPC: ${rpcUrl}...`);
+        const provider = new ethers.JsonRpcProvider(rpcUrl);
 
-      // Test connection
-      const blockNumber = await provider.getBlockNumber();
-      this.logger.log(`Connected to mainnet, current block: ${blockNumber}`);
+        // Test connection
+        const blockNumber = await provider.getBlockNumber();
+        this.logger.log(`✅ Connected to mainnet (block ${blockNumber}) via ${rpcUrl}`);
 
-      // Get all three prices in parallel
-      this.logger.log('Fetching prices from Chainlink feeds...');
-      const [ethUsd, avaxUsd, eurUsd] = await Promise.all([
-        this.getPriceFromFeed(provider, this.ETH_USD_FEED),
-        this.getPriceFromFeed(provider, this.AVAX_USD_FEED),
-        this.getPriceFromFeed(provider, this.EUR_USD_FEED),
-      ]);
+        // Get all three prices sequentially to avoid rate limiting
+        this.logger.log('Fetching prices from Chainlink feeds...');
+        const ethUsd = await this.getPriceFromFeed(provider, this.ETH_USD_FEED);
+        await new Promise(resolve => setTimeout(resolve, 100)); // Small delay
+        
+        const avaxUsd = await this.getPriceFromFeed(provider, this.AVAX_USD_FEED);
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        const eurUsd = await this.getPriceFromFeed(provider, this.EUR_USD_FEED);
 
-      this.logger.log(`Raw prices from Chainlink: ETH/USD=${ethUsd}, AVAX/USD=${avaxUsd}, EUR/USD=${eurUsd}`);
+        this.logger.log(`Raw prices: ETH/USD=${ethUsd}, AVAX/USD=${avaxUsd}, EUR/USD=${eurUsd}`);
 
-      // Convert to EUR (divide by EUR/USD rate)
-      const ethEur = Math.round(ethUsd / eurUsd);
-      const avaxEur = Math.round((avaxUsd / eurUsd) * 100) / 100;
+        // Convert to EUR
+        const ethEur = Math.round(ethUsd / eurUsd);
+        const avaxEur = Math.round((avaxUsd / eurUsd) * 100) / 100;
 
-      this.logger.log(`✅ Calculated EUR prices: ETH=${ethEur} EUR, AVAX=${avaxEur} EUR`);
-
-      return { ethEur, avaxEur };
-    } catch (error) {
-      this.logger.error('❌ Failed to fetch from Chainlink:', error);
-      this.logger.error('Error details:', error.message, error.stack);
-      throw error;
+        this.logger.log(`✅ Success! ETH=${ethEur} EUR, AVAX=${avaxEur} EUR`);
+        return { ethEur, avaxEur };
+        
+      } catch (error) {
+        this.logger.warn(`⚠️  RPC ${rpcUrl} failed: ${error.message}`);
+        lastError = error;
+        continue; // Try next RPC
+      }
     }
+    
+    // All RPCs failed
+    this.logger.error('❌ All RPC endpoints failed');
+    throw lastError || new Error('All RPC endpoints failed');
   }
 
   /**
@@ -163,55 +179,74 @@ export class CryptoPricesService implements OnModuleInit {
    */
   async testChainlinkRaw(): Promise<{ ethEur: number; avaxEur: number; debug: any }> {
     const debug: any = {
-      rpcUrl: this.mainnetRpc,
+      rpcUrls: this.mainnetRpcs,
       feeds: {
         ethUsd: this.ETH_USD_FEED,
         avaxUsd: this.AVAX_USD_FEED,
         eurUsd: this.EUR_USD_FEED
       },
-      steps: []
+      rpcAttempts: []
     };
 
-    try {
-      debug.steps.push('Creating provider...');
-      const provider = new ethers.JsonRpcProvider(this.mainnetRpc);
+    let lastError: Error | undefined;
+    
+    for (const rpcUrl of this.mainnetRpcs) {
+      const attempt: any = { rpcUrl, steps: [] };
       
-      debug.steps.push('Getting block number...');
-      const blockNumber = await provider.getBlockNumber();
-      debug.blockNumber = blockNumber;
-      debug.steps.push(`Connected! Block: ${blockNumber}`);
+      try {
+        attempt.steps.push('Creating provider...');
+        const provider = new ethers.JsonRpcProvider(rpcUrl);
+        
+        attempt.steps.push('Getting block number...');
+        const blockNumber = await provider.getBlockNumber();
+        attempt.blockNumber = blockNumber;
+        attempt.steps.push(`Connected! Block: ${blockNumber}`);
 
-      debug.steps.push('Fetching ETH/USD...');
-      const ethUsd = await this.getPriceFromFeed(provider, this.ETH_USD_FEED);
-      debug.ethUsd = ethUsd;
-      debug.steps.push(`ETH/USD: ${ethUsd}`);
+        attempt.steps.push('Fetching ETH/USD...');
+        const ethUsd = await this.getPriceFromFeed(provider, this.ETH_USD_FEED);
+        attempt.ethUsd = ethUsd;
+        attempt.steps.push(`ETH/USD: ${ethUsd}`);
+        await new Promise(resolve => setTimeout(resolve, 100));
 
-      debug.steps.push('Fetching AVAX/USD...');
-      const avaxUsd = await this.getPriceFromFeed(provider, this.AVAX_USD_FEED);
-      debug.avaxUsd = avaxUsd;
-      debug.steps.push(`AVAX/USD: ${avaxUsd}`);
+        attempt.steps.push('Fetching AVAX/USD...');
+        const avaxUsd = await this.getPriceFromFeed(provider, this.AVAX_USD_FEED);
+        attempt.avaxUsd = avaxUsd;
+        attempt.steps.push(`AVAX/USD: ${avaxUsd}`);
+        await new Promise(resolve => setTimeout(resolve, 100));
 
-      debug.steps.push('Fetching EUR/USD...');
-      const eurUsd = await this.getPriceFromFeed(provider, this.EUR_USD_FEED);
-      debug.eurUsd = eurUsd;
-      debug.steps.push(`EUR/USD: ${eurUsd}`);
+        attempt.steps.push('Fetching EUR/USD...');
+        const eurUsd = await this.getPriceFromFeed(provider, this.EUR_USD_FEED);
+        attempt.eurUsd = eurUsd;
+        attempt.steps.push(`EUR/USD: ${eurUsd}`);
 
-      const ethEur = Math.round(ethUsd / eurUsd);
-      const avaxEur = Math.round((avaxUsd / eurUsd) * 100) / 100;
-      
-      debug.ethEur = ethEur;
-      debug.avaxEur = avaxEur;
-      debug.steps.push(`Final: ETH=${ethEur} EUR, AVAX=${avaxEur} EUR`);
-
-      return { ethEur, avaxEur, debug };
-    } catch (error) {
-      debug.error = {
-        message: error.message,
-        stack: error.stack,
-        code: error.code,
-        name: error.name
-      };
-      throw new Error(`Chainlink test failed: ${error.message}. Debug info: ${JSON.stringify(debug, null, 2)}`);
+        const ethEur = Math.round(ethUsd / eurUsd);
+        const avaxEur = Math.round((avaxUsd / eurUsd) * 100) / 100;
+        
+        attempt.ethEur = ethEur;
+        attempt.avaxEur = avaxEur;
+        attempt.steps.push(`Final: ETH=${ethEur} EUR, AVAX=${avaxEur} EUR`);
+        attempt.success = true;
+        
+        debug.rpcAttempts.push(attempt);
+        debug.successfulRpc = rpcUrl;
+        
+        return { ethEur, avaxEur, debug };
+        
+      } catch (error) {
+        attempt.error = {
+          message: error.message,
+          code: error.code,
+          name: error.name
+        };
+        attempt.success = false;
+        debug.rpcAttempts.push(attempt);
+        lastError = error;
+        continue;
+      }
     }
+    
+    // All RPCs failed
+    const errorMsg = lastError?.message || 'Unknown error';
+    throw new Error(`All RPC endpoints failed. Last error: ${errorMsg}. Debug info: ${JSON.stringify(debug, null, 2)}`);
   }
 }
