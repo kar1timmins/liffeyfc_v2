@@ -707,8 +707,8 @@
                           type="number"
                           bind:value={formData.targetAmountEth}
                           oninput={updateFromEth}
-                          step="0.01"
-                          min="0.01"
+                          step="0.0001"
+                          min="0.0001"
                           class="input input-bordered input-sm join-item focus:ring-2 focus:ring-primary flex-1"
                           disabled={isSubmitting}
                         />
@@ -731,8 +731,8 @@
                           type="number"
                           bind:value={formData.targetAmountAvax}
                           oninput={updateFromAvax}
-                          step="0.1"
-                          min="0.1"
+                          step="0.01"
+                          min="0.01"
                           class="input input-bordered input-sm join-item focus:ring-2 focus:ring-primary flex-1"
                           disabled={isSubmitting}
                         />
