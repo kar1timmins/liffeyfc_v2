@@ -319,6 +319,38 @@
       alert(err.message || 'An error occurred');
     }
   }
+
+  async function deleteWishlistItem(companyId: string, itemId: string, hasEscrow: boolean) {
+    const confirmMsg = hasEscrow 
+      ? 'This wishlist item has blockchain contracts deployed. Deleting it will not affect the contracts but will remove it from your wishlist. Continue?'
+      : 'Are you sure you want to delete this wishlist item?';
+    
+    if (!confirm(confirmMsg)) {
+      return;
+    }
+
+    try {
+      const token = $authStore.accessToken;
+      if (!token) return;
+
+      const response = await fetch(`${PUBLIC_API_URL}/companies/${companyId}/wishlist/${itemId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        onUpdate(); // Refresh the company list
+      } else {
+        alert(result.message || 'Failed to delete wishlist item');
+      }
+    } catch (err: any) {
+      alert(err.message || 'An error occurred');
+    }
+  }
 </script>
 
 <div class="glass-subtle rounded-3xl p-6 md:p-8">
@@ -826,7 +858,7 @@
                         <h4 class="text-sm font-semibold opacity-70">Current Wishlist Items:</h4>
                         {#each company.wishlistItems as item}
                           <div class="bg-base-200/50 rounded-lg p-3">
-                            <div class="flex items-start justify-between mb-2">
+                            <div class="flex items-start justify-between mb-2 gap-2">
                               <div class="flex-1">
                                 <h5 class="font-semibold text-sm">{item.title}</h5>
                                 {#if item.description}
@@ -839,6 +871,13 @@
                                   </span>
                                 </div>
                               </div>
+                              <button
+                                class="btn btn-ghost btn-xs btn-square text-error"
+                                onclick={() => deleteWishlistItem(company.id, item.id, item.isEscrowActive)}
+                                title="Delete wishlist item"
+                              >
+                                <Trash2 class="w-3 h-3" />
+                              </button>
                             </div>
                             
                             {#if item.value}
