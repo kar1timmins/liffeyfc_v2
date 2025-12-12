@@ -3,6 +3,7 @@
   import { Building2, Plus, Edit, Trash2, Globe, Linkedin, Twitter, X, Target, Wallet, AlertCircle, ChevronDown, ChevronUp, ExternalLink } from 'lucide-svelte';
   import { PUBLIC_API_URL } from '$env/static/public';
   import { authStore } from '$lib/stores/auth';
+  import { toastStore } from '$lib/stores/toast';
   import WishlistForm from './WishlistForm.svelte';
   import CreateBountyModal from './CreateBountyModal.svelte';
 
@@ -48,6 +49,12 @@
   let bountyModalOpen = $state(false);
   let selectedWishlistItem = $state<any | null>(null);
   let selectedCompany = $state<Company | null>(null);
+  
+  // Delete confirmation modal state
+  let showDeleteModal = $state(false);
+  let deleteConfirmationText = $state('');
+  let itemToDelete = $state<{ companyId: string; itemId: string; itemTitle: string; hasEscrow: boolean } | null>(null);
+  let isDeleting = $state(false);
   
   // Form fields
   let name = $state('');
@@ -320,20 +327,27 @@
     }
   }
 
-  async function deleteWishlistItem(companyId: string, itemId: string, hasEscrow: boolean) {
-    const confirmMsg = hasEscrow 
-      ? 'This wishlist item has blockchain contracts deployed. Deleting it will not affect the contracts but will remove it from your wishlist. Continue?'
-      : 'Are you sure you want to delete this wishlist item?';
+  function openDeleteModal(companyId: string, itemId: string, itemTitle: string, hasEscrow: boolean) {
+    itemToDelete = { companyId, itemId, itemTitle, hasEscrow };
+    deleteConfirmationText = '';
+    showDeleteModal = true;
+  }
+
+  async function confirmDeleteWishlistItem() {
+    if (!itemToDelete) return;
     
-    if (!confirm(confirmMsg)) {
+    if (deleteConfirmationText !== 'delete') {
+      toastStore.add({ message: 'Please type "delete" to confirm', type: 'error' });
       return;
     }
+
+    isDeleting = true;
 
     try {
       const token = $authStore.accessToken;
       if (!token) return;
 
-      const response = await fetch(`${PUBLIC_API_URL}/companies/${companyId}/wishlist/${itemId}`, {
+      const response = await fetch(`${PUBLIC_API_URL}/companies/${itemToDelete.companyId}/wishlist/${itemToDelete.itemId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -343,14 +357,31 @@
       const result = await response.json();
 
       if (result.success) {
+        toastStore.add({ message: 'Wishlist item deleted successfully', type: 'success' });
+        showDeleteModal = false;
+        deleteConfirmationText = '';
+        itemToDelete = null;
         onUpdate(); // Refresh the company list
       } else {
-        alert(result.message || 'Failed to delete wishlist item');
+        toastStore.add({ message: result.message || 'Failed to delete wishlist item', type: 'error' });
       }
     } catch (err: any) {
-      alert(err.message || 'An error occurred');
+      toastStore.add({ message: err.message || 'An error occurred while deleting', type: 'error' });
+    } finally {
+      isDeleting = false;
     }
   }
+
+  function cancelDeleteModal() {
+    showDeleteModal = false;
+    deleteConfirmationText = '';
+    itemToDelete = null;
+  }
+
+  async function deleteWishlistItem(companyId: string, itemId: string, itemTitle: string, hasEscrow: boolean) {
+    openDeleteModal(companyId, itemId, itemTitle, hasEscrow);
+  }
+
 </script>
 
 <div class="glass-subtle rounded-3xl p-6 md:p-8">
@@ -873,7 +904,7 @@
                               </div>
                               <button
                                 class="btn btn-ghost btn-xs btn-square text-error"
-                                onclick={() => deleteWishlistItem(company.id, item.id, item.isEscrowActive)}
+                                onclick={() => deleteWishlistItem(company.id, item.id, item.title, item.isEscrowActive)}
                                 title="Delete wishlist item"
                               >
                                 <Trash2 class="w-3 h-3" />
@@ -1047,4 +1078,74 @@
     companyWallet={selectedCompany.ethAddress || selectedCompany.avaxAddress || ''}
     onSuccess={handleBountySuccess}
   />
+{/if}
+
+<!-- Delete Confirmation Modal -->
+{#if showDeleteModal && itemToDelete}
+  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div class="bg-base-100 rounded-lg shadow-2xl max-w-md w-full mx-4 border border-base-300">
+      <!-- Modal Header -->
+      <div class="border-b border-base-300 p-6">
+        <h2 class="text-xl font-bold">Delete Wishlist Item</h2>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-6 space-y-4">
+        <div class="alert alert-warning">
+          <AlertCircle class="w-5 h-5" />
+          <div>
+            <p class="font-semibold">Are you sure?</p>
+            <p class="text-sm">Deleting <strong>"{itemToDelete.itemTitle}"</strong> cannot be undone.</p>
+            {#if itemToDelete.hasEscrow}
+              <p class="text-sm mt-2">
+                ⚠️ This item has blockchain contracts deployed. Deleting it will not affect the contracts but will remove it from your wishlist.
+              </p>
+            {/if}
+          </div>
+        </div>
+
+        <div>
+          <label class="label">
+            <span class="label-text">Type <strong>"delete"</strong> to confirm</span>
+          </label>
+          <input
+            type="text"
+            class="input input-bordered w-full"
+            placeholder="Type 'delete' here"
+            bind:value={deleteConfirmationText}
+            autocomplete="off"
+          />
+          {#if deleteConfirmationText && deleteConfirmationText !== 'delete'}
+            <p class="text-error text-xs mt-1">Incorrect confirmation text</p>
+          {/if}
+          {#if deleteConfirmationText === 'delete'}
+            <p class="text-success text-xs mt-1">✓ Ready to delete</p>
+          {/if}
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="border-t border-base-300 p-6 flex gap-3 justify-end">
+        <button
+          class="btn btn-ghost"
+          onclick={cancelDeleteModal}
+          disabled={isDeleting}
+        >
+          Cancel
+        </button>
+        <button
+          class="btn btn-error"
+          onclick={confirmDeleteWishlistItem}
+          disabled={deleteConfirmationText !== 'delete' || isDeleting}
+        >
+          {#if isDeleting}
+            <span class="loading loading-spinner loading-sm"></span>
+            Deleting...
+          {:else}
+            Delete Item
+          {/if}
+        </button>
+      </div>
+    </div>
+  </div>
 {/if}
