@@ -6,6 +6,7 @@
 	import { toastStore } from '$lib/stores/toast';
 	import { User, Settings, Wallet, LogOut, UserCircle, Briefcase, Home, Building2, Target, TrendingUp } from 'lucide-svelte';
 	import { PUBLIC_API_URL } from '$env/static/public';
+	import SendFunds from '$lib/components/SendFunds.svelte';
 
 	let user = $state<any>(null);
 	let avatarUrl = $state<string | null>(null);
@@ -263,5 +264,14 @@
 				</div>
 			</div>
 		</div>
+	</div>
+
+	<!-- Send Funds Section -->
+	<div class="mt-12">
+		<div class="mb-6">
+			<h2 class="text-3xl font-bold">Transactions</h2>
+			<p class="text-base-content/70">Send funds to any wallet address on supported networks</p>
+		</div>
+		<SendFunds />
 	</div>
 </div>
