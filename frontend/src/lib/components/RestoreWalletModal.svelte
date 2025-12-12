@@ -203,6 +203,8 @@
               </div>
             </div>
           {/if}
+
+          {#if error}
             <div class="alert alert-error">
               <AlertCircle class="w-5 h-5" />
               <span>{error}</span>

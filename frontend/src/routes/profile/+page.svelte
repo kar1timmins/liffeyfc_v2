@@ -519,6 +519,7 @@
       bind:companies={companies} 
       onUpdate={fetchMyCompanies}
       refreshWalletTrigger={walletRefreshTrigger}
+      masterWallet={masterWallet}
     />
 
     <!-- Investor Upgrade Section (only show for regular users) -->

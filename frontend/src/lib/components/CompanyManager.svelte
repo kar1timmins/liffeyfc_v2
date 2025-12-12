@@ -31,11 +31,13 @@
   let { 
     companies = $bindable([]), 
     onUpdate = () => {},
-    refreshWalletTrigger = 0
+    refreshWalletTrigger = 0,
+    masterWallet = null
   }: { 
     companies: Company[], 
     onUpdate: () => void,
-    refreshWalletTrigger?: number
+    refreshWalletTrigger?: number,
+    masterWallet?: any
   } = $props();
 
   let showForm = $state(false);
@@ -1173,6 +1175,7 @@
                     <WishlistForm 
                       companyId={company.id}
                       companyWallet={company.ethAddress || company.avaxAddress}
+                      masterWallet={masterWallet}
                       onItemAdded={handleWishlistItemAdded}
                       onCreateBounty={(item) => openBountyModal(item, company)}
                     />

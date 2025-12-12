@@ -8,11 +8,13 @@
   let {
     companyId,
     companyWallet,
+    masterWallet = null,
     onItemAdded = () => {},
     onCreateBounty = null
   }: {
     companyId: string;
     companyWallet?: string;
+    masterWallet?: any;
     onItemAdded?: () => void;
     onCreateBounty?: ((item: any) => void) | null;
   } = $props();
@@ -155,15 +157,18 @@
   }
 
   async function updateBalances() {
-    if (!companyWallet) return;
+    // Use master wallet for gas fee validation (deployment uses master wallet private key)
+    const walletToCheck = masterWallet ? (masterWallet.ethAddress || masterWallet.avaxAddress) : companyWallet;
+    
+    if (!walletToCheck) return;
 
     isLoadingBalances = true;
-    console.log('Starting balance fetch...');
+    console.log('Starting balance fetch for wallet:', walletToCheck);
     try {
       // Fetch both balances in parallel
       const [ethResponse, avaxResponse] = await Promise.all([
-        fetch(`${PUBLIC_API_URL}/wallet-balance?address=${companyWallet}&chain=ethereum`),
-        fetch(`${PUBLIC_API_URL}/wallet-balance?address=${companyWallet}&chain=avalanche`)
+        fetch(`${PUBLIC_API_URL}/wallet-balance?address=${walletToCheck}&chain=ethereum`),
+        fetch(`${PUBLIC_API_URL}/wallet-balance?address=${walletToCheck}&chain=avalanche`)
       ]);
 
       // Process Ethereum balance
@@ -650,7 +655,9 @@
                 {#if companyWallet}
                   <div class="bg-base-100 rounded-lg p-3 space-y-2">
                     <div class="flex items-center justify-between">
-                      <span class="text-xs font-semibold opacity-70">Company Wallet Balances</span>
+                      <span class="text-xs font-semibold opacity-70">
+                        {masterWallet ? '🔐 Master Wallet Balances (used for gas)' : 'Company Wallet Balances'}
+                      </span>
                       <button
                         type="button"
                         class="btn btn-ghost btn-xs"
@@ -677,6 +684,15 @@
                     <p class="text-xs opacity-60">
                       Address: {companyWallet.slice(0, 6)}...{companyWallet.slice(-4)}
                     </p>
+                    {#if masterWallet}
+                      <div class="alert alert-info py-2 mt-2">
+                        <AlertCircle class="w-4 h-4 shrink-0" />
+                        <div class="text-xs">
+                          <p class="font-semibold">⚡ Deployment Gas Fee</p>
+                          <p class="opacity-80">Deployment costs are paid from your master wallet. The campaign funds will be forwarded to your master wallet on success.</p>
+                        </div>
+                      </div>
+                    {/if}
                   </div>
                 {:else}
                   <div class="alert alert-warning py-2">
