@@ -6,7 +6,6 @@
 	import { toastStore } from '$lib/stores/toast';
 	import { User, Settings, Wallet, LogOut, UserCircle, Briefcase, Home, Building2, Target, TrendingUp } from 'lucide-svelte';
 	import { PUBLIC_API_URL } from '$env/static/public';
-	import SendFunds from '$lib/components/SendFunds.svelte';
 
 	let user = $state<any>(null);
 	let avatarUrl = $state<string | null>(null);
@@ -229,7 +228,7 @@
 			</div>
 		</div>
 
-		<!-- Wallets Card -->
+		<!-- Send Funds Card -->
 		<div class="card bg-base-100 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
 			<div class="card-body">
 				<div class="flex items-center gap-3 mb-4">
@@ -243,12 +242,7 @@
 					{#if $authStore.isAuthenticated}
 						<button 
 							class="btn btn-success btn-block"
-							onclick={() => {
-								const element = document.querySelector('[data-send-funds]');
-								if (element) {
-									element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-								}
-							}}
+							onclick={() => goto('/send')}
 						>
 							Go to Send Funds
 						</button>
@@ -260,14 +254,5 @@
 				</div>
 			</div>
 		</div>
-	</div>
-
-	<!-- Send Funds Section -->
-	<div class="mt-12" data-send-funds>
-		<div class="mb-6">
-			<h2 class="text-3xl font-bold">Transactions</h2>
-			<p class="text-base-content/70">Send funds to any wallet address on supported networks</p>
-		</div>
-		<SendFunds />
 	</div>
 </div>
