@@ -100,7 +100,7 @@ export class EscrowController {
         relations: ['userWallet'],
       });
 
-      if (!user_.userWallet) {
+      if (!user_ || !user_.userWallet) {
         throw new HttpException(
           'User does not have a master wallet configured',
           HttpStatus.BAD_REQUEST
