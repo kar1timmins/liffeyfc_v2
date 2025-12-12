@@ -141,6 +141,14 @@ export class EscrowController {
         deploymentRecords.push(savedDeployment);
       }
 
+      // Update wishlist item with contract addresses
+      wishlistItem.ethereumEscrowAddress = result.ethereumAddress || wishlistItem.ethereumEscrowAddress;
+      wishlistItem.avalancheEscrowAddress = result.avalancheAddress || wishlistItem.avalancheEscrowAddress;
+      wishlistItem.campaignDeadline = deadline;
+      wishlistItem.campaignDurationDays = dto.durationInDays;
+      wishlistItem.isEscrowActive = true;
+      await this.wishlistRepo.save(wishlistItem);
+
       this.logger.log(`✅ Escrow contracts deployed and tracked for wishlist item: ${dto.wishlistItemId}`);
 
       return {
