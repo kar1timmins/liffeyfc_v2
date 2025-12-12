@@ -4,17 +4,12 @@
   import { goto } from '$app/navigation';
   import { 
     ArrowLeft, 
-    Target, 
     Calendar, 
-    DollarSign, 
     Users, 
     Clock,
     Wallet,
-    CheckCircle,
     AlertCircle,
-    TrendingUp,
     Building2,
-    Send,
     ExternalLink,
     RefreshCw,
     Copy,
@@ -32,8 +27,6 @@
   let error = $state<string | null>(null);
   let showContributors = $state(false);
   let copiedAddress = $state<string | null>(null);
-  let isDeploying = $state(false);
-  let deployError = $state<string | null>(null);
 
   const bountyId = $derived($page.params.id);
   const isInvestor = $derived($authStore.user?.role === 'investor');
@@ -204,50 +197,6 @@
       setTimeout(() => copiedAddress = null, 2000);
     } catch (err) {
       toastStore.add({ message: 'Failed to copy address', type: 'error' });
-    }
-  }
-
-  async function deployContracts() {
-    if (!bounty) return;
-    
-    deployError = null;
-    isDeploying = true;
-
-    try {
-      const targetAmountEth = parseFloat(bounty.targetAmount) / 3200; // EUR to ETH conversion
-      const deadline = new Date(bounty.deadline);
-      const now = new Date();
-      const durationInDays = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-
-      const response = await fetch(`${PUBLIC_API_URL}/escrow/create`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${$authStore.accessToken}`,
-        },
-        body: JSON.stringify({
-          wishlistItemId: bounty.id,
-          targetAmountEth: Math.round(targetAmountEth * 10000) / 10000,
-          durationInDays: Math.max(1, durationInDays),
-          chains: ['ethereum', 'avalanche'], // Deploy to both networks
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        toastStore.add({ message: 'Contracts deployed successfully!', type: 'success' });
-        // Refresh bounty data to show new contract addresses
-        await fetchBounty();
-      } else {
-        deployError = data.message || 'Failed to deploy contracts';
-        toastStore.add({ message: deployError, type: 'error' });
-      }
-    } catch (err: any) {
-      deployError = err.message || 'Failed to deploy contracts';
-      toastStore.add({ message: 'Failed to deploy escrow contracts', type: 'error' });
-    } finally {
-      isDeploying = false;
     }
   }
 </script>
