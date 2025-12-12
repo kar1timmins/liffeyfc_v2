@@ -155,7 +155,7 @@ If you encounter issues:
 
 ---
 
-**Last Updated**: November 8, 2025  
+**Last Updated**: December 1, 2025  
 **Git Commit**: 8366fc1  
 **Backend URL**: https://liffeyfcv2-production.up.railway.app  
 **Frontend URL**: https://www.liffeyfoundersclub.com (pending redeploy)

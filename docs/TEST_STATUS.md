@@ -4,6 +4,7 @@
 This document tracks the current state of all tests across the Liffey Founders Club v2 project.
 
 **Last Updated**: 2025-01-XX (automated update recommended)
+<!-- NOTE: 'XX' in the date above is a placeholder for the day. Update with the actual day when making changes, or implement an automated update mechanism. -->
 
 ---
 

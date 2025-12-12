@@ -33,7 +33,7 @@ FRONTEND_URL=https://liffeyfoundersclub.com
 **Important:** 
 - Use the **16-character app password**, not your regular Gmail password!
 - Make sure 2-Factor Authentication is enabled on your Google account
-- The app password has no spaces (remove them if copying)
+- Google displays the app password with spaces for readability (e.g., `abcd efgh ijkl mnop`), but you should enter it as a single 16-character password with **no spaces**.
 - **Port 465** uses SSL (more reliable on Railway than port 587)
 
 ### 3. Deploy

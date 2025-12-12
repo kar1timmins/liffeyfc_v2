@@ -65,6 +65,6 @@ The `connect-src` directive specifically controls which URLs the frontend can ma
 
 ---
 
-**Date**: November 8, 2025  
+**Date**: December 8, 2025  
 **Commit**: 31eadc2  
 **Status**: ✅ Fixed, awaiting frontend redeploy
