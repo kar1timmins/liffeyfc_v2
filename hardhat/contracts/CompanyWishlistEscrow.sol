@@ -16,6 +16,7 @@ pragma solidity ^0.8.20;
 contract CompanyWishlistEscrow {
     // State variables
     address public immutable company;
+    address public immutable masterWallet;
     address public immutable creator;
     uint256 public immutable targetAmount;
     uint256 public immutable deadline;
@@ -48,19 +49,23 @@ contract CompanyWishlistEscrow {
     /**
      * @notice Constructor to create a new escrow campaign
      * @param _company Address that will receive funds if target is met
+     * @param _masterWallet Master wallet address for automatic fund forwarding
      * @param _targetAmount Target amount in wei
      * @param _durationInDays Campaign duration in days
      */
     constructor(
         address _company,
+        address _masterWallet,
         uint256 _targetAmount,
         uint256 _durationInDays
     ) {
         if (_company == address(0)) revert InvalidAddress();
+        if (_masterWallet == address(0)) revert InvalidAddress();
         if (_targetAmount == 0) revert ZeroAmount();
         if (_durationInDays == 0) revert ZeroAmount();
         
         company = _company;
+        masterWallet = _masterWallet;
         creator = msg.sender;
         targetAmount = _targetAmount;
         deadline = block.timestamp + (_durationInDays * 1 days);
@@ -118,13 +123,13 @@ contract CompanyWishlistEscrow {
     }
     
     /**
-     * @notice Release funds to company (called automatically when target is reached)
+     * @notice Release funds to master wallet (called automatically when target is reached)
      */
     function _releaseFunds() private {
-        (bool success, ) = company.call{value: totalRaised}("");
+        (bool success, ) = masterWallet.call{value: totalRaised}("");
         if (!success) revert TransferFailed();
         
-        emit FundsReleased(company, totalRaised);
+        emit FundsReleased(masterWallet, totalRaised);
     }
     
     /**

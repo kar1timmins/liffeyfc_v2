@@ -10,7 +10,7 @@ import { CompanyWallet } from '../entities/company-wallet.entity';
 
 // ABI for EscrowFactory contract
 const ESCROW_FACTORY_ABI = [
-  "function createEscrow(address _company, uint256 _targetAmount, uint256 _durationInDays) external returns (address)",
+  "function createEscrow(address _company, address _masterWallet, uint256 _targetAmount, uint256 _durationInDays) external returns (address)",
   "function getCompanyEscrows(address _company) external view returns (address[])",
   "function getEscrowDetails(address _escrow) external view returns (address company, uint256 totalRaised, uint256 targetAmount, uint256 deadline, bool isFinalized, bool isSuccessful)",
   "event EscrowCreated(address indexed escrowAddress, address indexed company, uint256 targetAmount, uint256 deadline, uint256 timestamp)"
@@ -261,11 +261,14 @@ export class EscrowContractService {
     userId: string,
     wishlistItemId: string,
     companyWalletAddress: string,
+    masterWalletAddress: string,
     targetAmountEth: number,
     durationInDays: number,
     chains: ('ethereum' | 'avalanche')[] = ['ethereum', 'avalanche']
   ): Promise<EscrowDeploymentResult> {
     this.logger.log(`📝 Deploying escrow contracts for wishlist item: ${wishlistItemId} by user: ${userId}`);
+    this.logger.log(`   Company Wallet: ${companyWalletAddress}`);
+    this.logger.log(`   Master Wallet (funds recipient): ${masterWalletAddress}`);
 
     // Validate that factory addresses are configured
     if (!this.ethereumFactoryAddress && !this.avalancheFactoryAddress) {
@@ -314,6 +317,7 @@ export class EscrowContractService {
 
         const tx = await factory.createEscrow(
           companyWalletAddress,
+          masterWalletAddress,
           targetAmountWei,
           durationInDays
         );
@@ -357,6 +361,7 @@ export class EscrowContractService {
 
         const tx = await factory.createEscrow(
           companyWalletAddress,
+          masterWalletAddress,
           targetAmountWei,
           durationInDays
         );

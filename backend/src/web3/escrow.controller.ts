@@ -16,6 +16,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { WishlistItem } from '../entities/wishlist-item.entity';
 import { Company } from '../entities/company.entity';
+import { User } from '../entities/user.entity';
 import { EscrowDeployment } from '../entities/escrow-deployment.entity';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { backfillEscrowAddresses } from './backfill-escrow-addresses';
@@ -47,6 +48,8 @@ export class EscrowController {
     private wishlistRepo: Repository<WishlistItem>,
     @InjectRepository(Company)
     private companyRepo: Repository<Company>,
+    @InjectRepository(User)
+    private userRepo: Repository<User>,
     @InjectRepository(EscrowDeployment)
     private escrowDeploymentRepo: Repository<EscrowDeployment>,
   ) {}
@@ -91,14 +94,30 @@ export class EscrowController {
         );
       }
 
+      // Get user's master wallet for fund forwarding
+      const user_ = await this.userRepo.findOne({
+        where: { id: user.sub },
+        relations: ['userWallet'],
+      });
+
+      if (!user_.userWallet) {
+        throw new HttpException(
+          'User does not have a master wallet configured',
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
       // Use company's primary wallet address (prefer ETH, fallback to AVAX)
       const walletAddress = company.ethAddress || company.avaxAddress!;
+      // Use user's master wallet (prefer ETH, fallback to AVAX) for fund forwarding
+      const masterWalletAddress = user_.userWallet.ethAddress || user_.userWallet.avaxAddress!;
 
       // Deploy escrow contracts using user's private key from database
       const result = await this.escrowService.deployEscrowContracts(
         user.sub, // Pass userId to fetch user's wallet from database
         dto.wishlistItemId,
         walletAddress,
+        masterWalletAddress,
         dto.targetAmountEth,
         dto.durationInDays,
         dto.chains

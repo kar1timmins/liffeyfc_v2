@@ -98,24 +98,43 @@ export class CompaniesService {
     });
 
     const savedCompany = await this.companiesRepo.save(company);
+    console.log('[Company Creation] Company saved:', savedCompany.id);
 
     // Auto-generate company wallet if user has a master wallet
     try {
       const hasMasterWallet = await this.walletService.hasMasterWallet(userId);
+      console.log('[Company Creation] User has master wallet:', hasMasterWallet);
+      
       if (hasMasterWallet) {
-        await this.walletService.generateCompanyWallet(userId, savedCompany.id);
+        console.log('[Company Creation] Starting wallet generation for company:', savedCompany.id);
+        try {
+          const walletResult = await this.walletService.generateCompanyWallet(userId, savedCompany.id);
+          console.log('[Company Creation] Generated company wallet:', walletResult);
+        } catch (walletError) {
+          console.error('[Company Creation] Wallet generation error:', walletError.message, walletError.stack);
+          throw walletError;
+        }
+      } else {
+        console.log('[Company Creation] User does not have master wallet, skipping wallet generation');
       }
     } catch (error) {
       // Log but don't fail company creation if wallet generation fails
-      console.error('Failed to generate company wallet:', error);
+      console.error('[Company Creation] Failed to generate company wallet:', error.message);
     }
 
     // Fetch the company again to get the updated wallet addresses
+    // Use a raw query to ensure fresh data from database
     const updatedCompany = await this.companiesRepo.findOne({
       where: { id: savedCompany.id },
       relations: ['owner']
     });
 
+    console.log('[Company Creation] Final company state:', {
+      id: updatedCompany?.id,
+      ethAddress: updatedCompany?.ethAddress,
+      avaxAddress: updatedCompany?.avaxAddress
+    });
+    
     return updatedCompany || savedCompany;
   }
 

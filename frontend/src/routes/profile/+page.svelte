@@ -432,6 +432,20 @@
           </div>
         </div>
 
+        <!-- Wallet Type Info -->
+        {#if masterWallet}
+          <div class="alert alert-info mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <div class="text-sm">
+              <p class="font-semibold mb-1">About Your Wallet</p>
+              <p>
+                When you create companies, each one receives a unique child wallet derived from this master wallet. 
+                Company wallets are used to receive contributions on blockchain bounties.
+              </p>
+            </div>
+          </div>
+        {/if}
+
         <!-- Master Wallet Display -->
         {#if loadingWallet}
           <div class="space-y-2">

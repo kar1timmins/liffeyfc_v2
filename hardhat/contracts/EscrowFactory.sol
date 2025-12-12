@@ -29,19 +29,22 @@ contract EscrowFactory {
     
     /**
      * @notice Create a new escrow contract
-     * @param _company Company address that will receive funds
+     * @param _company Company address (child wallet)
+     * @param _masterWallet Master wallet address for automatic fund forwarding
      * @param _targetAmount Target amount in wei
      * @param _durationInDays Campaign duration in days
      * @return escrowAddress Address of the newly created escrow contract
      */
     function createEscrow(
         address _company,
+        address _masterWallet,
         uint256 _targetAmount,
         uint256 _durationInDays
     ) external returns (address escrowAddress) {
         // Deploy new escrow contract
         CompanyWishlistEscrow escrow = new CompanyWishlistEscrow(
             _company,
+            _masterWallet,
             _targetAmount,
             _durationInDays
         );

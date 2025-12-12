@@ -60,6 +60,12 @@
   let itemToDelete = $state<{ companyId: string; itemId: string; itemTitle: string; hasEscrow: boolean } | null>(null);
   let isDeleting = $state(false);
   
+  // Company delete confirmation modal state
+  let showCompanyDeleteModal = $state(false);
+  let companyDeleteConfirmationText = $state('');
+  let companyToDelete = $state<{ id: string; name: string } | null>(null);
+  let isDeletingCompany = $state(false);
+  
   // Form fields
   let name = $state('');
   let description = $state('');
@@ -210,6 +216,7 @@
     showForm = false;
     editingCompany = null;
     errorMessage = null;
+    resetForm();
   }
 
   function toggleWishlist(companyId: string) {
@@ -317,13 +324,19 @@
       const result = await response.json();
 
       if (result.success) {
-        // For newly created companies, capture the company data to show address reveal
+        // For newly created companies, capture the company data to show address reveal/status
         if (!editingCompany && result.data) {
           newlyCreatedCompany = result.data;
           revealedAddresses = {}; // Reset reveal state
+          // Show modal and keep form open - closeForm will be called when user dismisses modal
+          console.log('[CompanyCreation] Company created:', result.data.id, 'ETH:', result.data.ethAddress, 'AVAX:', result.data.avaxAddress);
+          // Refresh companies list
+          onUpdate();
+        } else {
+          // For edits, close form immediately and refresh
+          closeForm();
+          onUpdate();
         }
-        closeForm();
-        onUpdate();
       } else {
         errorMessage = result.message || 'Failed to save company';
       }
@@ -334,16 +347,34 @@
     }
   }
 
-  async function deleteCompany(companyId: string) {
-    if (!confirm('Are you sure you want to delete this company?')) {
+  async function deleteCompany(companyId: string, companyName: string) {
+    openCompanyDeleteModal(companyId, companyName);
+  }
+
+  function openCompanyDeleteModal(companyId: string, companyName: string) {
+    companyToDelete = { id: companyId, name: companyName };
+    companyDeleteConfirmationText = '';
+    showCompanyDeleteModal = true;
+  }
+
+  async function confirmDeleteCompany() {
+    if (!companyToDelete) return;
+    
+    if (companyDeleteConfirmationText !== 'delete') {
+      toastStore.add({ message: 'Please type "delete" to confirm', type: 'error' });
       return;
     }
 
+    isDeletingCompany = true;
+
     try {
       const token = $authStore.accessToken;
-      if (!token) return;
+      if (!token) {
+        toastStore.add({ message: 'Not authenticated', type: 'error' });
+        return;
+      }
 
-      const response = await fetch(`${PUBLIC_API_URL}/companies/${companyId}`, {
+      const response = await fetch(`${PUBLIC_API_URL}/companies/${companyToDelete.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -353,13 +384,25 @@
       const result = await response.json();
 
       if (result.success) {
-        onUpdate();
+        toastStore.add({ message: 'Company deleted successfully', type: 'success' });
+        showCompanyDeleteModal = false;
+        companyDeleteConfirmationText = '';
+        companyToDelete = null;
+        onUpdate(); // Refresh the company list
       } else {
-        alert(result.message || 'Failed to delete company');
+        toastStore.add({ message: result.message || 'Failed to delete company', type: 'error' });
       }
     } catch (err: any) {
-      alert(err.message || 'An error occurred');
+      toastStore.add({ message: err.message || 'An error occurred while deleting', type: 'error' });
+    } finally {
+      isDeletingCompany = false;
     }
+  }
+
+  function cancelCompanyDeleteModal() {
+    showCompanyDeleteModal = false;
+    companyDeleteConfirmationText = '';
+    companyToDelete = null;
   }
 
   function openDeleteModal(companyId: string, itemId: string, itemTitle: string, hasEscrow: boolean) {
@@ -778,125 +821,147 @@
     </div>
   {/if}
 
-  <!-- Newly Created Company - Child Address Display -->
-  {#if newlyCreatedCompany && (newlyCreatedCompany.ethAddress || newlyCreatedCompany.avaxAddress)}
-    <div class="glass-subtle rounded-2xl p-6 mb-6 border-2 border-primary/50 bg-primary/5">
+  <!-- Newly Created Company - Child Address Display or Wallet Generation Status -->
+  {#if newlyCreatedCompany}
+    <div class="glass-subtle rounded-2xl p-6 mb-6 border-2 {newlyCreatedCompany.ethAddress || newlyCreatedCompany.avaxAddress ? 'border-primary/50 bg-primary/5' : 'border-warning/50 bg-warning/5'}">
       <div class="flex items-center justify-between mb-4">
         <div class="flex items-center gap-3">
           <div class="badge badge-primary badge-lg">NEW</div>
           <h3 class="text-lg font-bold">
-            {newlyCreatedCompany.name} - Child Wallet Addresses
+            {newlyCreatedCompany.name} - Company Registration
           </h3>
         </div>
         <button 
           class="btn btn-ghost btn-sm"
-          onclick={() => { newlyCreatedCompany = null; revealedAddresses = {}; }}
+          onclick={() => { newlyCreatedCompany = null; revealedAddresses = {}; closeForm(); }}
           aria-label="Close"
         >
           <X class="w-5 h-5" />
         </button>
       </div>
 
-      <p class="text-sm opacity-75 mb-4">
-        Your company has been registered with the following blockchain addresses. These are your company's child wallet addresses derived from your master wallet.
-      </p>
+      {#if newlyCreatedCompany.ethAddress || newlyCreatedCompany.avaxAddress}
+        <!-- Success - Wallets Generated -->
+        <p class="text-sm opacity-75 mb-4">
+          Your company has been registered with the following blockchain addresses. These are your company's child wallet addresses derived from your master wallet.
+        </p>
 
-      <div class="space-y-3">
-        {#if newlyCreatedCompany.ethAddress}
-          <div class="bg-base-200/50 rounded-lg p-4">
-            <div class="flex items-center justify-between mb-2">
-              <div class="flex items-center gap-2">
-                <span class="badge badge-primary">Ethereum Sepolia</span>
-                <span class="text-xs opacity-60">testnet</span>
+        <div class="space-y-3">
+          {#if newlyCreatedCompany.ethAddress}
+            <div class="bg-base-200/50 rounded-lg p-4">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                  <span class="badge badge-primary">Ethereum Sepolia</span>
+                  <span class="text-xs opacity-60">testnet</span>
+                </div>
               </div>
-            </div>
-            <div class="flex items-center justify-between gap-3">
-              <code class="text-sm font-mono bg-base-100 px-3 py-2 rounded flex-1 break-all">
-                {displayAddress(newlyCreatedCompany.ethAddress, 'eth')}
-              </code>
-              <div class="flex gap-2">
-                <button
-                  class="btn btn-ghost btn-sm"
-                  onclick={() => toggleReveal('eth')}
-                  title={revealedAddresses['eth'] ? 'Hide address' : 'Show full address'}
-                  aria-label={revealedAddresses['eth'] ? 'Hide address' : 'Show full address'}
-                >
-                  {#if revealedAddresses['eth']}
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-4.5-11-4.5s1.6-3.3 4.3-5.3m2.6-2.6A9.88 9.88 0 0 1 12 4c7 0 11 4.5 11 4.5s-1.6 3.3-4.3 5.3"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                  {:else}
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                  {/if}
-                </button>
-                <button
-                  class="btn btn-ghost btn-sm"
-                  onclick={() => {
-                    navigator.clipboard.writeText(newlyCreatedCompany?.ethAddress || '');
-                    toastStore.add({ message: 'ETH address copied!', type: 'success' });
-                  }}
-                  title="Copy to clipboard"
-                  aria-label="Copy to clipboard"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-                </button>
+              <div class="flex items-center justify-between gap-3">
+                <code class="text-sm font-mono bg-base-100 px-3 py-2 rounded flex-1 break-all">
+                  {displayAddress(newlyCreatedCompany.ethAddress, 'eth')}
+                </code>
+                <div class="flex gap-2">
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    onclick={() => toggleReveal('eth')}
+                    title={revealedAddresses['eth'] ? 'Hide address' : 'Show full address'}
+                    aria-label={revealedAddresses['eth'] ? 'Hide address' : 'Show full address'}
+                  >
+                    {#if revealedAddresses['eth']}
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-4.5-11-4.5s1.6-3.3 4.3-5.3m2.6-2.6A9.88 9.88 0 0 1 12 4c7 0 11 4.5 11 4.5s-1.6 3.3-4.3 5.3"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    {:else}
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    {/if}
+                  </button>
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    onclick={() => {
+                      navigator.clipboard.writeText(newlyCreatedCompany?.ethAddress || '');
+                      toastStore.add({ message: 'ETH address copied!', type: 'success' });
+                    }}
+                    title="Copy to clipboard"
+                    aria-label="Copy to clipboard"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  </button>
+                </div>
               </div>
+              <p class="text-xs opacity-60 mt-2">
+                Use this address to receive contributions to bounties on Ethereum Sepolia testnet
+              </p>
             </div>
-            <p class="text-xs opacity-60 mt-2">
-              Use this address to receive contributions to bounties on Ethereum Sepolia testnet
+          {/if}
+
+          {#if newlyCreatedCompany.avaxAddress}
+            <div class="bg-base-200/50 rounded-lg p-4">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                  <span class="badge badge-error">Avalanche Fuji</span>
+                  <span class="text-xs opacity-60">testnet</span>
+                </div>
+              </div>
+              <div class="flex items-center justify-between gap-3">
+                <code class="text-sm font-mono bg-base-100 px-3 py-2 rounded flex-1 break-all">
+                  {displayAddress(newlyCreatedCompany.avaxAddress, 'avax')}
+                </code>
+                <div class="flex gap-2">
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    onclick={() => toggleReveal('avax')}
+                    title={revealedAddresses['avax'] ? 'Hide address' : 'Show full address'}
+                    aria-label={revealedAddresses['avax'] ? 'Hide address' : 'Show full address'}
+                  >
+                    {#if revealedAddresses['avax']}
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-4.5-11-4.5s1.6-3.3 4.3-5.3m2.6-2.6A9.88 9.88 0 0 1 12 4c7 0 11 4.5 11 4.5s-1.6 3.3-4.3 5.3"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    {:else}
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    {/if}
+                  </button>
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    onclick={() => {
+                      navigator.clipboard.writeText(newlyCreatedCompany?.avaxAddress || '');
+                      toastStore.add({ message: 'AVAX address copied!', type: 'success' });
+                    }}
+                    title="Copy to clipboard"
+                    aria-label="Copy to clipboard"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  </button>
+                </div>
+              </div>
+              <p class="text-xs opacity-60 mt-2">
+                Use this address to receive contributions to bounties on Avalanche Fuji testnet
+              </p>
+            </div>
+          {/if}
+        </div>
+
+        <div class="alert alert-info mt-4">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span class="text-sm">
+            These addresses are derived from your master wallet and will always be the same if you restore your wallet.
+          </span>
+        </div>
+      {:else}
+        <!-- Warning - Wallet Not Generated -->
+        <div class="alert alert-warning">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4v2m0 0v2m0-6h2m-4 0H8m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <div>
+            <h4 class="font-semibold mb-2">Wallet Addresses Not Generated</h4>
+            <p class="text-sm mb-3">
+              Your company was created successfully, but blockchain wallet addresses were not automatically generated. This typically means you don't have a master wallet yet.
             </p>
-          </div>
-        {/if}
-
-        {#if newlyCreatedCompany.avaxAddress}
-          <div class="bg-base-200/50 rounded-lg p-4">
-            <div class="flex items-center justify-between mb-2">
-              <div class="flex items-center gap-2">
-                <span class="badge badge-error">Avalanche Fuji</span>
-                <span class="text-xs opacity-60">testnet</span>
-              </div>
-            </div>
-            <div class="flex items-center justify-between gap-3">
-              <code class="text-sm font-mono bg-base-100 px-3 py-2 rounded flex-1 break-all">
-                {displayAddress(newlyCreatedCompany.avaxAddress, 'avax')}
-              </code>
-              <div class="flex gap-2">
-                <button
-                  class="btn btn-ghost btn-sm"
-                  onclick={() => toggleReveal('avax')}
-                  title={revealedAddresses['avax'] ? 'Hide address' : 'Show full address'}
-                  aria-label={revealedAddresses['avax'] ? 'Hide address' : 'Show full address'}
-                >
-                  {#if revealedAddresses['avax']}
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-4.5-11-4.5s1.6-3.3 4.3-5.3m2.6-2.6A9.88 9.88 0 0 1 12 4c7 0 11 4.5 11 4.5s-1.6 3.3-4.3 5.3"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                  {:else}
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                  {/if}
-                </button>
-                <button
-                  class="btn btn-ghost btn-sm"
-                  onclick={() => {
-                    navigator.clipboard.writeText(newlyCreatedCompany?.avaxAddress || '');
-                    toastStore.add({ message: 'AVAX address copied!', type: 'success' });
-                  }}
-                  title="Copy to clipboard"
-                  aria-label="Copy to clipboard"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-                </button>
-              </div>
-            </div>
-            <p class="text-xs opacity-60 mt-2">
-              Use this address to receive contributions to bounties on Avalanche Fuji testnet
+            <p class="text-sm mb-3">
+              To generate wallet addresses for this company:
             </p>
+            <ol class="text-sm list-decimal list-inside space-y-1 mb-3">
+              <li>Go to your profile page</li>
+              <li>Generate or restore a master wallet</li>
+              <li>Come back here and click "Generate Wallet Addresses" on the company card</li>
+            </ol>
           </div>
-        {/if}
-      </div>
-
-      <div class="alert alert-info mt-4">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        <span class="text-sm">
-          These addresses are derived from your master wallet and will always be the same if you restore your wallet.
-        </span>
-      </div>
+        </div>
+      {/if}
     </div>
   {/if}
 
@@ -1318,7 +1383,7 @@
               </button>
               <button 
                 class="btn btn-sm btn-ghost text-error"
-                onclick={() => deleteCompany(company.id)}
+                onclick={() => deleteCompany(company.id, company.name)}
               >
                 <Trash2 class="w-4 h-4" />
               </button>
@@ -1341,7 +1406,7 @@
   />
 {/if}
 
-<!-- Delete Confirmation Modal -->
+<!-- Delete Confirmation Modal for Wishlist Items -->
 {#if showDeleteModal && itemToDelete}
   <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
     <div class="bg-base-100 rounded-lg shadow-2xl max-w-md w-full mx-4 border border-base-300">
@@ -1405,6 +1470,72 @@
             Deleting...
           {:else}
             Delete Item
+          {/if}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- Delete Confirmation Modal for Companies -->
+{#if showCompanyDeleteModal && companyToDelete}
+  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div class="bg-base-100 rounded-lg shadow-2xl max-w-md w-full mx-4 border border-base-300">
+      <!-- Modal Header -->
+      <div class="border-b border-base-300 p-6">
+        <h2 class="text-xl font-bold">Delete Company</h2>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-6 space-y-4">
+        <div class="alert alert-error">
+          <AlertCircle class="w-5 h-5" />
+          <div>
+            <p class="font-semibold">Warning: This action cannot be undone</p>
+            <p class="text-sm">You are about to permanently delete <strong>"{companyToDelete.name}"</strong> and all associated data.</p>
+          </div>
+        </div>
+
+        <div>
+          <label class="label" for="company-delete-confirm-input">
+            <span class="label-text">Type <strong>"delete"</strong> to confirm</span>
+          </label>
+          <input
+            id="company-delete-confirm-input"
+            type="text"
+            class="input input-bordered w-full"
+            placeholder="Type 'delete' here"
+            bind:value={companyDeleteConfirmationText}
+            autocomplete="off"
+          />
+          {#if companyDeleteConfirmationText && companyDeleteConfirmationText !== 'delete'}
+            <p class="text-error text-xs mt-1">Incorrect confirmation text</p>
+          {/if}
+          {#if companyDeleteConfirmationText === 'delete'}
+            <p class="text-success text-xs mt-1">✓ Ready to delete</p>
+          {/if}
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="border-t border-base-300 p-6 flex gap-3 justify-end">
+        <button
+          class="btn btn-ghost"
+          onclick={cancelCompanyDeleteModal}
+          disabled={isDeletingCompany}
+        >
+          Cancel
+        </button>
+        <button
+          class="btn btn-error"
+          onclick={confirmDeleteCompany}
+          disabled={companyDeleteConfirmationText !== 'delete' || isDeletingCompany}
+        >
+          {#if isDeletingCompany}
+            <span class="loading loading-spinner loading-sm"></span>
+            Deleting Company...
+          {:else}
+            Delete Company
           {/if}
         </button>
       </div>
