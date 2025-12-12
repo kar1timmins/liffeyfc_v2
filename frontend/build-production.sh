@@ -11,17 +11,25 @@ echo ""
 
 # Check if backend URL is provided
 if [ -z "$1" ]; then
-    echo "❌ Backend URL is required!"
-    echo ""
-    echo "Usage: ./build-production.sh <BACKEND_URL>"
-    echo ""
-    echo "Example:"
-    echo "  ./build-production.sh https://liffeyfc-backend.up.railway.app"
-    echo ""
-    exit 1
+    # Check if we're in Railway environment (has RAILWAY_ENVIRONMENT set)
+    if [ -n "$RAILWAY_ENVIRONMENT" ] && [ -n "$PUBLIC_API_URL" ]; then
+        echo "🚂 Detected Railway environment, using PUBLIC_API_URL from environment"
+        BACKEND_URL=$PUBLIC_API_URL
+    else
+        echo "❌ Backend URL is required!"
+        echo ""
+        echo "Usage: ./build-production.sh <BACKEND_URL>"
+        echo ""
+        echo "Example:"
+        echo "  ./build-production.sh https://liffeyfc-backend.up.railway.app"
+        echo ""
+        echo "Or set PUBLIC_API_URL environment variable in Railway"
+        echo ""
+        exit 1
+    fi
+else
+    BACKEND_URL=$1
 fi
-
-BACKEND_URL=$1
 
 echo "🔧 Configuration:"
 echo "  Backend URL: $BACKEND_URL"
@@ -31,11 +39,20 @@ echo ""
 echo "📝 Creating .env.production..."
 cat > .env.production << EOF
 # Production Environment Variables
-VITE_API_URL=$BACKEND_URL
+PUBLIC_API_URL=$BACKEND_URL
+PUBLIC_APP_ENV=production
+PUBLIC_DEBUG_LOGS=0
+PUBLIC_RECAPTCHA_SITE_KEY=6LfLPNorAAAAACm_F5G2qUb1GokeFVYNDn10hciP
 EOF
 
 echo "✅ .env.production created"
 echo ""
+
+# Remove .env.local to prevent conflicts with production build
+if [ -f ".env.local" ]; then
+    echo "🗑️ Moving .env.local to .env.local.bak to avoid conflicts..."
+    mv .env.local .env.local.bak
+fi
 
 # Install dependencies if needed
 if [ ! -d "node_modules" ]; then
@@ -44,7 +61,13 @@ if [ ! -d "node_modules" ]; then
 fi
 
 echo "🔨 Building frontend..."
-pnpm build
+NODE_ENV=production pnpm build
+
+# Restore .env.local if it existed
+if [ -f ".env.local.bak" ]; then
+    echo "🔄 Restoring .env.local..."
+    mv .env.local.bak .env.local
+fi
 
 echo ""
 echo "✅ Build successful!"

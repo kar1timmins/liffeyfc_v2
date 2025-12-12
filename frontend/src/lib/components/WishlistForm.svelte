@@ -116,8 +116,7 @@
   async function fetchCryptoPrices() {
     isLoadingPrices = true;
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-      const response = await fetch(`${apiUrl}/crypto-prices`);
+      const response = await fetch(`${PUBLIC_API_URL}/crypto-prices`);
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
@@ -161,12 +160,10 @@
     isLoadingBalances = true;
     console.log('Starting balance fetch...');
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-
       // Fetch both balances in parallel
       const [ethResponse, avaxResponse] = await Promise.all([
-        fetch(`${apiUrl}/wallet-balance?address=${companyWallet}&chain=ethereum`),
-        fetch(`${apiUrl}/wallet-balance?address=${companyWallet}&chain=avalanche`)
+        fetch(`${PUBLIC_API_URL}/wallet-balance?address=${companyWallet}&chain=ethereum`),
+        fetch(`${PUBLIC_API_URL}/wallet-balance?address=${companyWallet}&chain=avalanche`)
       ]);
 
       // Process Ethereum balance
@@ -205,12 +202,11 @@
     isEstimatingGas = true;
     try {
       const costs: { ethereum?: string; avalanche?: string } = {};
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
       // Estimate Ethereum gas
       if (formData.deployToEthereum) {
         try {
-          const gasPriceResponse = await fetch(`${apiUrl}/wallet-balance/gas-price?chain=ethereum`);
+          const gasPriceResponse = await fetch(`${PUBLIC_API_URL}/wallet-balance/gas-price?chain=ethereum`);
           if (gasPriceResponse.ok) {
             const gasPriceData = await gasPriceResponse.json();
             console.log('ETH gas price response:', gasPriceData);
@@ -237,7 +233,7 @@
       // Estimate Avalanche gas
       if (formData.deployToAvalanche) {
         try {
-          const gasPriceResponse = await fetch(`${apiUrl}/wallet-balance/gas-price?chain=avalanche`);
+          const gasPriceResponse = await fetch(`${PUBLIC_API_URL}/wallet-balance/gas-price?chain=avalanche`);
           if (gasPriceResponse.ok) {
             const gasPriceData = await gasPriceResponse.json();
             console.log('AVAX gas price response:', gasPriceData);
