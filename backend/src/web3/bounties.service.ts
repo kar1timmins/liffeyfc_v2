@@ -13,6 +13,14 @@ export interface BountyFilters {
   companyId?: string;
 }
 
+export interface BountyDeployment {
+  chain: 'ethereum' | 'avalanche';
+  network: string;
+  contractAddress: string;
+  deploymentTxHash?: string;
+  deployedAt: string;
+}
+
 export interface BountyResponse {
   id: string;
   title: string;
@@ -34,6 +42,7 @@ export interface BountyResponse {
   isEscrowActive: boolean;
   ethereumEscrowAddress: string | null;
   avalancheEscrowAddress: string | null;
+  deployments: BountyDeployment[];
   createdAt: string;
 }
 
@@ -452,6 +461,25 @@ export class BountiesService {
     let raisedAmount = '0';
     let contributorCount = 0;
     let blockchainStatus: 'active' | 'funded' | 'failed' | 'expired' = 'active';
+    let deployments: BountyDeployment[] = [];
+
+    // Fetch deployment details from database
+    try {
+      const escrowDeployments = await this.escrowDeploymentRepository.find({
+        where: { wishlistItemId: wishlistItem.id },
+        order: { createdAt: 'DESC' },
+      });
+
+      deployments = escrowDeployments.map((deployment) => ({
+        chain: (deployment.chain.toLowerCase() === 'ethereum' ? 'ethereum' : 'avalanche') as 'ethereum' | 'avalanche',
+        network: deployment.network,
+        contractAddress: deployment.contractAddress,
+        deploymentTxHash: deployment.deploymentTxHash,
+        deployedAt: deployment.createdAt.toISOString(),
+      }));
+    } catch (error) {
+      this.logger.warn(`⚠️  Failed to fetch deployments for ${wishlistItem.id}:`, error.message);
+    }
 
     // Fetch blockchain data if contracts exist
     if (wishlistItem.ethereumEscrowAddress || wishlistItem.avalancheEscrowAddress) {
@@ -529,6 +557,7 @@ export class BountiesService {
       isEscrowActive: wishlistItem.isEscrowActive,
       ethereumEscrowAddress: wishlistItem.ethereumEscrowAddress || null,
       avalancheEscrowAddress: wishlistItem.avalancheEscrowAddress || null,
+      deployments,
       createdAt: wishlistItem.createdAt.toISOString(),
     };
   }

@@ -50,6 +50,10 @@
   let selectedWishlistItem = $state<any | null>(null);
   let selectedCompany = $state<Company | null>(null);
   
+  // Newly created company state - for showing child address with reveal
+  let newlyCreatedCompany = $state<Company | null>(null);
+  let revealedAddresses = $state<{ [key: string]: boolean }>({});
+  
   // Delete confirmation modal state
   let showDeleteModal = $state(false);
   let deleteConfirmationText = $state('');
@@ -231,6 +235,32 @@
     onUpdate();
   }
 
+  /**
+   * Truncate Ethereum address to show first 6 and last 4 characters
+   * Example: 0x1234567890abcdef... -> 0x1234...cdef
+   */
+  function truncateAddress(address: string): string {
+    if (!address || address.length < 12) return address;
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  }
+
+  /**
+   * Toggle reveal state for a given address
+   */
+  function toggleReveal(key: string) {
+    revealedAddresses[key] = !revealedAddresses[key];
+  }
+
+  /**
+   * Show address - either truncated or full based on reveal state
+   */
+  function displayAddress(address: string, key: string): string {
+    if (revealedAddresses[key]) {
+      return address;
+    }
+    return truncateAddress(address);
+  }
+
   async function handleSubmit() {
     if (!name || !description) {
       errorMessage = 'Name and description are required';
@@ -287,6 +317,11 @@
       const result = await response.json();
 
       if (result.success) {
+        // For newly created companies, capture the company data to show address reveal
+        if (!editingCompany && result.data) {
+          newlyCreatedCompany = result.data;
+          revealedAddresses = {}; // Reset reveal state
+        }
         closeForm();
         onUpdate();
       } else {
@@ -743,6 +778,128 @@
     </div>
   {/if}
 
+  <!-- Newly Created Company - Child Address Display -->
+  {#if newlyCreatedCompany && (newlyCreatedCompany.ethAddress || newlyCreatedCompany.avaxAddress)}
+    <div class="glass-subtle rounded-2xl p-6 mb-6 border-2 border-primary/50 bg-primary/5">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <div class="badge badge-primary badge-lg">NEW</div>
+          <h3 class="text-lg font-bold">
+            {newlyCreatedCompany.name} - Child Wallet Addresses
+          </h3>
+        </div>
+        <button 
+          class="btn btn-ghost btn-sm"
+          onclick={() => { newlyCreatedCompany = null; revealedAddresses = {}; }}
+          aria-label="Close"
+        >
+          <X class="w-5 h-5" />
+        </button>
+      </div>
+
+      <p class="text-sm opacity-75 mb-4">
+        Your company has been registered with the following blockchain addresses. These are your company's child wallet addresses derived from your master wallet.
+      </p>
+
+      <div class="space-y-3">
+        {#if newlyCreatedCompany.ethAddress}
+          <div class="bg-base-200/50 rounded-lg p-4">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <span class="badge badge-primary">Ethereum Sepolia</span>
+                <span class="text-xs opacity-60">testnet</span>
+              </div>
+            </div>
+            <div class="flex items-center justify-between gap-3">
+              <code class="text-sm font-mono bg-base-100 px-3 py-2 rounded flex-1 break-all">
+                {displayAddress(newlyCreatedCompany.ethAddress, 'eth')}
+              </code>
+              <div class="flex gap-2">
+                <button
+                  class="btn btn-ghost btn-sm"
+                  onclick={() => toggleReveal('eth')}
+                  title={revealedAddresses['eth'] ? 'Hide address' : 'Show full address'}
+                  aria-label={revealedAddresses['eth'] ? 'Hide address' : 'Show full address'}
+                >
+                  {#if revealedAddresses['eth']}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-4.5-11-4.5s1.6-3.3 4.3-5.3m2.6-2.6A9.88 9.88 0 0 1 12 4c7 0 11 4.5 11 4.5s-1.6 3.3-4.3 5.3"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                  {:else}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  {/if}
+                </button>
+                <button
+                  class="btn btn-ghost btn-sm"
+                  onclick={() => {
+                    navigator.clipboard.writeText(newlyCreatedCompany?.ethAddress || '');
+                    toastStore.add({ message: 'ETH address copied!', type: 'success' });
+                  }}
+                  title="Copy to clipboard"
+                  aria-label="Copy to clipboard"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                </button>
+              </div>
+            </div>
+            <p class="text-xs opacity-60 mt-2">
+              Use this address to receive contributions to bounties on Ethereum Sepolia testnet
+            </p>
+          </div>
+        {/if}
+
+        {#if newlyCreatedCompany.avaxAddress}
+          <div class="bg-base-200/50 rounded-lg p-4">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <span class="badge badge-error">Avalanche Fuji</span>
+                <span class="text-xs opacity-60">testnet</span>
+              </div>
+            </div>
+            <div class="flex items-center justify-between gap-3">
+              <code class="text-sm font-mono bg-base-100 px-3 py-2 rounded flex-1 break-all">
+                {displayAddress(newlyCreatedCompany.avaxAddress, 'avax')}
+              </code>
+              <div class="flex gap-2">
+                <button
+                  class="btn btn-ghost btn-sm"
+                  onclick={() => toggleReveal('avax')}
+                  title={revealedAddresses['avax'] ? 'Hide address' : 'Show full address'}
+                  aria-label={revealedAddresses['avax'] ? 'Hide address' : 'Show full address'}
+                >
+                  {#if revealedAddresses['avax']}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-4.5-11-4.5s1.6-3.3 4.3-5.3m2.6-2.6A9.88 9.88 0 0 1 12 4c7 0 11 4.5 11 4.5s-1.6 3.3-4.3 5.3"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                  {:else}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  {/if}
+                </button>
+                <button
+                  class="btn btn-ghost btn-sm"
+                  onclick={() => {
+                    navigator.clipboard.writeText(newlyCreatedCompany?.avaxAddress || '');
+                    toastStore.add({ message: 'AVAX address copied!', type: 'success' });
+                  }}
+                  title="Copy to clipboard"
+                  aria-label="Copy to clipboard"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                </button>
+              </div>
+            </div>
+            <p class="text-xs opacity-60 mt-2">
+              Use this address to receive contributions to bounties on Avalanche Fuji testnet
+            </p>
+          </div>
+        {/if}
+      </div>
+
+      <div class="alert alert-info mt-4">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span class="text-sm">
+          These addresses are derived from your master wallet and will always be the same if you restore your wallet.
+        </span>
+      </div>
+    </div>
+  {/if}
+
   {#if companies.length === 0 && !showForm}
     <div class="text-center py-12">
       <Building2 class="w-16 h-16 mx-auto mb-4 opacity-30" />
@@ -817,39 +974,111 @@
                       <div class="flex items-center justify-between gap-2">
                         <div class="flex items-center gap-2 flex-1 min-w-0">
                           <span class="badge badge-primary badge-xs">ETH</span>
-                          <code class="text-xs font-mono truncate flex-1" title={company.ethAddress}>
-                            {company.ethAddress}
+                          <code class="text-xs font-mono flex-1" title={company.ethAddress}>
+                            {displayAddress(company.ethAddress, `eth-${company.id}`)}
                           </code>
                         </div>
-                        <button
-                          class="btn btn-ghost btn-xs"
-                          onclick={() => navigator.clipboard.writeText(company.ethAddress || '')}
-                          title="Copy Ethereum address"
-                          aria-label="Copy Ethereum address"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-                        </button>
+                        <div class="flex gap-1">
+                          <button
+                            class="btn btn-ghost btn-xs"
+                            onclick={() => toggleReveal(`eth-${company.id}`)}
+                            title={revealedAddresses[`eth-${company.id}`] ? 'Hide address' : 'Show full address'}
+                            aria-label={revealedAddresses[`eth-${company.id}`] ? 'Hide' : 'Show'}
+                          >
+                            {#if revealedAddresses[`eth-${company.id}`]}
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-4.5-11-4.5s1.6-3.3 4.3-5.3m2.6-2.6A9.88 9.88 0 0 1 12 4c7 0 11 4.5 11 4.5s-1.6 3.3-4.3 5.3"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                            {:else}
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            {/if}
+                          </button>
+                          <button
+                            class="btn btn-ghost btn-xs"
+                            onclick={() => {
+                              navigator.clipboard.writeText(company.ethAddress || '');
+                              toastStore.add({ message: 'Address copied!', type: 'success' });
+                            }}
+                            title="Copy Ethereum address"
+                            aria-label="Copy Ethereum address"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                          </button>
+                        </div>
                       </div>
                     {/if}
                     {#if company.avaxAddress}
                       <div class="flex items-center justify-between gap-2">
                         <div class="flex items-center gap-2 flex-1 min-w-0">
                           <span class="badge badge-error badge-xs">AVAX</span>
-                          <code class="text-xs font-mono truncate flex-1" title={company.avaxAddress}>
-                            {company.avaxAddress}
+                          <code class="text-xs font-mono flex-1" title={company.avaxAddress}>
+                            {displayAddress(company.avaxAddress, `avax-${company.id}`)}
                           </code>
                         </div>
-                        <button
-                          class="btn btn-ghost btn-xs"
-                          onclick={() => navigator.clipboard.writeText(company.avaxAddress || '')}
-                          title="Copy Avalanche address"
-                          aria-label="Copy Avalanche address"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-                        </button>
+                        <div class="flex gap-1">
+                          <button
+                            class="btn btn-ghost btn-xs"
+                            onclick={() => toggleReveal(`avax-${company.id}`)}
+                            title={revealedAddresses[`avax-${company.id}`] ? 'Hide address' : 'Show full address'}
+                            aria-label={revealedAddresses[`avax-${company.id}`] ? 'Hide' : 'Show'}
+                          >
+                            {#if revealedAddresses[`avax-${company.id}`]}
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-4.5-11-4.5s1.6-3.3 4.3-5.3m2.6-2.6A9.88 9.88 0 0 1 12 4c7 0 11 4.5 11 4.5s-1.6 3.3-4.3 5.3"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                            {:else}
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            {/if}
+                          </button>
+                          <button
+                            class="btn btn-ghost btn-xs"
+                            onclick={() => {
+                              navigator.clipboard.writeText(company.avaxAddress || '');
+                              toastStore.add({ message: 'Address copied!', type: 'success' });
+                            }}
+                            title="Copy Avalanche address"
+                            aria-label="Copy Avalanche address"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                          </button>
+                        </div>
                       </div>
                     {/if}
                   </div>
+                </div>
+              {:else}
+                <div class="mt-4 p-3 bg-warning/10 border border-warning/30 rounded-lg">
+                  <div class="flex items-center gap-2 mb-2">
+                    <AlertCircle class="w-4 h-4 text-warning" />
+                    <span class="text-sm font-semibold">No Wallet Addresses</span>
+                  </div>
+                  <p class="text-sm opacity-80 mb-3">
+                    This company doesn't have blockchain wallet addresses yet. Wallet addresses are automatically generated when a company is created if you have a master wallet. If this company was created before your master wallet, you can regenerate addresses now.
+                  </p>
+                  <button
+                    class="btn btn-sm btn-warning gap-2"
+                    onclick={() => {
+                      errorMessage = null;
+                      // Trigger wallet generation for this company
+                      fetch(`${PUBLIC_API_URL}/wallet/company/${company.id}`, {
+                        method: 'POST',
+                        headers: {
+                          'Authorization': `Bearer ${$authStore.accessToken}`
+                        }
+                      })
+                        .then(res => res.json())
+                        .then(data => {
+                          if (data.success) {
+                            toastStore.add({ message: 'Wallet addresses generated successfully!', type: 'success' });
+                            onUpdate(); // Refresh companies
+                          } else {
+                            toastStore.add({ message: data.message || 'Failed to generate wallet', type: 'error' });
+                          }
+                        })
+                        .catch(err => {
+                          toastStore.add({ message: 'Error generating wallet', type: 'error' });
+                        });
+                    }}
+                  >
+                    <Wallet class="w-4 h-4" />
+                    Generate Wallet Addresses
+                  </button>
                 </div>
               {/if}
 
@@ -1018,6 +1247,38 @@
                                           </a>
                                         </div>
                                         <code class="text-xs bg-base-300 px-2 py-1 rounded block truncate">{item.avalancheEscrowAddress}</code>
+                                      </div>
+                                    {/if}
+                                    
+                                    {#if item.deployments && item.deployments.length > 0}
+                                      <div class="mt-3 pt-3 border-t border-base-300">
+                                        <p class="text-xs font-semibold opacity-70 mb-2">📋 Deployment History:</p>
+                                        {#each item.deployments as deployment}
+                                          <div class="bg-base-300/30 rounded p-2 mb-2 text-xs space-y-1">
+                                            <div class="flex items-center justify-between">
+                                              <span class="font-semibold">{deployment.chain === 'ethereum' ? '⟠ Ethereum' : '▲ Avalanche'} {deployment.network}</span>
+                                              <a
+                                                href={deployment.chain === 'ethereum' 
+                                                  ? `https://sepolia.etherscan.io/tx/${deployment.deploymentTxHash}`
+                                                  : `https://testnet.snowtrace.io/tx/${deployment.deploymentTxHash}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                class="link link-primary text-xs"
+                                                title="View deployment transaction"
+                                              >
+                                                Tx
+                                              </a>
+                                            </div>
+                                            {#if deployment.deploymentTxHash}
+                                              <div class="font-mono text-[10px] opacity-70 truncate">
+                                                TX: {deployment.deploymentTxHash.slice(0, 10)}...{deployment.deploymentTxHash.slice(-8)}
+                                              </div>
+                                            {/if}
+                                            <div class="text-[10px] opacity-60">
+                                              {new Date(deployment.deployedAt).toLocaleDateString()} {new Date(deployment.deployedAt).toLocaleTimeString()}
+                                            </div>
+                                          </div>
+                                        {/each}
                                       </div>
                                     {/if}
                                     

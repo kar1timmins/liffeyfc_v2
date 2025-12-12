@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { browser } from '$app/environment';
 	import { authStore } from '$lib/stores/auth';
 	import SendFunds from '$lib/components/SendFunds.svelte';
 	import { ArrowLeft } from 'lucide-svelte';
@@ -9,7 +10,7 @@
 		if (!ok) goto('/auth');
 	}
 
-	$: {
+	$: if (browser) {
 		checkAuth();
 	}
 </script>
@@ -64,11 +65,11 @@
 				<ol class="space-y-3 text-sm">
 					<li class="flex gap-3">
 						<div class="badge badge-sm flex-shrink-0">1</div>
-						<div>Connect your MetaMask wallet</div>
+						<div>Your wallet is automatically generated from your account</div>
 					</li>
 					<li class="flex gap-3">
 						<div class="badge badge-sm flex-shrink-0">2</div>
-						<div>Select the network</div>
+						<div>Select the network (Ethereum Sepolia or Avalanche Fuji)</div>
 					</li>
 					<li class="flex gap-3">
 						<div class="badge badge-sm flex-shrink-0">3</div>
@@ -76,11 +77,11 @@
 					</li>
 					<li class="flex gap-3">
 						<div class="badge badge-sm flex-shrink-0">4</div>
-						<div>Review fees and confirm in MetaMask</div>
+						<div>Review transaction details and confirm</div>
 					</li>
 					<li class="flex gap-3">
 						<div class="badge badge-sm flex-shrink-0">5</div>
-						<div>Transaction sent to blockchain</div>
+						<div>Transaction sent via secure backend wallet</div>
 					</li>
 				</ol>
 			</div>
@@ -94,10 +95,10 @@
 			<div class="collapse collapse-arrow bg-base-200/50">
 				<input type="radio" name="faq" />
 				<div class="collapse-title font-semibold">
-					Do I need MetaMask installed?
+					How does the wallet work?
 				</div>
 				<div class="collapse-content text-sm">
-					<p>Yes, you need MetaMask or another Web3 wallet extension installed in your browser to send funds. MetaMask is available for free on Chrome, Firefox, and Safari.</p>
+					<p>A secure wallet is automatically generated for your account. Your private keys are encrypted and stored safely on our servers. You simply enter the amount and recipient address, and we handle the transaction signing and submission for you - no MetaMask required!</p>
 				</div>
 			</div>
 
@@ -127,7 +128,7 @@
 					Is this secure?
 				</div>
 				<div class="collapse-content text-sm">
-					<p>Yes. MetaMask handles all transaction signing on your device. We never see your private keys or control your funds. You always review and approve transactions in MetaMask.</p>
+					<p>Yes. Your private keys are encrypted with AES-256-GCM and stored securely on our servers. Only authenticated users can access their wallets. All transactions are signed server-side using your encrypted keys, ensuring no private key exposure.</p>
 				</div>
 			</div>
 

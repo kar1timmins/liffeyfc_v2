@@ -110,7 +110,13 @@ export class CompaniesService {
       console.error('Failed to generate company wallet:', error);
     }
 
-    return savedCompany;
+    // Fetch the company again to get the updated wallet addresses
+    const updatedCompany = await this.companiesRepo.findOne({
+      where: { id: savedCompany.id },
+      relations: ['owner']
+    });
+
+    return updatedCompany || savedCompany;
   }
 
   async updateCompany(companyId: string, userId: string, data: UpdateCompanyDto): Promise<Company | null> {

@@ -60,6 +60,7 @@ liffeyfc_v2/
   - **Wallet balance proxy** for CORS-free RPC calls
   - **Escrow deployment tracking** with database persistence
   - **Contribution tracking** from blockchain to database
+  - **Master wallet lookup** - Resolve user master wallet addresses to discover all owned companies and bounties
 - **Package Manager**: pnpm
 
 #### Smart Contracts (`/hardhat/`)
@@ -90,11 +91,12 @@ liffeyfc_v2/
 - **Config**: `.env` file controls `DATABASE_URL`, `POSTGRES_*` vars, `REDIS_URL`, and `TYPEORM_SYNCHRONIZE`
 - **Key Entities**:
   - `User`: User accounts with role-based access (user, investor, staff)
-  - `Wallet`: Web3 wallet addresses linked to users
+  - `UserWallet`: Master wallet addresses (one per user) with eth/avax addresses
+  - `Company`: Business profiles with owner relationships and derived child wallet addresses
+  - `WishlistItem`: Company wishlists with optional escrow integration
+  - `EscrowDeployment`: Smart contract addresses for bounties, tracks deployment and contributions
+  - `Contribution`: Investor contributions to bounties with blockchain transaction tracking
   - `RefreshToken`: JWT refresh tokens with rotation and revocation
-  - `Company`: Business profiles with owner relationships
-  - `WishlistItem`: Company wishlists with escrow integration
-  - `Bounty`: Crowdfunding campaigns linked to wishlist items
 
 #### Authentication & Authorization
 - **Strategy**: JWT + Passport.js (passport-jwt strategy)
@@ -110,6 +112,49 @@ liffeyfc_v2/
 - **Location**: `backend/src/web3/nonce.redis.service.ts`
 - **Fallback**: In-memory `NonceService` if `REDIS_URL` not set (for single-instance dev)
 - **Rationale**: Prevents replay attacks in multi-instance deployments; atomic consume ensures no race conditions
+
+#### Three-Tier Wallet Architecture
+The system manages three hierarchical levels of wallet addresses for supporting multiple companies per user:
+
+**Tier 1: User Master Wallet**
+- Single per user, stored in `user_wallets` table
+- Derived from user's MetaMask seed phrase
+- Ethereum and Avalanche addresses
+- Never changes once created
+- Used for SIWE authentication
+- Example: `0xBECE60A8fc74A3Ae7caD4b850c5Ac04051787257`
+
+**Tier 2: Company Child Wallets**
+- Multiple per user (one per company they own)
+- Stored in `companies` table as `ethAddress` and `avaxAddress`
+- Derived from user's master wallet using HD wallet derivation
+- One company = one child wallet per supported chain
+- Used as recipient for bounty contributions
+- Example: `0x1234567890abcdef...` (Company 1), `0x5678901234abcdef...` (Company 2)
+
+**Tier 3: Bounty Escrow Contracts**
+- Multiple per company (one per bounty/wishlist item)
+- Stored in `escrow_deployments` table as `contractAddress`
+- Deployed on blockchain (Ethereum Sepolia or Avalanche Fuji)
+- One bounty = one escrow contract per supported chain
+- Holds contributor funds in escrow
+- Example: `0xABCDef...` (Bounty 1), `0xEF0123...` (Bounty 2)
+
+**Entity Relationships**:
+```
+User (1:1) → UserWallet (master wallet)
+User (1:N) → Company (child wallets)
+Company (1:N) → WishlistItem
+WishlistItem (1:N) → EscrowDeployment (bounty contracts)
+```
+
+**Lookup Behavior**:
+- User enters a wallet address in SendFunds component
+- `GET /wallet/lookup?address=0xXXX&chain=ethereum`
+- If address is a company wallet: Returns that company + its bounties
+- If address is a master wallet: Returns ALL companies + ALL bounties from all companies
+- Response includes `isUserMasterWallet` flag to indicate lookup type
+- Allows users to discover all their company bounties without knowing individual wallet addresses
 
 ## 3. Coding Guidelines
 
@@ -255,12 +300,22 @@ liffeyfc_v2/
 - **Implementation**: Integrated into company pages for escrow contributions
 
 ### Backend Web3 Integration
+- **Wallet Lookup API**: Support for both company and master wallet resolution
+  - `GET /wallet/lookup?address=<addr>&chain=<ethereum|avalanche>` - Resolve wallet address to companies and bounties
+  - Returns `isUserMasterWallet: true` if address is user's master wallet (from `user_wallets` table)
+  - Returns `isUserMasterWallet: false` if address is company child wallet (from `companies` table)
+  - When master wallet detected: Returns ALL companies + ALL bounties from all companies
+  - When company wallet detected: Returns single company + its bounties
+  - Only includes active (non-expired) bounties in results
+  - Supports chain-specific filtering (Ethereum Sepolia, Avalanche Fuji)
+  
 - **Wallet Balance API**: CORS-free RPC proxy for balance queries
   - `GET /wallet-balance?address=<addr>&chain=<ethereum|avalanche>` - Get wallet balance
   - `GET /wallet-balance/gas-price?chain=<chain>` - Get current gas price
   - Multiple RPC fallbacks for reliability
   - Returns balanceWei, balanceEth/balanceAvax, rpcEndpoint
-- **Bounties API**: 7 REST endpoints for campaign management
+  
+- **Bounties API**: REST endpoints for campaign management
   - `GET /bounties` - List all active bounties
   - `GET /bounties/:id` - Get bounty details
   - `POST /bounties` - Create new bounty (links wishlist item to contract)
@@ -268,6 +323,7 @@ liffeyfc_v2/
   - `GET /bounties/company/:id` - Get bounties for specific company
   - `GET /bounties/:id/contributors` - List all contributors with amounts
   - `GET /bounties/:id/history` - Full audit trail of deployments and contributions
+  
 - **Contract Sync**: Background sync of on-chain state (totalRaised, contributors, status)
 - **Deployment Tracking**: Database persistence of contract addresses, deployments, and contributions
 - **Access Control**: Only company owners can create bounties for their wishlist items
@@ -491,6 +547,9 @@ pnpm run migration:run
 - **Email service setup**: `/email-server/README.md`
 - **Root project overview**: `/README.md` (to be created)
 - **Migrations**: Auto-generated by TypeORM CLI; stored in `backend/src/migrations/`
+- **Wallet System**:
+  - Master wallet lookup feature: `/docs/MASTER_WALLET_LOOKUP.md`
+  - Three-tier address hierarchy documentation in this file (Section 2 - Authentication & Authorization)
 - **Bounties System**:
   - Implementation guide: `/frontend/docs/BOUNTIES_IMPLEMENTATION.md`
   - Quick start: `/frontend/docs/BOUNTIES_QUICKSTART.md`

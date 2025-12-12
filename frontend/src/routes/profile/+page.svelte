@@ -5,6 +5,7 @@
   import { PUBLIC_API_URL } from '$env/static/public';
   import { User, Mail, Briefcase, Building, Globe, Linkedin, CheckCircle, ArrowUpCircle, ArrowLeft, Camera, Wallet } from 'lucide-svelte';
   import GenerateWalletModal from '$lib/components/GenerateWalletModal.svelte';
+  import RestoreWalletModal from '$lib/components/RestoreWalletModal.svelte';
   import CompanyManager from '$lib/components/CompanyManager.svelte';
 
   let user: any = $state(null);
@@ -14,8 +15,13 @@
   let upgradeError = $state('');
   let upgradeSuccess = $state(false);
   let showGenerateWalletModal = $state(false);
+  let showRestoreWalletModal = $state(false);
   let companies = $state<any[]>([]);
   let walletRefreshTrigger = $state(0);
+
+  // Master wallet state
+  let masterWallet = $state<any>(null);
+  let loadingWallet = $state(false);
 
   // Avatar upload
   let fileInput: HTMLInputElement | undefined = $state();
@@ -74,9 +80,43 @@
     }
   }
 
+  async function fetchMasterWallet() {
+    try {
+      const token = $authStore.accessToken;
+      if (!token) return;
+
+      loadingWallet = true;
+      const response = await fetch(`${PUBLIC_API_URL}/wallet/addresses`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        masterWallet = data.data;
+      }
+    } catch (err) {
+      console.error('Failed to fetch master wallet:', err);
+    } finally {
+      loadingWallet = false;
+    }
+  }
+
+  // Fetch master wallet when user changes
+  $effect(() => {
+    if (user && $authStore.accessToken) {
+      fetchMasterWallet();
+    }
+  });
+
   function handleWalletGenerated() {
     // Increment trigger to refresh wallet status in CompanyManager
     walletRefreshTrigger++;
+    // Fetch the master wallet to display addresses
+    fetchMasterWallet();
+    // Fetch companies to display newly generated wallet addresses
+    fetchMyCompanies();
   }
 
   async function handleFileSelect(event: Event) {
@@ -231,6 +271,11 @@
     onWalletGenerated={handleWalletGenerated}
   />
 
+  <RestoreWalletModal 
+    bind:isOpen={showRestoreWalletModal}
+    onWalletRestored={handleWalletGenerated}
+  />
+
   {#if isLoading}
     <!-- Loading State -->
     <div class="card bg-base-100 shadow-lg">
@@ -360,18 +405,86 @@
           <div>
             <h3 class="text-lg font-semibold mb-1 flex items-center gap-2">
               <Wallet size={18} class="text-primary" />
-              Web3 Wallet
+              Master Wallet
             </h3>
-            <p class="text-sm text-base-content/70">Manage your connected blockchain wallet</p>
+            <p class="text-sm text-base-content/70">Your blockchain wallet addresses</p>
           </div>
-          <button 
-            class="btn btn-outline btn-primary gap-2"
-            onclick={() => showGenerateWalletModal = true}
-          >
-            <Wallet size={18} />
-            Generate New Wallet
-          </button>
+          <div class="flex gap-2">
+            {#if !masterWallet}
+              <button 
+                class="btn btn-outline btn-ghost gap-2"
+                onclick={() => showRestoreWalletModal = true}
+                title="Restore from backup"
+              >
+                <Wallet size={18} />
+                Restore Wallet
+              </button>
+            {/if}
+            {#if !masterWallet}
+              <button 
+                class="btn btn-outline btn-primary gap-2"
+                onclick={() => showGenerateWalletModal = true}
+              >
+                <Wallet size={18} />
+                Generate New Wallet
+              </button>
+            {/if}
+          </div>
         </div>
+
+        <!-- Master Wallet Display -->
+        {#if loadingWallet}
+          <div class="space-y-2">
+            <div class="h-12 skeleton"></div>
+            <div class="h-12 skeleton"></div>
+          </div>
+        {:else if masterWallet}
+          <div class="space-y-3">
+            <!-- Ethereum Address -->
+            <div class="flex items-start gap-3 p-4 rounded-lg bg-base-200/50 border border-primary/20">
+              <div class="text-xl">⟠</div>
+              <div class="flex-1">
+                <div class="text-xs text-base-content/60 mb-1 font-semibold">ETHEREUM SEPOLIA</div>
+                <div class="font-mono text-sm break-all">{masterWallet.ethAddress || 'N/A'}</div>
+              </div>
+              <button 
+                class="btn btn-ghost btn-xs"
+                onclick={() => {
+                  navigator.clipboard.writeText(masterWallet.ethAddress);
+                }}
+                title="Copy address"
+              >
+                📋
+              </button>
+            </div>
+
+            <!-- Avalanche Address -->
+            <div class="flex items-start gap-3 p-4 rounded-lg bg-base-200/50 border border-accent/20">
+              <div class="text-xl">▲</div>
+              <div class="flex-1">
+                <div class="text-xs text-base-content/60 mb-1 font-semibold">AVALANCHE FUJI</div>
+                <div class="font-mono text-sm break-all">{masterWallet.avaxAddress || 'N/A'}</div>
+              </div>
+              <button 
+                class="btn btn-ghost btn-xs"
+                onclick={() => {
+                  navigator.clipboard.writeText(masterWallet.avaxAddress);
+                }}
+                title="Copy address"
+              >
+                📋
+              </button>
+            </div>
+          </div>
+        {:else}
+          <div class="alert alert-info">
+            <Wallet size={18} />
+            <div>
+              <div class="font-semibold">No wallet generated yet</div>
+              <div class="text-sm">Generate a wallet to get started with blockchain features</div>
+            </div>
+          </div>
+        {/if}
 
         <!-- Investment Focus (if investor) -->
         {#if user.role === 'investor' && user.investmentFocus}

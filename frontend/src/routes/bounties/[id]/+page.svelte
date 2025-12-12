@@ -309,83 +309,139 @@
                   </div>
                 {:else}
                   <div class="space-y-4">
-                    {#if bounty.ethereumEscrowAddress}
-                      <div class="p-4 bg-base-100 border-2 border-primary/20 rounded-lg hover:border-primary/40 transition-colors">
-                      <div class="flex items-center justify-between mb-3">
-                        <div class="flex items-center gap-2">
-                          <div class="badge badge-primary gap-1">
-                            <span class="w-2 h-2 bg-primary-content rounded-full"></span>
-                            Ethereum Sepolia
+                    {#if bounty.deployments && bounty.deployments.length > 0}
+                      {#each bounty.deployments as deployment}
+                        {#if deployment.chain === 'ethereum'}
+                          <div class="p-4 bg-base-100 border-2 border-primary/20 rounded-lg hover:border-primary/40 transition-colors">
+                            <div class="flex items-center justify-between mb-3">
+                              <div class="flex items-center gap-2">
+                                <div class="badge badge-primary gap-1">
+                                  <span class="w-2 h-2 bg-primary-content rounded-full"></span>
+                                  Ethereum Sepolia
+                                </div>
+                                <span class="text-xs opacity-60">Testnet</span>
+                              </div>
+                              <div class="flex gap-2">
+                                <button
+                                  onclick={() => copyToClipboard(deployment.contractAddress)}
+                                  class="btn btn-ghost btn-xs gap-1"
+                                  title="Copy address"
+                                >
+                                  {#if copiedAddress === deployment.contractAddress}
+                                    <Check class="w-3 h-3 text-success" />
+                                  {:else}
+                                    <Copy class="w-3 h-3" />
+                                  {/if}
+                                </button>
+                                <button
+                                  onclick={() => viewOnExplorer('ethereum', deployment.contractAddress)}
+                                  class="btn btn-primary btn-xs gap-1"
+                                >
+                                  View on Etherscan
+                                  <ExternalLink class="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                            <div class="space-y-2">
+                              <div>
+                                <div class="text-xs font-semibold opacity-70 block mb-1">Contract Address</div>
+                                <div class="bg-base-200 p-3 rounded font-mono text-xs break-all">
+                                  {deployment.contractAddress}
+                                </div>
+                              </div>
+                              {#if deployment.deploymentTxHash}
+                                <div>
+                                  <div class="text-xs font-semibold opacity-70 block mb-1">Deployment Transaction</div>
+                                  <div class="bg-base-200 p-3 rounded font-mono text-xs break-all flex items-center justify-between">
+                                    <span>{formatAddress(deployment.deploymentTxHash)}</span>
+                                    <button
+                                      onclick={() => copyToClipboard(deployment.deploymentTxHash)}
+                                      class="btn btn-ghost btn-xs gap-1"
+                                      title="Copy tx hash"
+                                    >
+                                      {#if copiedAddress === deployment.deploymentTxHash}
+                                        <Check class="w-3 h-3 text-success" />
+                                      {:else}
+                                        <Copy class="w-3 h-3" />
+                                      {/if}
+                                    </button>
+                                  </div>
+                                </div>
+                              {/if}
+                              <div class="text-xs opacity-70">
+                                Deployed: {new Date(deployment.deployedAt).toLocaleDateString()} at {new Date(deployment.deployedAt).toLocaleTimeString()}
+                              </div>
+                            </div>
                           </div>
-                          <span class="text-xs opacity-60">Testnet</span>
-                        </div>
-                        <div class="flex gap-2">
-                          <button
-                            onclick={() => copyToClipboard(bounty.ethereumEscrowAddress)}
-                            class="btn btn-ghost btn-xs gap-1"
-                            title="Copy address"
-                          >
-                            {#if copiedAddress === bounty.ethereumEscrowAddress}
-                              <Check class="w-3 h-3 text-success" />
-                            {:else}
-                              <Copy class="w-3 h-3" />
-                            {/if}
-                          </button>
-                          <button
-                            onclick={() => viewOnExplorer('ethereum', bounty.ethereumEscrowAddress)}
-                            class="btn btn-primary btn-xs gap-1"
-                          >
-                            View on Etherscan
-                            <ExternalLink class="w-3 h-3" />
-                          </button>
-                        </div>
-                      </div>
-                      <div class="bg-base-200 p-3 rounded font-mono text-xs break-all">
-                        {bounty.ethereumEscrowAddress}
-                      </div>
-                    </div>
-                  {/if}
-
-                  {#if bounty.avalancheEscrowAddress}
-                    <div class="p-4 bg-base-100 border-2 border-error/20 rounded-lg hover:border-error/40 transition-colors">
-                      <div class="flex items-center justify-between mb-3">
-                        <div class="flex items-center gap-2">
-                          <div class="badge badge-error gap-1">
-                            <span class="w-2 h-2 bg-error-content rounded-full"></span>
-                            Avalanche Fuji
+                        {:else if deployment.chain === 'avalanche'}
+                          <div class="p-4 bg-base-100 border-2 border-error/20 rounded-lg hover:border-error/40 transition-colors">
+                            <div class="flex items-center justify-between mb-3">
+                              <div class="flex items-center gap-2">
+                                <div class="badge badge-error gap-1">
+                                  <span class="w-2 h-2 bg-error-content rounded-full"></span>
+                                  Avalanche Fuji
+                                </div>
+                                <span class="text-xs opacity-60">Testnet</span>
+                              </div>
+                              <div class="flex gap-2">
+                                <button
+                                  onclick={() => copyToClipboard(deployment.contractAddress)}
+                                  class="btn btn-ghost btn-xs gap-1"
+                                  title="Copy address"
+                                >
+                                  {#if copiedAddress === deployment.contractAddress}
+                                    <Check class="w-3 h-3 text-success" />
+                                  {:else}
+                                    <Copy class="w-3 h-3" />
+                                  {/if}
+                                </button>
+                                <button
+                                  onclick={() => viewOnExplorer('avalanche', deployment.contractAddress)}
+                                  class="btn btn-error btn-xs gap-1"
+                                >
+                                  View on Snowtrace
+                                  <ExternalLink class="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                            <div class="space-y-2">
+                              <div>
+                                <div class="text-xs font-semibold opacity-70 block mb-1">Contract Address</div>
+                                <div class="bg-base-200 p-3 rounded font-mono text-xs break-all">
+                                  {deployment.contractAddress}
+                                </div>
+                              </div>
+                              {#if deployment.deploymentTxHash}
+                                <div>
+                                  <div class="text-xs font-semibold opacity-70 block mb-1">Deployment Transaction</div>
+                                  <div class="bg-base-200 p-3 rounded font-mono text-xs break-all flex items-center justify-between">
+                                    <span>{formatAddress(deployment.deploymentTxHash)}</span>
+                                    <button
+                                      onclick={() => copyToClipboard(deployment.deploymentTxHash)}
+                                      class="btn btn-ghost btn-xs gap-1"
+                                      title="Copy tx hash"
+                                    >
+                                      {#if copiedAddress === deployment.deploymentTxHash}
+                                        <Check class="w-3 h-3 text-success" />
+                                      {:else}
+                                        <Copy class="w-3 h-3" />
+                                      {/if}
+                                    </button>
+                                  </div>
+                                </div>
+                              {/if}
+                              <div class="text-xs opacity-70">
+                                Deployed: {new Date(deployment.deployedAt).toLocaleDateString()} at {new Date(deployment.deployedAt).toLocaleTimeString()}
+                              </div>
+                            </div>
                           </div>
-                          <span class="text-xs opacity-60">Testnet</span>
-                        </div>
-                        <div class="flex gap-2">
-                          <button
-                            onclick={() => copyToClipboard(bounty.avalancheEscrowAddress)}
-                            class="btn btn-ghost btn-xs gap-1"
-                            title="Copy address"
-                          >
-                            {#if copiedAddress === bounty.avalancheEscrowAddress}
-                              <Check class="w-3 h-3 text-success" />
-                            {:else}
-                              <Copy class="w-3 h-3" />
-                            {/if}
-                          </button>
-                          <button
-                            onclick={() => viewOnExplorer('avalanche', bounty.avalancheEscrowAddress)}
-                            class="btn btn-error btn-xs gap-1"
-                          >
-                            View on Snowtrace
-                            <ExternalLink class="w-3 h-3" />
-                          </button>
-                        </div>
-                      </div>
-                      <div class="bg-base-200 p-3 rounded font-mono text-xs break-all">
-                        {bounty.avalancheEscrowAddress}
-                      </div>
-                    </div>
-                  {/if}
+                        {/if}
+                      {/each}
+                    {/if}
                   </div>
 
                   <div class="mt-4 text-xs opacity-60 text-center">
-                    💡 Click the address to copy or view on blockchain explorer for full transaction history
+                    💡 Click addresses to copy or view on blockchain explorer for full transaction history
                   </div>
                 {/if}
               </div>

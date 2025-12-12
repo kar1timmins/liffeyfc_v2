@@ -214,13 +214,18 @@ export class EscrowContractService {
    * This retrieves the user's master wallet private key from the database
    */
   async getUserPrivateKey(userId: string, chain: 'ethereum' | 'avalanche'): Promise<string> {
+    this.logger.log(`🔍 Looking up wallet for user: ${userId}`);
+    
     const userWallet = await this.userWalletRepo.findOne({
       where: { userId }
     });
 
     if (!userWallet) {
+      this.logger.error(`❌ No wallet found in database for user: ${userId}`);
       throw new BadRequestException('User wallet not found. Please generate a wallet first.');
     }
+
+    this.logger.log(`🔍 Retrieved wallet for user ${userId}: ETH=${userWallet.ethAddress}, AVAX=${userWallet.avaxAddress}`);
 
     try {
       const decryptedPrivateKey = this.decrypt(userWallet.encryptedPrivateKey);
@@ -250,7 +255,7 @@ export class EscrowContractService {
   }
 
   /**
-   * Deploy escrow contracts for a wishlist item using user's wallet
+   * Deploy escrow contracts for a wishlist item using user's wallet (which has the funds)
    */
   async deployEscrowContracts(
     userId: string,
@@ -547,5 +552,92 @@ export class EscrowContractService {
    */
   getProvider(chain: 'ethereum' | 'avalanche'): ethers.JsonRpcProvider {
     return chain === 'ethereum' ? this.ethereumProvider : this.avalancheProvider;
+  }
+
+  /**
+   * Send a transaction from user's wallet to recipient
+   */
+  async sendUserTransaction(
+    userId: string,
+    recipientAddress: string,
+    chain: 'ethereum' | 'avalanche',
+    amountEth: number,
+  ): Promise<{ transactionHash: string; from: string; to: string; amount: string; explorerUrl: string }> {
+    this.logger.log(`📤 Sending transaction from user ${userId} to ${recipientAddress} on ${chain}`);
+
+    // Validate recipient address
+    if (!ethers.isAddress(recipientAddress)) {
+      throw new Error('Invalid recipient address');
+    }
+
+    // Validate amount
+    if (amountEth <= 0) {
+      throw new Error('Amount must be greater than 0');
+    }
+
+    try {
+      // Create signer from user's wallet
+      const signer = await this.createUserSigner(userId, chain);
+      const fromAddress = signer.address;
+
+      this.logger.log(`🔑 Using wallet: ${fromAddress} for ${chain} transaction`);
+
+      // Convert amount to Wei
+      const amountWei = ethers.parseEther(amountEth.toString());
+
+      // Get current gas price
+      const provider = chain === 'ethereum' ? this.ethereumProvider : this.avalancheProvider;
+      const feeData = await provider.getFeeData();
+      const gasPrice = feeData.gasPrice;
+
+      if (!gasPrice) {
+        throw new Error('Could not retrieve gas price');
+      }
+
+      this.logger.log(`⛽ Gas price: ${ethers.formatUnits(gasPrice, 'gwei')} gwei`);
+
+      // Estimate gas
+      const estimatedGas = await provider.estimateGas({
+        to: recipientAddress,
+        from: fromAddress,
+        value: amountWei,
+      });
+
+      this.logger.log(`⛽ Estimated gas: ${estimatedGas.toString()}`);
+
+      // Create and send transaction
+      const tx = await signer.sendTransaction({
+        to: recipientAddress,
+        value: amountWei,
+        gasLimit: (estimatedGas * BigInt(120)) / BigInt(100), // Add 20% buffer
+      });
+
+      this.logger.log(`✅ Transaction sent: ${tx.hash}`);
+
+      // Wait for transaction to be mined
+      const receipt = await tx.wait();
+
+      if (!receipt) {
+        throw new Error('Transaction failed - no receipt received');
+      }
+
+      this.logger.log(`✅ Transaction confirmed: ${receipt.hash}`);
+
+      // Determine explorer URL
+      const explorerUrl = chain === 'ethereum'
+        ? `https://sepolia.etherscan.io/tx/${receipt.hash}`
+        : `https://testnet.snowtrace.io/tx/${receipt.hash}`;
+
+      return {
+        transactionHash: receipt.hash,
+        from: fromAddress,
+        to: recipientAddress,
+        amount: amountEth.toString(),
+        explorerUrl,
+      };
+    } catch (error: any) {
+      this.logger.error(`❌ Transaction failed: ${error.message}`);
+      throw new Error(`Transaction failed: ${error.message}`);
+    }
   }
 }

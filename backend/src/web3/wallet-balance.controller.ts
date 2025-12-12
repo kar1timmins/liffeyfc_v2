@@ -4,9 +4,10 @@ import { Controller, Get, Query, HttpException, HttpStatus, Logger } from '@nest
 export class WalletBalanceController {
   private readonly logger = new Logger(WalletBalanceController.name);
   private readonly sepoliaRpcEndpoints = [
-    'https://rpc.sepolia.org',
     'https://ethereum-sepolia-rpc.publicnode.com',
-    'https://rpc2.sepolia.org'
+    'https://rpc-sepolia.rockx.com',
+    'https://sepolia.drpc.org',
+    'https://sepolia-rpc.nightlynode.com'
   ];
   private readonly fujiRpc = 'https://api.avax-test.network/ext/bc/C/rpc';
 

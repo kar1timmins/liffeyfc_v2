@@ -861,7 +861,6 @@
                   <AlertCircle class="w-4 h-4 shrink-0" />
                   <div class="text-xs">
                     <p class="font-semibold">Smart contracts will be deployed automatically</p>
-                    <p class="opacity-80 mt-1">Contributors can fund your campaign using MetaMask on the selected networks</p>
                   </div>
                 </div>
               </div>

@@ -7,6 +7,8 @@ import { UserWallet } from '../entities/user-wallet.entity';
 import { CompanyWallet } from '../entities/company-wallet.entity';
 import { User } from '../entities/user.entity';
 import { Company } from '../entities/company.entity';
+import { EscrowDeployment } from '../entities/escrow-deployment.entity';
+import { WishlistItem } from '../entities/wishlist-item.entity';
 
 export interface GeneratedWallet {
   address: string;
@@ -42,6 +44,10 @@ export class WalletGenerationService {
     private userRepo: Repository<User>,
     @InjectRepository(Company)
     private companyRepo: Repository<Company>,
+    @InjectRepository(EscrowDeployment)
+    private escrowDeploymentRepo: Repository<EscrowDeployment>,
+    @InjectRepository(WishlistItem)
+    private wishlistItemRepo: Repository<WishlistItem>,
   ) {
     // Get encryption key from environment variable
     const key = process.env.WALLET_ENCRYPTION_KEY;
@@ -137,7 +143,7 @@ export class WalletGenerationService {
       encryptedMnemonic,
       encryptedPrivateKey,
       derivationPath: `${this.ETH_DERIVATION_BASE}/0`,
-      nextChildIndex: 0,
+      nextChildIndex: 1,
     });
 
     await this.userWalletRepo.save(userWallet);
@@ -151,6 +157,150 @@ export class WalletGenerationService {
       privateKey: ethWallet.privateKey,
       derivationPath: `${this.ETH_DERIVATION_BASE}/0`,
       warning: 'CRITICAL: Store this information securely offline. Never share your private key or mnemonic phrase. Loss of this data means permanent loss of access to your funds.',
+      createdAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Restore a master wallet from mnemonic phrase or private key
+   * If restoring from mnemonic, all previously derived company wallets will regenerate identically
+   */
+  async restoreMasterWallet(
+    userId: string,
+    input: string,
+  ): Promise<WalletDownloadData> {
+    // Check if user already has a wallet
+    const existing = await this.userWalletRepo.findOne({
+      where: { userId },
+    });
+
+    if (existing) {
+      throw new Error('User already has a master wallet. Cannot restore over existing wallet.');
+    }
+
+    let mnemonic: string;
+    let ethWallet: any;
+
+    // Determine if input is a mnemonic (12/24 words) or private key (hex string)
+    const isPrivateKey = input.startsWith('0x') && input.length === 66; // 0x + 64 hex chars
+    const wordCount = input.trim().split(/\s+/).length;
+    const isMnemonic = (wordCount === 12 || wordCount === 24) && !input.startsWith('0x');
+
+    if (isPrivateKey) {
+      // Restore from private key - derive as master wallet
+      try {
+        const wallet = new Wallet(input);
+        // Derive using the private key directly
+        ethWallet = wallet;
+        mnemonic = ''; // Private key restoration doesn't give us the mnemonic
+      } catch (error) {
+        throw new Error('Invalid private key format');
+      }
+    } else if (isMnemonic) {
+      // Restore from mnemonic phrase
+      try {
+        // Validate mnemonic - fromPhrase returns HDNodeWallet
+        ethWallet = HDNodeWallet.fromPhrase(input, undefined, `${this.ETH_DERIVATION_BASE}/0`);
+        mnemonic = input.trim();
+      } catch (error) {
+        throw new Error('Invalid mnemonic phrase');
+      }
+    } else {
+      throw new Error('Input must be a 12/24 word mnemonic phrase or a valid private key starting with 0x');
+    }
+
+    // For Avalanche, we use the same address format (EVM compatible)
+    const avaxAddress = ethWallet.address;
+
+    // Encrypt sensitive data
+    const encryptedMnemonic = mnemonic ? this.encrypt(mnemonic) : '';
+    const encryptedPrivateKey = this.encrypt(ethWallet.privateKey);
+
+    // Create user wallet record with restored keys
+    const userWallet = this.userWalletRepo.create({
+      userId,
+      ethAddress: ethWallet.address,
+      avaxAddress: avaxAddress,
+      encryptedMnemonic,
+      encryptedPrivateKey,
+      derivationPath: `${this.ETH_DERIVATION_BASE}/0`,
+      nextChildIndex: 1, // Start at 1 for first child wallet
+    });
+
+    await this.userWalletRepo.save(userWallet);
+
+    // Auto-generate wallets for all existing companies that don't have addresses
+    try {
+      const companiesWithoutAddresses = await this.companyRepo.find({
+        where: {
+          ownerId: userId,
+          ethAddress: null as any,
+        },
+      });
+
+      // Generate wallets for all companies
+      for (let i = 0; i < companiesWithoutAddresses.length; i++) {
+        try {
+          const company = companiesWithoutAddresses[i];
+          // Use the nextChildIndex incrementally
+          const childIndex = (i + 1);
+          const derivationPath = `${this.ETH_DERIVATION_BASE}/${childIndex}`;
+
+          // Decrypt mnemonic if available, otherwise use private key
+          const walletMnemonic = mnemonic || ethWallet.privateKey;
+          let childWallet: HDNodeWallet;
+
+          if (mnemonic) {
+            childWallet = HDNodeWallet.fromPhrase(mnemonic, undefined, derivationPath);
+          } else {
+            // For private key restoration, we can't derive further
+            // Just use the master wallet for all companies (simplified approach)
+            childWallet = ethWallet;
+          }
+
+          const encryptedPrivateKey = this.encrypt(childWallet.privateKey);
+
+          // Create company wallet record
+          const companyWallet = this.companyWalletRepo.create({
+            companyId: company.id,
+            parentWalletId: userWallet.id,
+            ethAddress: childWallet.address,
+            avaxAddress: childWallet.address,
+            encryptedPrivateKey,
+            derivationPath,
+            childIndex,
+          });
+
+          await this.companyWalletRepo.save(companyWallet);
+
+          // Update company entity with wallet addresses
+          await this.companyRepo.update(company.id, {
+            ethAddress: childWallet.address,
+            avaxAddress: childWallet.address,
+          });
+        } catch (error) {
+          // Log but continue with other companies
+          console.error(`Failed to generate wallet for company during restoration:`, error);
+        }
+      }
+
+      // Update master wallet's nextChildIndex
+      userWallet.nextChildIndex = companiesWithoutAddresses.length + 1;
+      await this.userWalletRepo.save(userWallet);
+    } catch (error) {
+      // Log but don't fail restoration if company wallet generation fails
+      console.error('Failed to auto-generate company wallets after restoration:', error);
+    }
+
+    // Return confirmation data
+    return {
+      address: ethWallet.address,
+      ethAddress: ethWallet.address,
+      avaxAddress: avaxAddress,
+      mnemonic: mnemonic || '[Private Key - No Mnemonic]',
+      privateKey: ethWallet.privateKey,
+      derivationPath: `${this.ETH_DERIVATION_BASE}/0`,
+      warning: 'CRITICAL: Wallet successfully restored. All previously derived company wallets will regenerate with the same addresses.',
       createdAt: new Date().toISOString(),
     };
   }
@@ -277,5 +427,147 @@ export class WalletGenerationService {
       ethAddress: cw.ethAddress,
       avaxAddress: cw.avaxAddress,
     }));
+  }
+
+  /**
+   * Look up a wallet address and return company + bounty information
+   * Supports both:
+   * 1. Company wallet addresses (child addresses from company wallet derivation)
+   * 2. User master wallet addresses (parent wallet from user wallet derivation)
+   * 
+   * Used to verify recipient before sending funds
+   */
+  async lookupWalletAddress(address: string, chain: 'ethereum' | 'avalanche') {
+    const address_lower = address.toLowerCase();
+
+    // Try to find company with this wallet address (company child wallet)
+    let company: Company | null = null;
+
+    if (chain === 'ethereum') {
+      company = await this.companyRepo
+        .createQueryBuilder('company')
+        .leftJoinAndSelect('company.wishlistItems', 'wishlistItems')
+        .where('LOWER(company.ethAddress) = :ethAddress', { ethAddress: address_lower })
+        .getOne();
+    } else {
+      company = await this.companyRepo
+        .createQueryBuilder('company')
+        .leftJoinAndSelect('company.wishlistItems', 'wishlistItems')
+        .where('LOWER(company.avaxAddress) = :avaxAddress', { avaxAddress: address_lower })
+        .getOne();
+    }
+
+    // If not found as company wallet, try finding as user master wallet
+    if (!company) {
+      let user: User | null = null;
+
+      if (chain === 'ethereum') {
+        user = await this.userRepo
+          .createQueryBuilder('user')
+          .leftJoinAndSelect('user.userWallet', 'userWallet')
+          .leftJoinAndSelect('user.companies', 'companies')
+          .leftJoinAndSelect('companies.wishlistItems', 'wishlistItems')
+          .where('LOWER(userWallet.ethAddress) = :ethAddress', { ethAddress: address_lower })
+          .getOne();
+      } else {
+        user = await this.userRepo
+          .createQueryBuilder('user')
+          .leftJoinAndSelect('user.userWallet', 'userWallet')
+          .leftJoinAndSelect('user.companies', 'companies')
+          .leftJoinAndSelect('companies.wishlistItems', 'wishlistItems')
+          .where('LOWER(userWallet.avaxAddress) = :avaxAddress', { avaxAddress: address_lower })
+          .getOne();
+      }
+
+      // If found as user with companies, aggregate bounties from all their companies
+      if (user && user.companies && user.companies.length > 0) {
+        // Get all wishlist items from all user's companies
+        const allWishlistIds = user.companies.flatMap(comp => 
+          comp.wishlistItems?.map(w => w.id) || []
+        );
+
+        let bounties: any[] = [];
+        if (allWishlistIds.length > 0) {
+          const deployments = await this.escrowDeploymentRepo.createQueryBuilder('ed')
+            .where('ed.wishlistItemId IN (:...wishlistIds)', { wishlistIds: allWishlistIds })
+            .andWhere('ed.chain = :chain', { chain })
+            .leftJoinAndSelect('ed.wishlistItem', 'wi')
+            .getMany();
+
+          bounties = deployments
+            .filter(d => {
+              // Only show active bounties (not expired)
+              const now = new Date();
+              return d.deadline > now;
+            })
+            .map(d => ({
+              id: d.id,
+              title: d.wishlistItem?.title || 'Unnamed Bounty',
+              description: d.wishlistItem?.description,
+              targetAmount: parseFloat(d.targetAmountEth.toString()),
+              currentAmount: 0, // TODO: fetch from blockchain or database
+              chain: d.chain as 'ethereum' | 'avalanche',
+              status: 'active',
+              contractAddress: d.contractAddress,
+              deadline: d.deadline,
+            }));
+        }
+
+        // Return all companies and their bounties
+        return {
+          isUserMasterWallet: true,
+          companies: user.companies.map(c => ({
+            id: c.id,
+            name: c.name,
+            description: c.description,
+            industry: c.industry,
+          })),
+          bounties, // Combined bounties from all user's companies
+        };
+      }
+
+      return null;
+    }
+
+    // Found as company wallet - return single company
+    const wishlistIds = company.wishlistItems?.map(w => w.id) || [];
+    
+    let bounties: any[] = [];
+    if (wishlistIds.length > 0) {
+      const deployments = await this.escrowDeploymentRepo.createQueryBuilder('ed')
+        .where('ed.wishlistItemId IN (:...wishlistIds)', { wishlistIds })
+        .andWhere('ed.chain = :chain', { chain })
+        .leftJoinAndSelect('ed.wishlistItem', 'wi')
+        .getMany();
+
+      bounties = deployments
+        .filter(d => {
+          // Only show active bounties (not expired)
+          const now = new Date();
+          return d.deadline > now;
+        })
+        .map(d => ({
+          id: d.id,
+          title: d.wishlistItem?.title || 'Unnamed Bounty',
+          description: d.wishlistItem?.description,
+          targetAmount: parseFloat(d.targetAmountEth.toString()),
+          currentAmount: 0, // TODO: fetch from blockchain or database
+          chain: d.chain as 'ethereum' | 'avalanche',
+          status: 'active',
+          contractAddress: d.contractAddress,
+          deadline: d.deadline,
+        }));
+    }
+
+    return {
+      isUserMasterWallet: false,
+      company: {
+        id: company.id,
+        name: company.name,
+        description: company.description,
+        industry: company.industry,
+      },
+      bounties,
+    };
   }
 }
