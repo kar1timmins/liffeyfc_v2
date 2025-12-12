@@ -175,9 +175,6 @@ export class EscrowContractService {
           await provider.getNetwork();
           this.logger.log(`✅ Successfully switched to Ethereum RPC: ${rpcUrl}`);
           this.ethereumProvider = provider;
-          if (this.ethereumSigner) {
-            this.ethereumSigner = this.ethereumSigner.connect(provider);
-          }
           return provider;
         } catch (e) {
           this.logger.debug(`Failed to connect to ${rpcUrl}`);
@@ -203,9 +200,6 @@ export class EscrowContractService {
           await provider.getNetwork();
           this.logger.log(`✅ Successfully switched to Avalanche RPC: ${rpcUrl}`);
           this.avalancheProvider = provider;
-          if (this.avalancheSigner) {
-            this.avalancheSigner = this.avalancheSigner.connect(provider);
-          }
           return provider;
         } catch (e) {
           this.logger.debug(`Failed to connect to ${rpcUrl}`);
