@@ -13,6 +13,7 @@ import { AuthModule } from './auth/auth.module';
 import { CompaniesModule } from './companies/companies.module';
 import { throttlerConfig } from './config/throttler.config';
 import { GcpStorageService } from './common/gcp-storage.service';
+import * as entities from './entities';
 
 /**
  * Parse DATABASE_URL if present (format: postgres://user:password@host:port/database)
@@ -108,7 +109,7 @@ function validateDatabaseConfig() {
         username: dbConfig.username,
         password: dbConfig.password,
         database: dbConfig.database,
-        entities: [__dirname + '/**/*.entity.{ts,js}'],
+        entities: Object.values(entities),
         // Prefer explicit TYPEORM_SYNCHRONIZE env var; otherwise enable synchronize for non-production
         synchronize: process.env.TYPEORM_SYNCHRONIZE ? process.env.TYPEORM_SYNCHRONIZE === 'true' : process.env.NODE_ENV !== 'production',
         logging: false,

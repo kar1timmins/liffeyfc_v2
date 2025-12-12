@@ -1,0 +1,10 @@
+// Export all entities for explicit TypeORM registration
+// This ensures all entities are loaded in both development and production
+export { User } from './user.entity';
+export { RefreshToken } from './refresh-token.entity';
+export { UserWallet } from './user-wallet.entity';
+export { Company } from './company.entity';
+export { CompanyWallet } from './company-wallet.entity';
+export { WishlistItem } from './wishlist-item.entity';
+export { EscrowDeployment } from './escrow-deployment.entity';
+export { Contribution } from './contribution.entity';
