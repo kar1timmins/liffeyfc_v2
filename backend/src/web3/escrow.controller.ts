@@ -108,6 +108,14 @@ export class EscrowController {
       const deadline = new Date();
       deadline.setDate(deadline.getDate() + dto.durationInDays);
 
+      // Validate that at least one contract was deployed
+      if (!result.ethereumAddress && !result.avalancheAddress) {
+        throw new HttpException(
+          'No contracts were deployed. Factory addresses may not be configured properly.',
+          HttpStatus.INTERNAL_SERVER_ERROR
+        );
+      }
+
       const deploymentRecords: EscrowDeployment[] = [];
 
       if (result.ethereumAddress) {
@@ -170,7 +178,9 @@ export class EscrowController {
       }
 
       // Check for common blockchain/RPC errors
-      if (error.message?.includes('No working') || error.message?.includes('RPC')) {
+      if (error.message?.includes('factories are not configured') || error.message?.includes('factory contracts configured')) {
+        userMessage = 'Smart contract deployment is not yet configured on this network. Please contact support.';
+      } else if (error.message?.includes('No working') || error.message?.includes('RPC')) {
         userMessage = 'Blockchain service temporarily unavailable. Please try again in a few moments.';
       } else if (error.message?.includes('insufficient funds')) {
         userMessage = 'Insufficient funds in wallet. Please ensure you have enough balance for gas fees.';

@@ -262,6 +262,31 @@ export class EscrowContractService {
   ): Promise<EscrowDeploymentResult> {
     this.logger.log(`📝 Deploying escrow contracts for wishlist item: ${wishlistItemId} by user: ${userId}`);
 
+    // Validate that factory addresses are configured
+    if (!this.ethereumFactoryAddress && !this.avalancheFactoryAddress) {
+      throw new Error(
+        'Smart contract factories are not configured. Please configure ETHEREUM_FACTORY_ADDRESS and/or AVALANCHE_FACTORY_ADDRESS environment variables.'
+      );
+    }
+
+    // Check if requested chains have factories configured
+    const unavailableChains = chains.filter(chain => {
+      if (chain === 'ethereum') return !this.ethereumFactoryAddress;
+      if (chain === 'avalanche') return !this.avalancheFactoryAddress;
+      return false;
+    });
+
+    if (unavailableChains.length === chains.length) {
+      throw new Error(
+        `None of the requested chains (${chains.join(', ')}) have factory contracts configured. ` +
+        `Available: ${this.ethereumFactoryAddress ? 'ethereum' : ''}${this.avalancheFactoryAddress ? ' avalanche' : ''}`.trim()
+      );
+    }
+
+    if (unavailableChains.length > 0) {
+      this.logger.warn(`⚠️  Skipping deployment on unavailable chains: ${unavailableChains.join(', ')}`);
+    }
+
     const result: EscrowDeploymentResult = {
       transactionHashes: {}
     };
