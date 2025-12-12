@@ -16,6 +16,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { WishlistItem } from '../entities/wishlist-item.entity';
 import { Company } from '../entities/company.entity';
+import { EscrowDeployment } from '../entities/escrow-deployment.entity';
 import { CurrentUser } from '../auth/current-user.decorator';
 
 class CreateEscrowDto {
@@ -44,6 +45,8 @@ export class EscrowController {
     private wishlistRepo: Repository<WishlistItem>,
     @InjectRepository(Company)
     private companyRepo: Repository<Company>,
+    @InjectRepository(EscrowDeployment)
+    private escrowDeploymentRepo: Repository<EscrowDeployment>,
   ) {}
 
   /**
@@ -98,7 +101,47 @@ export class EscrowController {
         dto.chains
       );
 
-      this.logger.log(`✅ Escrow contracts deployed for wishlist item: ${dto.wishlistItemId}`);
+      // Save deployment records to database
+      const deadline = new Date();
+      deadline.setDate(deadline.getDate() + dto.durationInDays);
+
+      const deploymentRecords: EscrowDeployment[] = [];
+
+      if (result.ethereumAddress) {
+        const ethDeployment = this.escrowDeploymentRepo.create({
+          contractAddress: result.ethereumAddress,
+          chain: 'ethereum',
+          network: 'sepolia',
+          deploymentTxHash: result.transactionHashes.ethereum || undefined,
+          targetAmountEth: dto.targetAmountEth,
+          durationInDays: dto.durationInDays,
+          deadline,
+          deployedById: user.sub,
+          wishlistItemId: dto.wishlistItemId,
+          status: 'active',
+        });
+        const savedDeployment = await this.escrowDeploymentRepo.save(ethDeployment);
+        deploymentRecords.push(savedDeployment);
+      }
+
+      if (result.avalancheAddress) {
+        const avaxDeployment = this.escrowDeploymentRepo.create({
+          contractAddress: result.avalancheAddress,
+          chain: 'avalanche',
+          network: 'fuji',
+          deploymentTxHash: result.transactionHashes.avalanche || undefined,
+          targetAmountEth: dto.targetAmountEth,
+          durationInDays: dto.durationInDays,
+          deadline,
+          deployedById: user.sub,
+          wishlistItemId: dto.wishlistItemId,
+          status: 'active',
+        });
+        const savedDeployment = await this.escrowDeploymentRepo.save(avaxDeployment);
+        deploymentRecords.push(savedDeployment);
+      }
+
+      this.logger.log(`✅ Escrow contracts deployed and tracked for wishlist item: ${dto.wishlistItemId}`);
 
       return {
         success: true,

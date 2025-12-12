@@ -57,6 +57,9 @@ liffeyfc_v2/
   - Bounties system for crowdfunding wishlist items
   - Web3 signature verification and nonce management
   - File upload with GCP Cloud Storage integration
+  - **Wallet balance proxy** for CORS-free RPC calls
+  - **Escrow deployment tracking** with database persistence
+  - **Contribution tracking** from blockchain to database
 - **Package Manager**: pnpm
 
 #### Smart Contracts (`/hardhat/`)
@@ -252,23 +255,33 @@ liffeyfc_v2/
 - **Implementation**: Integrated into company pages for escrow contributions
 
 ### Backend Web3 Integration
-- **Bounties API**: 5 REST endpoints for campaign management
+- **Wallet Balance API**: CORS-free RPC proxy for balance queries
+  - `GET /wallet-balance?address=<addr>&chain=<ethereum|avalanche>` - Get wallet balance
+  - `GET /wallet-balance/gas-price?chain=<chain>` - Get current gas price
+  - Multiple RPC fallbacks for reliability
+  - Returns balanceWei, balanceEth/balanceAvax, rpcEndpoint
+- **Bounties API**: 7 REST endpoints for campaign management
   - `GET /bounties` - List all active bounties
   - `GET /bounties/:id` - Get bounty details
   - `POST /bounties` - Create new bounty (links wishlist item to contract)
   - `POST /bounties/:id/sync` - Sync on-chain data with database
   - `GET /bounties/company/:id` - Get bounties for specific company
+  - `GET /bounties/:id/contributors` - List all contributors with amounts
+  - `GET /bounties/:id/history` - Full audit trail of deployments and contributions
 - **Contract Sync**: Background sync of on-chain state (totalRaised, contributors, status)
+- **Deployment Tracking**: Database persistence of contract addresses, deployments, and contributions
 - **Access Control**: Only company owners can create bounties for their wishlist items
 
 ### Guidelines for Web3 Features
 - Keep Web3 code modular and isolated in `/frontend/src/lib/web3/`
+- **Use backend proxy for RPC calls** - Never call public RPC endpoints directly from frontend (CORS issue)
 - Handle wallet connection errors gracefully with user-friendly messages
 - Always check network before transactions (show network switch prompt)
 - Validate contract addresses and function selectors
 - Use TypeChain-generated types for type-safe contract interactions
 - Log transaction hashes for user reference
 - Provide clear feedback during transaction states (pending, success, error)
+- **Svelte reactivity**: Use `tick()` when fetching data after conditional rendering, prefer `onchange` over reactive `$effect` for user interactions
 
 ## 5. Development Workflow
 
@@ -716,6 +729,65 @@ function createEscrow(
 ```
 
 **Purpose**: Standardized escrow deployment with predictable addresses and reduced gas costs
+
+## 13.1 Escrow Deployment & Contribution Tracking
+
+### Database Entities
+The backend tracks all escrow deployments and contributions through two dedicated entities:
+
+**EscrowDeployment Entity** (`backend/src/entities/escrow-deployment.entity.ts`):
+- Tracks smart contract deployments for wishlist items
+- Fields: `contractAddress`, `chain`, `network`, `deploymentTxHash`, `targetAmountEth`, `durationInDays`, `deadline`, `status`
+- Relations: ManyToOne with User (deployer) and WishlistItem
+- Status values: 'active', 'funded', 'expired', 'failed'
+
+**Contribution Entity** (`backend/src/entities/contribution.entity.ts`):
+- Tracks individual contributions from investors
+- Fields: `contributorAddress`, `amountWei` (string for precision), `amountEth`, `amountUsd`, `transactionHash`, `isRefunded`
+- Relations: ManyToOne with User, WishlistItem, EscrowDeployment
+- Refund tracking: `refundedAt`, `refundTxHash`
+
+### Wallet Balance Proxy
+To avoid CORS restrictions, a backend proxy handles all RPC calls:
+
+**Controller**: `WalletBalanceController` (`backend/src/web3/wallet-balance.controller.ts`)
+- `GET /wallet-balance?address=<addr>&chain=<ethereum|avalanche>` - Returns balance in Wei and ETH/AVAX
+- `GET /wallet-balance/gas-price?chain=<chain>` - Returns current gas price in Gwei
+- Multiple RPC fallbacks for reliability (3 Sepolia endpoints, 1 Fuji endpoint)
+- Used by frontend to display wallet balances and estimate gas costs
+
+### Integrated Wishlist Creation
+The wishlist creation form now includes escrow deployment as an optional step:
+
+**User Flow**:
+1. User fills in wishlist title, description, category, priority, value
+2. User checks "Enable Blockchain Crowdfunding" checkbox
+3. Form reveals escrow configuration with:
+   - Company wallet balances (ETH Sepolia, AVAX Fuji)
+   - Target amount in ETH (auto-converted from EUR value)
+   - Campaign duration with presets or custom days
+   - Network selection (Ethereum Sepolia and/or Avalanche Fuji)
+   - Real-time gas cost estimates
+4. User submits → Creates wishlist item, bounty record, and deploys contracts
+5. Success toast shows contract addresses
+6. Page refreshes after 1-second delay
+
+**Implementation Details**:
+- Uses `tick()` to ensure DOM renders before fetching balances
+- Balance fetch triggered by `onchange` handler (prevents infinite `$effect` loops)
+- Balances show 6 decimal precision for testnet amounts
+- Warnings (not blocking errors) if insufficient gas balance
+- Parallel fetching of ETH and AVAX balances via `Promise.all()`
+
+### Contributor Tracking
+The BountiesService auto-syncs contributors from blockchain to database:
+
+**Methods**:
+- `getContributors(id)` - Fetches from blockchain, saves to database
+- `syncContributorsToDatabase()` - Creates/updates Contribution records
+- `getBountyHistory(id)` - Returns full audit trail with deployments, contributions, statistics
+
+**Database Migration**: Run `pnpm run migration:run` before deploying to create `escrow_deployments` and `contributions` tables.
 
 ## 14. Deployment & Production
 

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Building2, Plus, Edit, Trash2, Globe, Linkedin, Twitter, X, Target, Wallet, AlertCircle, ChevronDown, ChevronUp } from 'lucide-svelte';
+  import { Building2, Plus, Edit, Trash2, Globe, Linkedin, Twitter, X, Target, Wallet, AlertCircle, ChevronDown, ChevronUp, ExternalLink } from 'lucide-svelte';
   import { PUBLIC_API_URL } from '$env/static/public';
   import { authStore } from '$lib/stores/auth';
   import WishlistForm from './WishlistForm.svelte';
@@ -815,6 +815,7 @@
                     <!-- Add New Wishlist Item -->
                     <WishlistForm 
                       companyId={company.id}
+                      companyWallet={company.ethAddress || company.avaxAddress}
                       onItemAdded={handleWishlistItemAdded}
                       onCreateBounty={(item) => openBountyModal(item, company)}
                     />
@@ -897,12 +898,70 @@
                               </div>
                             {:else}
                               <div class="mt-3 pt-3 border-t border-base-300">
-                                <div class="alert alert-success py-2">
+                                <div class="alert alert-success py-2 mb-3">
                                   <div class="flex items-center gap-2 text-xs">
                                     <Target class="w-4 h-4" />
                                     <span class="font-semibold">Active Bounty Campaign</span>
                                   </div>
                                 </div>
+                                
+                                {#if item.ethereumEscrowAddress || item.avalancheEscrowAddress}
+                                  <div class="bg-base-200/50 rounded-lg p-3 space-y-2">
+                                    <p class="text-xs font-semibold opacity-70 mb-2">Smart Contract Addresses:</p>
+                                    
+                                    {#if item.ethereumEscrowAddress}
+                                      <div class="space-y-1">
+                                        <div class="flex items-center justify-between">
+                                          <span class="text-xs font-semibold flex items-center gap-1">
+                                            <span class="badge badge-primary badge-xs">ETH</span>
+                                            Ethereum Sepolia
+                                          </span>
+                                          <a
+                                            href="https://sepolia.etherscan.io/address/{item.ethereumEscrowAddress}"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            class="btn btn-ghost btn-xs gap-1"
+                                          >
+                                            View
+                                            <ExternalLink class="w-3 h-3" />
+                                          </a>
+                                        </div>
+                                        <code class="text-xs bg-base-300 px-2 py-1 rounded block truncate">{item.ethereumEscrowAddress}</code>
+                                      </div>
+                                    {/if}
+                                    
+                                    {#if item.avalancheEscrowAddress}
+                                      <div class="space-y-1">
+                                        <div class="flex items-center justify-between">
+                                          <span class="text-xs font-semibold flex items-center gap-1">
+                                            <span class="badge badge-error badge-xs">AVAX</span>
+                                            Avalanche Fuji
+                                          </span>
+                                          <a
+                                            href="https://testnet.snowtrace.io/address/{item.avalancheEscrowAddress}"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            class="btn btn-ghost btn-xs gap-1"
+                                          >
+                                            View
+                                            <ExternalLink class="w-3 h-3" />
+                                          </a>
+                                        </div>
+                                        <code class="text-xs bg-base-300 px-2 py-1 rounded block truncate">{item.avalancheEscrowAddress}</code>
+                                      </div>
+                                    {/if}
+                                    
+                                    <p class="text-xs opacity-60 mt-2 pt-2 border-t border-base-300">
+                                      Investors can contribute via <a href="/companies/{company.id}" class="link">company page</a> or <a href="/bounties" class="link">bounties page</a>
+                                    </p>
+                                  </div>
+                                {:else}
+                                  <div class="bg-warning/10 rounded-lg p-3 border border-warning/30">
+                                    <p class="text-xs opacity-80">
+                                      ⏳ Contracts are being deployed... This may take a few moments. Refresh the page to see contract addresses.
+                                    </p>
+                                  </div>
+                                {/if}
                               </div>
                             {/if}
                           </div>

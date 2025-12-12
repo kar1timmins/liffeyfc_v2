@@ -3,7 +3,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { WishlistItem } from '../entities/wishlist-item.entity';
 import { User } from '../entities/user.entity';
-import { EscrowContractService } from './escrow-contract.service';
+import { Contribution } from '../entities/contribution.entity';
+import { EscrowDeployment } from '../entities/escrow-deployment.entity';
+import { EscrowContractService, ContributorInfo } from './escrow-contract.service';
 
 export interface BountyFilters {
   status?: string;
@@ -27,6 +29,7 @@ export interface BountyResponse {
     name: string;
     industry: string;
     avatar?: string;
+    ownerId: string;
   };
   isEscrowActive: boolean;
   ethereumEscrowAddress: string | null;
@@ -43,6 +46,10 @@ export class BountiesService {
     private readonly wishlistRepository: Repository<WishlistItem>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Contribution)
+    private readonly contributionRepository: Repository<Contribution>,
+    @InjectRepository(EscrowDeployment)
+    private readonly escrowDeploymentRepository: Repository<EscrowDeployment>,
     private readonly escrowService: EscrowContractService,
   ) {}
 
@@ -221,6 +228,222 @@ export class BountiesService {
   }
 
   /**
+   * Get contributors for a bounty
+   */
+  async getContributors(id: string) {
+    try {
+      const wishlistItem = await this.wishlistRepository.findOne({
+        where: { id, isEscrowActive: true },
+      });
+
+      if (!wishlistItem) {
+        throw new HttpException('Bounty not found', HttpStatus.NOT_FOUND);
+      }
+
+      let contributors: ContributorInfo[] = [];
+
+      // Get contributors from Ethereum if available
+      if (wishlistItem.ethereumEscrowAddress) {
+        const status = await this.escrowService.getCampaignStatus(
+          wishlistItem.ethereumEscrowAddress,
+          'ethereum',
+          true
+        );
+        contributors = status.contributors || [];
+      }
+      // Fall back to Avalanche
+      else if (wishlistItem.avalancheEscrowAddress) {
+        const status = await this.escrowService.getCampaignStatus(
+          wishlistItem.avalancheEscrowAddress,
+          'avalanche',
+          true
+        );
+        contributors = status.contributors || [];
+      }
+
+      this.logger.log(`📋 Found ${contributors.length} contributors for bounty ${id}`);
+
+      // Sync contributors to database
+      await this.syncContributorsToDatabase(id, contributors);
+
+      return contributors;
+    } catch (error) {
+      this.logger.error(`❌ Failed to get contributors for bounty ${id}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync contributors from blockchain to database
+   */
+  private async syncContributorsToDatabase(
+    wishlistItemId: string,
+    contributors: ContributorInfo[],
+  ): Promise<void> {
+    try {
+      const wishlistItem = await this.wishlistRepository.findOne({
+        where: { id: wishlistItemId },
+      });
+
+      if (!wishlistItem) return;
+
+      // Get escrow deployment records
+      const escrowDeployments = await this.escrowDeploymentRepository.find({
+        where: { wishlistItemId },
+      });
+
+      for (const contributor of contributors) {
+        const address = contributor.address.toLowerCase();
+        
+        // Determine which chain this contribution is from
+        let chain: string;
+        let contractAddress: string;
+        let escrowDeployment: EscrowDeployment | undefined;
+
+        if (wishlistItem.ethereumEscrowAddress) {
+          chain = 'ethereum';
+          contractAddress = wishlistItem.ethereumEscrowAddress;
+          escrowDeployment = escrowDeployments.find(d => d.chain === 'ethereum');
+        } else if (wishlistItem.avalancheEscrowAddress) {
+          chain = 'avalanche';
+          contractAddress = wishlistItem.avalancheEscrowAddress;
+          escrowDeployment = escrowDeployments.find(d => d.chain === 'avalanche');
+        } else {
+          continue;
+        }
+
+        if (!escrowDeployment) continue;
+
+        // Check if contribution already exists
+        const existing = await this.contributionRepository.findOne({
+          where: {
+            contributorAddress: address,
+            contractAddress,
+            wishlistItemId,
+          },
+        });
+
+        if (!existing) {
+          // Create new contribution record
+          const contribution = this.contributionRepository.create({
+            contributorAddress: address,
+            escrowDeploymentId: escrowDeployment.id,
+            wishlistItemId,
+            contractAddress,
+            chain,
+            amountWei: contributor.amount,
+            amountEth: parseFloat(contributor.amountEth),
+            contributedAt: new Date(),
+          });
+
+          await this.contributionRepository.save(contribution);
+          this.logger.log(`💾 Saved contribution from ${address}: ${contributor.amountEth} ETH`);
+        } else {
+          // Update existing contribution if amount changed
+          if (existing.amountWei !== contributor.amount) {
+            existing.amountWei = contributor.amount;
+            existing.amountEth = parseFloat(contributor.amountEth);
+            existing.updatedAt = new Date();
+            await this.contributionRepository.save(existing);
+            this.logger.log(`🔄 Updated contribution from ${address}: ${contributor.amountEth} ETH`);
+          }
+        }
+      }
+    } catch (error) {
+      this.logger.error(`❌ Failed to sync contributors to database:`, error);
+    }
+  }
+
+  /**
+   * Get full bounty history including deployments and contributions
+   */
+  async getBountyHistory(id: string) {
+    try {
+      const wishlistItem = await this.wishlistRepository.findOne({
+        where: { id, isEscrowActive: true },
+        relations: ['company'],
+      });
+
+      if (!wishlistItem) {
+        throw new HttpException('Bounty not found', HttpStatus.NOT_FOUND);
+      }
+
+      // Get deployment records
+      const deployments = await this.escrowDeploymentRepository.find({
+        where: { wishlistItemId: id },
+        relations: ['deployedBy'],
+        order: { createdAt: 'ASC' },
+      });
+
+      // Get contribution records
+      const contributions = await this.contributionRepository.find({
+        where: { wishlistItemId: id },
+        relations: ['user'],
+        order: { contributedAt: 'DESC' },
+      });
+
+      // Calculate statistics
+      const totalContributions = contributions.reduce(
+        (sum, c) => sum + parseFloat(c.amountEth.toString()),
+        0,
+      );
+      const uniqueContributors = new Set(contributions.map(c => c.contributorAddress)).size;
+
+      return {
+        wishlistItem: {
+          id: wishlistItem.id,
+          title: wishlistItem.title,
+          company: {
+            id: wishlistItem.company.id,
+            name: wishlistItem.company.name,
+          },
+        },
+        deployments: deployments.map(d => ({
+          id: d.id,
+          contractAddress: d.contractAddress,
+          chain: d.chain,
+          network: d.network,
+          deploymentTxHash: d.deploymentTxHash,
+          targetAmountEth: d.targetAmountEth,
+          deadline: d.deadline,
+          deployedBy: d.deployedBy ? {
+            id: d.deployedBy.id,
+            name: d.deployedBy.name,
+            email: d.deployedBy.email,
+          } : null,
+          deployedAt: d.createdAt,
+          status: d.status,
+        })),
+        contributions: contributions.map(c => ({
+          id: c.id,
+          contributorAddress: c.contributorAddress,
+          user: c.user ? {
+            id: c.user.id,
+            name: c.user.name,
+          } : null,
+          contractAddress: c.contractAddress,
+          chain: c.chain,
+          transactionHash: c.transactionHash,
+          amountEth: c.amountEth,
+          amountUsd: c.amountUsd,
+          contributedAt: c.contributedAt,
+          isRefunded: c.isRefunded,
+          refundedAt: c.refundedAt,
+        })),
+        statistics: {
+          totalContributions,
+          uniqueContributors,
+          contributionsCount: contributions.length,
+          deploymentsCount: deployments.length,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`❌ Failed to get bounty history:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Enrich wishlist item with blockchain data
    */
   private async enrichWithBlockchainData(
@@ -301,6 +524,7 @@ export class BountiesService {
         name: wishlistItem.company.name,
         industry: wishlistItem.company.industry || 'Not specified',
         avatar: wishlistItem.company.logoUrl,
+        ownerId: wishlistItem.company.ownerId,
       },
       isEscrowActive: wishlistItem.isEscrowActive,
       ethereumEscrowAddress: wishlistItem.ethereumEscrowAddress || null,

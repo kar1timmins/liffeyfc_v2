@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn, CreateDateColumn } from 'typeorm';
 import { Company } from './company.entity';
 
 export enum WishlistCategory {
@@ -70,6 +70,12 @@ export class WishlistItem {
   @ManyToOne(() => Company, (company) => company.wishlistItems, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'companyId' })
   company: Company;
+
+  @OneToMany('EscrowDeployment', 'wishlistItem')
+  escrowDeployments: any[];
+
+  @OneToMany('Contribution', 'wishlistItem')
+  contributions: any[];
 
   @CreateDateColumn()
   createdAt: Date;

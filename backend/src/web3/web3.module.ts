@@ -4,6 +4,7 @@ import { Web3Controller } from './web3.controller';
 import { WalletController } from './wallet.controller';
 import { EscrowController } from './escrow.controller';
 import { BountiesController } from './bounties.controller';
+import { WalletBalanceController } from './wallet-balance.controller';
 import { Web3Service } from './web3.service';
 import { WalletGenerationService } from './wallet-generation.service';
 import { EscrowContractService } from './escrow-contract.service';
@@ -15,6 +16,8 @@ import { CompanyWallet } from '../entities/company-wallet.entity';
 import { WishlistItem } from '../entities/wishlist-item.entity';
 import { User } from '../entities/user.entity';
 import { Company } from '../entities/company.entity';
+import { EscrowDeployment } from '../entities/escrow-deployment.entity';
+import { Contribution } from '../entities/contribution.entity';
 
 const nonceProvider: Provider = {
   provide: NonceService,
@@ -29,9 +32,9 @@ const nonceProvider: Provider = {
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([UserWallet, CompanyWallet, WishlistItem, User, Company]),
+    TypeOrmModule.forFeature([UserWallet, CompanyWallet, WishlistItem, User, Company, EscrowDeployment, Contribution]),
   ],
-  controllers: [Web3Controller, WalletController, EscrowController, BountiesController],
+  controllers: [Web3Controller, WalletController, EscrowController, BountiesController, WalletBalanceController],
   providers: [Web3Service, WalletGenerationService, EscrowContractService, BountiesService, nonceProvider],
   exports: [Web3Service, WalletGenerationService, EscrowContractService, BountiesService, NonceService],
 })

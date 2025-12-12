@@ -28,6 +28,8 @@ const ESCROW_ABI = [
   "function totalRaised() external view returns (uint256)",
   "function isFinalized() external view returns (bool)",
   "function isSuccessful() external view returns (bool)",
+  "function contributors(uint256 index) external view returns (address)",
+  "function contributions(address contributor) external view returns (uint256)",
   "event ContributionReceived(address indexed contributor, uint256 amount, uint256 totalRaised)",
   "event FundsReleased(address indexed company, uint256 amount)",
   "event RefundIssued(address indexed contributor, uint256 amount)",
@@ -43,6 +45,12 @@ export interface EscrowDeploymentResult {
   };
 }
 
+export interface ContributorInfo {
+  address: string;
+  amount: string;
+  amountEth: string;
+}
+
 export interface CampaignStatus {
   totalRaised: string; // in ETH/AVAX
   targetAmount: string;
@@ -53,6 +61,7 @@ export interface CampaignStatus {
   contributorCount: number;
   progressPercentage: number;
   isActive: boolean;
+  contributors?: ContributorInfo[];
 }
 
 @Injectable()
@@ -215,7 +224,8 @@ export class EscrowContractService {
    */
   async getCampaignStatus(
     escrowAddress: string,
-    chain: 'ethereum' | 'avalanche' = 'ethereum'
+    chain: 'ethereum' | 'avalanche' = 'ethereum',
+    includeContributors: boolean = false
   ): Promise<CampaignStatus> {
     const provider = chain === 'ethereum' ? this.ethereumProvider : this.avalancheProvider;
     
@@ -234,7 +244,7 @@ export class EscrowContractService {
     const progressPercentage = await escrow.getProgressPercentage();
     const isActive = await escrow.isActive();
 
-    return {
+    const status: CampaignStatus = {
       totalRaised: ethers.formatEther(totalRaised),
       targetAmount: ethers.formatEther(targetAmount),
       deadline: new Date(Number(deadline) * 1000),
@@ -245,6 +255,41 @@ export class EscrowContractService {
       progressPercentage: Number(progressPercentage),
       isActive,
     };
+
+    // Optionally include contributor details
+    if (includeContributors && Number(contributorCount) > 0) {
+      status.contributors = await this.getContributors(escrowAddress, Number(contributorCount), chain);
+    }
+
+    return status;
+  }
+
+  /**
+   * Get list of all contributors and their contributions
+   */
+  async getContributors(
+    escrowAddress: string,
+    count: number,
+    chain: 'ethereum' | 'avalanche' = 'ethereum'
+  ): Promise<ContributorInfo[]> {
+    const provider = chain === 'ethereum' ? this.ethereumProvider : this.avalancheProvider;
+    const escrow = new ethers.Contract(escrowAddress, ESCROW_ABI, provider);
+
+    const contributors: ContributorInfo[] = [];
+
+    for (let i = 0; i < count; i++) {
+      const address = await escrow.contributors(i);
+      const amount = await escrow.contributions(address);
+      const amountEth = ethers.formatEther(amount);
+
+      contributors.push({
+        address,
+        amount: amount.toString(),
+        amountEth,
+      });
+    }
+
+    return contributors;
   }
 
   /**

@@ -148,6 +148,49 @@ export class BountiesController {
   }
 
   /**
+   * Get contributors for a bounty
+   */
+  @Get(':id/contributors')
+  async getBountyContributors(@Param('id') id: string) {
+    try {
+      const contributors = await this.bountiesService.getContributors(id);
+
+      return {
+        success: true,
+        data: contributors,
+        message: `Found ${contributors.length} contributors`,
+      };
+    } catch (error) {
+      this.logger.error('❌ Failed to fetch contributors:', error);
+      throw new HttpException(
+        error.message || 'Failed to fetch contributors',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * Get deployment and contribution history for a bounty
+   */
+  @Get(':id/history')
+  async getBountyHistory(@Param('id') id: string) {
+    try {
+      const history = await this.bountiesService.getBountyHistory(id);
+
+      return {
+        success: true,
+        data: history,
+      };
+    } catch (error) {
+      this.logger.error('❌ Failed to fetch bounty history:', error);
+      throw new HttpException(
+        error.message || 'Failed to fetch bounty history',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
    * Get bounties for a specific company
    */
   @Get('company/:companyId')

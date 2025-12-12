@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
-  import { Building2, MapPin, Users, TrendingUp, DollarSign, Calendar, Globe, Linkedin, Twitter, Target, CheckCircle, Circle, ArrowLeft, Wallet, Eye, EyeOff, Copy, Send } from 'lucide-svelte';
+  import { Building2, MapPin, Users, TrendingUp, DollarSign, Calendar, Globe, Linkedin, Twitter, Target, CheckCircle, Circle, ArrowLeft, Wallet, Eye, EyeOff, Copy, Send, ExternalLink } from 'lucide-svelte';
   import { PUBLIC_API_URL } from '$env/static/public';
   import { authStore } from '$lib/stores/auth';
 
@@ -737,6 +737,58 @@
                             <p class="text-sm mt-2 text-success font-semibold">
                               🎉 Goal reached!
                             </p>
+                          {/if}
+
+                          <!-- Contract Info Section for Company Owner -->
+                          {#if item.isEscrowActive && isOwner && (item.ethereumEscrowAddress || item.avalancheEscrowAddress)}
+                            <div class="mt-4 p-4 bg-success/10 rounded-lg border-2 border-success/30">
+                              <div class="flex items-center gap-2 mb-3">
+                                <CheckCircle class="w-5 h-5 text-success" />
+                                <p class="font-semibold">Escrow Contracts Deployed</p>
+                              </div>
+                              
+                              {#if item.ethereumEscrowAddress}
+                                <div class="mb-2">
+                                  <div class="flex items-center justify-between mb-1">
+                                    <span class="text-xs font-semibold flex items-center gap-1">
+                                      <span class="badge badge-primary badge-xs">ETH</span>
+                                      Ethereum Sepolia
+                                    </span>
+                                    <button
+                                      class="btn btn-ghost btn-xs gap-1"
+                                      onclick={() => window.open(`https://sepolia.etherscan.io/address/${item.ethereumEscrowAddress}`, '_blank')}
+                                    >
+                                      View
+                                      <ExternalLink class="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                  <code class="text-xs bg-base-200 px-2 py-1 rounded block truncate">{item.ethereumEscrowAddress}</code>
+                                </div>
+                              {/if}
+                              
+                              {#if item.avalancheEscrowAddress}
+                                <div>
+                                  <div class="flex items-center justify-between mb-1">
+                                    <span class="text-xs font-semibold flex items-center gap-1">
+                                      <span class="badge badge-error badge-xs">AVAX</span>
+                                      Avalanche Fuji
+                                    </span>
+                                    <button
+                                      class="btn btn-ghost btn-xs gap-1"
+                                      onclick={() => window.open(`https://testnet.snowtrace.io/address/${item.avalancheEscrowAddress}`, '_blank')}
+                                    >
+                                      View
+                                      <ExternalLink class="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                  <code class="text-xs bg-base-200 px-2 py-1 rounded block truncate">{item.avalancheEscrowAddress}</code>
+                                </div>
+                              {/if}
+
+                              <p class="text-xs opacity-70 mt-3">
+                                Investors can now contribute via blockchain escrow. View bounty details in the <a href="/bounties" class="link">Bounties page</a>.
+                              </p>
+                            </div>
                           {/if}
 
                           <!-- Escrow Contribution for Investors (Blockchain) -->
