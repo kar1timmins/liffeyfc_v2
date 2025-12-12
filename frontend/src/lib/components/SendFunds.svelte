@@ -255,8 +255,8 @@
 				<div class="alert alert-info">
 					<AlertCircle size={20} />
 					<div>
-						<div class="font-semibold">Connect Your Wallet</div>
-						<div class="text-sm">You need to connect a Web3 wallet to send funds.</div>
+						<div class="font-semibold">Connect MetaMask Wallet</div>
+						<div class="text-sm">You need MetaMask or another Web3 wallet to sign and send transactions. This is separate from your Liffey account wallet.</div>
 					</div>
 				</div>
 				<button
