@@ -154,4 +154,61 @@ export class CryptoPricesService implements OnModuleInit {
       this.logger.log('Crypto price cache cleared');
     }
   }
+
+  /**
+   * Test Chainlink connection without fallback - throws errors for diagnostics
+   */
+  async testChainlinkRaw(): Promise<{ ethEur: number; avaxEur: number; debug: any }> {
+    const debug: any = {
+      rpcUrl: this.mainnetRpc,
+      feeds: {
+        ethUsd: this.ETH_USD_FEED,
+        avaxUsd: this.AVAX_USD_FEED,
+        eurUsd: this.EUR_USD_FEED
+      },
+      steps: []
+    };
+
+    try {
+      debug.steps.push('Creating provider...');
+      const provider = new ethers.JsonRpcProvider(this.mainnetRpc);
+      
+      debug.steps.push('Getting block number...');
+      const blockNumber = await provider.getBlockNumber();
+      debug.blockNumber = blockNumber;
+      debug.steps.push(`Connected! Block: ${blockNumber}`);
+
+      debug.steps.push('Fetching ETH/USD...');
+      const ethUsd = await this.getPriceFromFeed(provider, this.ETH_USD_FEED);
+      debug.ethUsd = ethUsd;
+      debug.steps.push(`ETH/USD: ${ethUsd}`);
+
+      debug.steps.push('Fetching AVAX/USD...');
+      const avaxUsd = await this.getPriceFromFeed(provider, this.AVAX_USD_FEED);
+      debug.avaxUsd = avaxUsd;
+      debug.steps.push(`AVAX/USD: ${avaxUsd}`);
+
+      debug.steps.push('Fetching EUR/USD...');
+      const eurUsd = await this.getPriceFromFeed(provider, this.EUR_USD_FEED);
+      debug.eurUsd = eurUsd;
+      debug.steps.push(`EUR/USD: ${eurUsd}`);
+
+      const ethEur = Math.round(ethUsd / eurUsd);
+      const avaxEur = Math.round((avaxUsd / eurUsd) * 100) / 100;
+      
+      debug.ethEur = ethEur;
+      debug.avaxEur = avaxEur;
+      debug.steps.push(`Final: ETH=${ethEur} EUR, AVAX=${avaxEur} EUR`);
+
+      return { ethEur, avaxEur, debug };
+    } catch (error) {
+      debug.error = {
+        message: error.message,
+        stack: error.stack,
+        code: error.code,
+        name: error.name
+      };
+      throw new Error(`Chainlink test failed: ${error.message}. Debug info: ${JSON.stringify(debug, null, 2)}`);
+    }
+  }
 }

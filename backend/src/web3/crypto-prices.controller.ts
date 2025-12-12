@@ -45,23 +45,32 @@ export class CryptoPricesController {
 
   @Get('test')
   async testChainlink() {
+    this.logger.log('🧪 Manual Chainlink test triggered...');
+    await this.pricesService.clearCache();
+    
     try {
-      this.logger.log('🧪 Manual Chainlink test triggered...');
-      await this.pricesService.clearCache();
-      const prices = await this.pricesService.getPrices();
+      const result = await this.pricesService.testChainlinkRaw();
       this.logger.log('✅ Test completed successfully');
       return {
         success: true,
-        message: 'Chainlink test completed',
-        data: prices
+        message: 'Chainlink test completed successfully',
+        data: {
+          ethEur: result.ethEur,
+          avaxEur: result.avaxEur
+        },
+        debug: result.debug
       };
     } catch (error) {
       this.logger.error('❌ Test failed:', error);
       return {
         success: false,
-        message: 'Chainlink test failed',
-        error: error.message,
-        stack: error.stack
+        message: 'Chainlink test failed - see error and debug for details',
+        error: {
+          message: error.message,
+          name: error.name,
+          code: error.code,
+          stack: error.stack
+        }
       };
     }
   }
