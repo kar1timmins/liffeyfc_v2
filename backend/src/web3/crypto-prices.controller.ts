@@ -42,4 +42,27 @@ export class CryptoPricesController {
       );
     }
   }
+
+  @Get('test')
+  async testChainlink() {
+    try {
+      this.logger.log('🧪 Manual Chainlink test triggered...');
+      await this.pricesService.clearCache();
+      const prices = await this.pricesService.getPrices();
+      this.logger.log('✅ Test completed successfully');
+      return {
+        success: true,
+        message: 'Chainlink test completed',
+        data: prices
+      };
+    } catch (error) {
+      this.logger.error('❌ Test failed:', error);
+      return {
+        success: false,
+        message: 'Chainlink test failed',
+        error: error.message,
+        stack: error.stack
+      };
+    }
+  }
 }

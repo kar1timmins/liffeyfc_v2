@@ -130,51 +130,84 @@ export class WalletBalanceController {
     }
 
     try {
-      const rpcUrl = chain === 'ethereum' 
-        ? this.sepoliaRpcEndpoints[0] 
-        : this.fujiRpc;
-
-      this.logger.log(`Fetching gas price for ${chain} from ${rpcUrl}`);
-
-      const response = await fetch(rpcUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'eth_gasPrice',
-          params: [],
-          id: 1
-        })
-      });
-
-      const data = await response.json();
-      this.logger.log(`Gas price response for ${chain}:`, JSON.stringify(data));
-
-      if (data.result) {
-        const gasPriceWei = BigInt(data.result);
-        const gasPriceGwei = Number(gasPriceWei) / 1e9;
-        
-        const result = {
-          chain,
-          gasPriceWei: gasPriceWei.toString(),
-          gasPriceGwei: gasPriceGwei.toFixed(2)
-        };
-        
-        this.logger.log(`Returning gas price for ${chain}:`, JSON.stringify(result));
-        return result;
-      } else if (data.error) {
-        this.logger.error(`RPC error for ${chain}:`, data.error);
-        throw new HttpException(
-          `RPC error: ${data.error.message}`,
-          HttpStatus.SERVICE_UNAVAILABLE
-        );
+      let rpcUrl: string;
+      let rpcEndpoints: string[];
+      
+      if (chain === 'ethereum') {
+        rpcEndpoints = this.sepoliaRpcEndpoints;
+      } else if (chain === 'avalanche') {
+        rpcEndpoints = [this.fujiRpc];
       } else {
-        this.logger.error(`Unexpected response from ${chain} RPC:`, data);
-        throw new HttpException(
-          'Unexpected RPC response',
-          HttpStatus.SERVICE_UNAVAILABLE
-        );
+        throw new HttpException('Invalid chain specified', HttpStatus.BAD_REQUEST);
       }
+
+      this.logger.log(`Fetching gas price for ${chain}...`);
+
+      // Try each RPC endpoint
+      let lastError: any;
+      for (const rpcUrl of rpcEndpoints) {
+        try {
+          this.logger.log(`Trying RPC: ${rpcUrl}`);
+
+          const response = await fetch(rpcUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              method: 'eth_gasPrice',
+              params: [],
+              id: 1
+            })
+          });
+
+          if (!response.ok) {
+            this.logger.warn(`RPC ${rpcUrl} returned ${response.status}`);
+            continue;
+          }
+
+          const data = await response.json();
+          this.logger.log(`Gas price response for ${chain}:`, JSON.stringify(data));
+
+          if (data.result) {
+            const gasPriceWei = BigInt(data.result);
+            const gasPriceGwei = Number(gasPriceWei) / 1e9;
+            
+            // Validate gas price is reasonable (not 0 or suspiciously low)
+            if (gasPriceGwei < 0.001) {
+              this.logger.warn(`Gas price too low (${gasPriceGwei} Gwei), trying next RPC...`);
+              continue;
+            }
+            
+            const result = {
+              chain,
+              gasPriceWei: gasPriceWei.toString(),
+              gasPriceGwei: gasPriceGwei.toFixed(2)
+            };
+            
+            this.logger.log(`✅ Returning gas price for ${chain}:`, JSON.stringify(result));
+            return result;
+          } else if (data.error) {
+            this.logger.error(`RPC error for ${chain}:`, data.error);
+            lastError = new Error(data.error.message);
+            continue;
+          }
+        } catch (err) {
+          this.logger.warn(`RPC ${rpcUrl} failed:`, err.message);
+          lastError = err;
+          continue;
+        }
+      }
+
+      // All RPCs failed, return reasonable fallback
+      this.logger.warn(`All RPCs failed for ${chain}, using fallback gas price`);
+      const fallbackGwei = chain === 'ethereum' ? 20 : 25; // Reasonable testnet defaults
+      const fallbackWei = BigInt(fallbackGwei * 1e9);
+      
+      return {
+        chain,
+        gasPriceWei: fallbackWei.toString(),
+        gasPriceGwei: fallbackGwei.toFixed(2)
+      };
     } catch (err) {
       this.logger.error(`Failed to fetch gas price for ${chain}:`, err);
       throw new HttpException(

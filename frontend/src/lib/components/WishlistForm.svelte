@@ -242,7 +242,7 @@
             const gasPriceData = await gasPriceResponse.json();
             console.log('AVAX gas price response:', gasPriceData);
             const gasPriceGwei = parseFloat(gasPriceData.gasPriceGwei);
-            if (!isNaN(gasPriceGwei) && gasPriceGwei > 0) {
+            if (!isNaN(gasPriceGwei) && gasPriceGwei > 0.001) {
               const estimatedGas = 500000;
               const gasCostAvax = (gasPriceGwei * estimatedGas) / 1e9;
               costs.avalanche = gasCostAvax.toFixed(6);
