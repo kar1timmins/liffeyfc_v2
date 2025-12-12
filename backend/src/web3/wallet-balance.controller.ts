@@ -1,7 +1,8 @@
-import { Controller, Get, Query, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Query, HttpException, HttpStatus, Logger } from '@nestjs/common';
 
 @Controller('wallet-balance')
 export class WalletBalanceController {
+  private readonly logger = new Logger(WalletBalanceController.name);
   private readonly sepoliaRpcEndpoints = [
     'https://rpc.sepolia.org',
     'https://ethereum-sepolia-rpc.publicnode.com',
@@ -133,6 +134,8 @@ export class WalletBalanceController {
         ? this.sepoliaRpcEndpoints[0] 
         : this.fujiRpc;
 
+      this.logger.log(`Fetching gas price for ${chain} from ${rpcUrl}`);
+
       const response = await fetch(rpcUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -145,24 +148,35 @@ export class WalletBalanceController {
       });
 
       const data = await response.json();
+      this.logger.log(`Gas price response for ${chain}:`, JSON.stringify(data));
 
       if (data.result) {
         const gasPriceWei = BigInt(data.result);
         const gasPriceGwei = Number(gasPriceWei) / 1e9;
         
-        return {
+        const result = {
           chain,
           gasPriceWei: gasPriceWei.toString(),
           gasPriceGwei: gasPriceGwei.toFixed(2)
         };
+        
+        this.logger.log(`Returning gas price for ${chain}:`, JSON.stringify(result));
+        return result;
       } else if (data.error) {
+        this.logger.error(`RPC error for ${chain}:`, data.error);
         throw new HttpException(
           `RPC error: ${data.error.message}`,
           HttpStatus.SERVICE_UNAVAILABLE
         );
+      } else {
+        this.logger.error(`Unexpected response from ${chain} RPC:`, data);
+        throw new HttpException(
+          'Unexpected RPC response',
+          HttpStatus.SERVICE_UNAVAILABLE
+        );
       }
     } catch (err) {
-      console.error('Failed to fetch gas price:', err);
+      this.logger.error(`Failed to fetch gas price for ${chain}:`, err);
       throw new HttpException(
         'Failed to fetch gas price',
         HttpStatus.SERVICE_UNAVAILABLE

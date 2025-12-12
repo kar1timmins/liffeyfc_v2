@@ -170,12 +170,23 @@
           const gasPriceResponse = await fetch(`${apiUrl}/wallet-balance/gas-price?chain=ethereum`);
           if (gasPriceResponse.ok) {
             const gasPriceData = await gasPriceResponse.json();
+            console.log('ETH gas price response:', gasPriceData);
             const gasPriceGwei = parseFloat(gasPriceData.gasPriceGwei);
-            const estimatedGas = 500000; // Conservative estimate for contract deployment
-            const gasCostEth = (gasPriceGwei * estimatedGas) / 1e9;
-            costs.ethereum = gasCostEth.toFixed(6);
+            if (!isNaN(gasPriceGwei) && gasPriceGwei > 0) {
+              const estimatedGas = 500000; // Conservative estimate for contract deployment
+              const gasCostEth = (gasPriceGwei * estimatedGas) / 1e9;
+              costs.ethereum = gasCostEth.toFixed(6);
+              console.log('ETH gas cost calculated:', costs.ethereum);
+            } else {
+              console.warn('Invalid ETH gas price:', gasPriceGwei);
+              costs.ethereum = '0.005'; // Fallback estimate
+            }
+          } else {
+            console.error('ETH gas price request failed:', gasPriceResponse.status, await gasPriceResponse.text());
+            costs.ethereum = '0.005'; // Fallback estimate
           }
         } catch (err) {
+          console.error('ETH gas estimation error:', err);
           costs.ethereum = '0.005'; // Fallback estimate
         }
       }
@@ -186,12 +197,23 @@
           const gasPriceResponse = await fetch(`${apiUrl}/wallet-balance/gas-price?chain=avalanche`);
           if (gasPriceResponse.ok) {
             const gasPriceData = await gasPriceResponse.json();
+            console.log('AVAX gas price response:', gasPriceData);
             const gasPriceGwei = parseFloat(gasPriceData.gasPriceGwei);
-            const estimatedGas = 500000;
-            const gasCostAvax = (gasPriceGwei * estimatedGas) / 1e9;
-            costs.avalanche = gasCostAvax.toFixed(6);
+            if (!isNaN(gasPriceGwei) && gasPriceGwei > 0) {
+              const estimatedGas = 500000;
+              const gasCostAvax = (gasPriceGwei * estimatedGas) / 1e9;
+              costs.avalanche = gasCostAvax.toFixed(6);
+              console.log('AVAX gas cost calculated:', costs.avalanche);
+            } else {
+              console.warn('Invalid AVAX gas price:', gasPriceGwei);
+              costs.avalanche = '0.005'; // Fallback estimate
+            }
+          } else {
+            console.error('AVAX gas price request failed:', gasPriceResponse.status, await gasPriceResponse.text());
+            costs.avalanche = '0.005'; // Fallback estimate
           }
         } catch (err) {
+          console.error('AVAX gas estimation error:', err);
           costs.avalanche = '0.005'; // Fallback estimate
         }
       }
