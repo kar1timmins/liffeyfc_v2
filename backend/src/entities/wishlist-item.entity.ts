@@ -1,5 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn, CreateDateColumn } from 'typeorm';
 import { Company } from './company.entity';
+import { EscrowDeployment } from './escrow-deployment.entity';
+import { Contribution } from './contribution.entity';
 
 export enum WishlistCategory {
   FUNDING = 'funding',
@@ -71,11 +73,11 @@ export class WishlistItem {
   @JoinColumn({ name: 'companyId' })
   company: Company;
 
-  @OneToMany('EscrowDeployment', 'wishlistItem')
-  escrowDeployments: any[];
+  @OneToMany(() => EscrowDeployment, (deployment) => deployment.wishlistItem)
+  escrowDeployments: EscrowDeployment[];
 
-  @OneToMany('Contribution', 'wishlistItem')
-  contributions: any[];
+  @OneToMany(() => Contribution, (contribution) => contribution.wishlistItem)
+  contributions: Contribution[];
 
   @CreateDateColumn()
   createdAt: Date;
