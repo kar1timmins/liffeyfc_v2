@@ -49,6 +49,53 @@ AVALANCHE_RPC_URL=https://api.avax-test.network/ext/bc/C/rpc
 AVALANCHE_FACTORY_ADDRESS=0x...
 ```
 
+### Smart Contract Factory Addresses (REQUIRED FOR DEPLOYMENTS)
+
+**⚠️ CRITICAL**: Before you can deploy escrow contracts, you must:
+
+1. Deploy the `EscrowFactory.sol` contract to both networks
+2. Set the resulting contract addresses in environment variables
+
+#### Deploy Factory Contracts
+
+```bash
+cd hardhat
+
+# Deploy to Ethereum Sepolia
+npx hardhat run scripts/deploy-factory.ts --network sepolia
+# Note the deployed factory address
+
+# Deploy to Avalanche Fuji
+npx hardhat run scripts/deploy-factory.ts --network fuji
+# Note the deployed factory address
+```
+
+#### Configure Factory Addresses
+
+```bash
+# In your .env file
+ETHEREUM_FACTORY_ADDRESS=0x<address_from_sepolia_deployment>
+AVALANCHE_FACTORY_ADDRESS=0x<address_from_fuji_deployment>
+```
+
+**What happens if factory addresses aren't set:**
+- Users will see error: "Smart contract deployment is not yet configured on this network"
+- Frontend will show "Contracts are being deployed..." with no contract addresses
+- Deployments will be silently skipped and return empty transaction hashes
+
+### Troubleshooting Factory Configuration
+
+**"Smart contract deployment is not yet configured on this network"**
+- ✅ Deploy EscrowFactory.sol to your networks
+- ✅ Set `ETHEREUM_FACTORY_ADDRESS` and/or `AVALANCHE_FACTORY_ADDRESS`
+- ✅ Restart the backend
+
+**Empty transaction hashes in response**
+- Check that factory addresses are set in `.env`
+- Verify factory addresses are correct (should be 42-character addresses starting with 0x)
+- Check backend logs: `docker-compose logs backend | grep -i factory`
+
+
 ### Production Configuration
 
 For production deployments, we **strongly recommend** using dedicated RPC endpoints:
