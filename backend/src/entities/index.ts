@@ -2,6 +2,7 @@
 // This ensures all entities are loaded in both development and production
 export { User } from './user.entity';
 export { RefreshToken } from './refresh-token.entity';
+export { Wallet } from './wallet.entity';
 export { UserWallet } from './user-wallet.entity';
 export { Company } from './company.entity';
 export { CompanyWallet } from './company-wallet.entity';
