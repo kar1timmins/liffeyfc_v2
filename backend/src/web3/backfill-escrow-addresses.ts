@@ -2,6 +2,9 @@ import { DataSource } from 'typeorm';
 import { WishlistItem } from '../entities/wishlist-item.entity';
 import { EscrowDeployment } from '../entities/escrow-deployment.entity';
 
+const isDev = process.env.NODE_ENV !== 'production';
+const devLog = (msg: string, ...args: any[]) => isDev && console.log(msg, ...args);
+
 /**
  * One-time script to backfill wishlist items with escrow contract addresses
  * from existing escrow_deployments records
@@ -10,14 +13,14 @@ export async function backfillEscrowAddresses(dataSource: DataSource) {
   const wishlistRepo = dataSource.getRepository(WishlistItem);
   const escrowRepo = dataSource.getRepository(EscrowDeployment);
 
-  console.log('🔄 Starting escrow address backfill...');
+  devLog('🔄 Starting escrow address backfill...');
 
   // Get all escrow deployments
   const deployments = await escrowRepo.find({
     relations: ['wishlistItem'],
   });
 
-  console.log(`Found ${deployments.length} escrow deployments`);
+  devLog(`Found ${deployments.length} escrow deployments`);
 
   const updates: Map<string, { eth?: string; avax?: string; deadline?: Date; duration?: number }> = new Map();
 
@@ -42,7 +45,7 @@ export async function backfillEscrowAddresses(dataSource: DataSource) {
     }
   }
 
-  console.log(`Updating ${updates.size} wishlist items...`);
+  devLog(`Updating ${updates.size} wishlist items...`);
 
   let updatedCount = 0;
 
@@ -84,9 +87,9 @@ export async function backfillEscrowAddresses(dataSource: DataSource) {
     if (changed) {
       await wishlistRepo.save(item);
       updatedCount++;
-      console.log(`✅ Updated wishlist item ${itemId} (ETH: ${data.eth || 'N/A'}, AVAX: ${data.avax || 'N/A'})`);
+      devLog(`✅ Updated wishlist item ${itemId} (ETH: ${data.eth || 'N/A'}, AVAX: ${data.avax || 'N/A'})`);
     }
   }
 
-  console.log(`✨ Backfill complete! Updated ${updatedCount} wishlist items.`);
+  devLog(`✨ Backfill complete! Updated ${updatedCount} wishlist items.`);
 }

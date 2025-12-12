@@ -61,9 +61,13 @@ export class JwtConfig {
   static validate(): void {
     try {
       const secret = this.getSecret();
-      console.log('✅ JWT_SECRET validated successfully');
-      console.log(`   Length: ${secret.length} characters (minimum: ${this.MIN_SECRET_LENGTH})`);
-      console.log(`   Algorithm: HS256`);
+      const isDevelopment = process.env.NODE_ENV !== 'production';
+      
+      if (isDevelopment) {
+        console.log('✅ JWT_SECRET validated successfully');
+        console.log(`   Length: ${secret.length} characters (minimum: ${this.MIN_SECRET_LENGTH})`);
+        console.log(`   Algorithm: HS256`);
+      }
     } catch (error) {
       console.error('❌ JWT Configuration Error:', error.message);
       throw error;

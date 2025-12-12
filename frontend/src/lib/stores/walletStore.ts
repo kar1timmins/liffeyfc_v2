@@ -1,5 +1,17 @@
 import { writable, derived } from 'svelte/store';
-import { API_BASE_URL } from '$lib/config';
+import { API_BASE_URL, IS_DEVELOPMENT } from '$lib/config';
+
+const devLog = (msg: string, ...args: any[]) => {
+	if (IS_DEVELOPMENT && typeof console !== 'undefined') {
+		console.log(`[WalletStore] ${msg}`, ...args);
+	}
+};
+
+const devError = (msg: string, ...args: any[]) => {
+	if (typeof console !== 'undefined') {
+		console.error(`[WalletStore] ${msg}`, ...args);
+	}
+};
 
 export interface WalletState {
   address: string | null;
@@ -100,7 +112,7 @@ function createWalletStore() {
 
         return result.data;
       } catch (error: any) {
-        console.error('Error connecting wallet:', error);
+        devError('Error connecting wallet:', error);
         update(state => ({
           ...state,
           isConnecting: false,
@@ -145,7 +157,7 @@ function createWalletStore() {
 
         return result.data;
       } catch (error: any) {
-        console.error('Error adopting wallet:', error);
+        devError('Error adopting wallet:', error);
         update(state => ({
           ...state,
           isConnecting: false,
@@ -188,7 +200,7 @@ function createWalletStore() {
           }));
         }
       } catch (error) {
-        console.error('Error fetching balance:', error);
+        devError('Error fetching balance:', error);
       }
     },
 
@@ -220,7 +232,7 @@ function createWalletStore() {
           await walletStore.fetchBalance();
         }
       } catch (error: any) {
-        console.error('Error switching chain:', error);
+        devError('Error switching chain:', error);
         
         // If chain not added, try to add it
         if (error.code === 4902) {

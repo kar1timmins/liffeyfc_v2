@@ -10,6 +10,14 @@ import { Company } from '../entities/company.entity';
 import { EscrowDeployment } from '../entities/escrow-deployment.entity';
 import { WishlistItem } from '../entities/wishlist-item.entity';
 
+// Dev mode logging helper
+const isDev = process.env.NODE_ENV !== 'production';
+const devLog = {
+  log: (msg: string, ...args: any[]) => isDev && console.log(`[WalletGeneration] ${msg}`, ...args),
+  error: (msg: string, ...args: any[]) => console.error(`[WalletGeneration] ${msg}`, ...args),
+  warn: (msg: string, ...args: any[]) => console.warn(`[WalletGeneration] ${msg}`, ...args),
+};
+
 export interface GeneratedWallet {
   address: string;
   mnemonic: string;
@@ -83,14 +91,14 @@ export class WalletGenerationService {
   private decrypt(encryptedData: string): string {
     // Handle empty or null encrypted data
     if (!encryptedData || encryptedData.trim() === '') {
-      console.warn('[WalletGeneration] Attempting to decrypt empty encrypted data');
+      devLog.warn('Attempting to decrypt empty encrypted data');
       throw new Error('No encrypted data to decrypt');
     }
 
     const parts = encryptedData.split(':');
     if (parts.length !== 3) {
-      console.error('[WalletGeneration] Invalid encrypted data format. Expected 3 parts, got:', parts.length);
-      console.error('[WalletGeneration] First 50 chars:', encryptedData.substring(0, 50));
+      devLog.error('Invalid encrypted data format. Expected 3 parts, got:', parts.length);
+      devLog.error('First 50 chars:', encryptedData.substring(0, 50));
       throw new Error(`Invalid encrypted data format: expected 3 parts separated by ':', got ${parts.length} parts`);
     }
 
@@ -111,7 +119,7 @@ export class WalletGenerationService {
 
       return decrypted;
     } catch (error) {
-      console.error('[WalletGeneration] Decryption error:', error.message);
+      devLog.error('Decryption error:', error.message);
       throw new Error(`Failed to decrypt data: ${error.message}`);
     }
   }
@@ -323,7 +331,7 @@ export class WalletGenerationService {
    * Derives from the user's master wallet
    */
   async generateCompanyWallet(userId: string, companyId: string): Promise<{ ethAddress: string; avaxAddress: string }> {
-    console.log('[WalletGeneration] Starting generateCompanyWallet for userId:', userId, 'companyId:', companyId);
+    devLog.log('Starting generateCompanyWallet for userId:', userId, 'companyId:', companyId);
     
     // Get user's master wallet
     const userWallet = await this.userWalletRepo.findOne({
@@ -331,11 +339,11 @@ export class WalletGenerationService {
     });
 
     if (!userWallet) {
-      console.log('[WalletGeneration] No master wallet found for user:', userId);
+      devLog.log('No master wallet found for user:', userId);
       throw new Error('User does not have a master wallet. Generate a master wallet first.');
     }
 
-    console.log('[WalletGeneration] Found user master wallet:', userWallet.id);
+    devLog.log('Found user master wallet:', userWallet.id);
 
     // Check if company already has a wallet
     const existingCompanyWallet = await this.companyWalletRepo.findOne({
@@ -343,7 +351,7 @@ export class WalletGenerationService {
     });
 
     if (existingCompanyWallet) {
-      console.log('[WalletGeneration] Company already has wallet:', existingCompanyWallet.ethAddress);
+      devLog.log('Company already has wallet:', existingCompanyWallet.ethAddress);
       // Return existing wallet addresses
       return {
         ethAddress: existingCompanyWallet.ethAddress,
@@ -351,7 +359,7 @@ export class WalletGenerationService {
       };
     }
 
-    console.log('[WalletGeneration] No existing wallet found, generating new one');
+    devLog.log('No existing wallet found, generating new one');
 
     try {
       let childWallet: HDNodeWallet | Wallet;
@@ -363,7 +371,7 @@ export class WalletGenerationService {
       
       if (hasMnemonic) {
         // HD Wallet with mnemonic - can derive child wallets
-        console.log('[WalletGeneration] Master wallet has mnemonic - using HD derivation');
+        devLog.log('Master wallet has mnemonic - using HD derivation');
         
         try {
           const mnemonic = this.decrypt(userWallet.encryptedMnemonic);
@@ -371,11 +379,11 @@ export class WalletGenerationService {
           // Get next child index for HD derivation
           childIndex = userWallet.nextChildIndex;
           derivationPath = `${this.ETH_DERIVATION_BASE}/${childIndex}`;
-          console.log('[WalletGeneration] Using child index:', childIndex, 'path:', derivationPath);
+          devLog.log('Using child index:', childIndex, 'path:', derivationPath);
 
           // Derive child wallet from mnemonic
           childWallet = HDNodeWallet.fromPhrase(mnemonic, undefined, derivationPath);
-          console.log('[WalletGeneration] Derived child wallet address via HD:', childWallet.address);
+          devLog.log('Derived child wallet address via HD:', childWallet.address);
         } catch (decryptError) {
           console.error('[WalletGeneration] Failed to decrypt or use mnemonic:', decryptError.message);
           throw new Error(
@@ -386,7 +394,7 @@ export class WalletGenerationService {
         }
       } else {
         // Private key only (restored from private key) - generate independent child wallet
-        console.log('[WalletGeneration] Master wallet has no mnemonic (restored from private key) - generating independent child wallet');
+        devLog.log('Master wallet has no mnemonic (restored from private key) - generating independent child wallet');
         
         // For wallets restored from private key only, we generate independent random wallets
         // Each company gets a unique wallet (not derived from the same key)
@@ -394,7 +402,7 @@ export class WalletGenerationService {
         childWallet = newWallet;
         childIndex = userWallet.nextChildIndex;
         derivationPath = `independent-wallet-${childIndex}`;
-        console.log('[WalletGeneration] Generated independent wallet for company:', childWallet.address);
+        devLog.log('Generated independent wallet for company:', childWallet.address);
       }
 
       const avaxAddress = childWallet.address; // Same for Avalanche (EVM compatible)
@@ -414,25 +422,25 @@ export class WalletGenerationService {
       });
 
       const savedWallet = await this.companyWalletRepo.save(companyWallet);
-      console.log('[WalletGeneration] Saved company wallet record:', savedWallet.id);
+      devLog.log('Saved company wallet record:', savedWallet.id);
 
       // Update parent wallet's next child index
       userWallet.nextChildIndex = childIndex + 1;
       await this.userWalletRepo.save(userWallet);
-      console.log('[WalletGeneration] Updated parent wallet nextChildIndex to:', childIndex + 1);
+      devLog.log('Updated parent wallet nextChildIndex to:', childIndex + 1);
 
       // Update company entity with wallet addresses
       const updateResult = await this.companyRepo.update(companyId, {
         ethAddress: childWallet.address,
         avaxAddress: avaxAddress,
       });
-      console.log('[WalletGeneration] Company update result:', updateResult.affected, 'rows affected');
+      devLog.log('Company update result:', updateResult.affected, 'rows affected');
 
       // Verify the update by fetching the company
       const updatedCompany = await this.companyRepo.findOne({
         where: { id: companyId }
       });
-      console.log('[WalletGeneration] Verified company addresses - ETH:', updatedCompany?.ethAddress, 'AVAX:', updatedCompany?.avaxAddress);
+      devLog.log('Verified company addresses - ETH:', updatedCompany?.ethAddress, 'AVAX:', updatedCompany?.avaxAddress);
 
       return {
         ethAddress: childWallet.address,

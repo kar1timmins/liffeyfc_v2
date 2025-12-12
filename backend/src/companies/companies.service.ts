@@ -98,24 +98,25 @@ export class CompaniesService {
     });
 
     const savedCompany = await this.companiesRepo.save(company);
-    console.log('[Company Creation] Company saved:', savedCompany.id);
+    const isDev = process.env.NODE_ENV !== 'production';
+    if (isDev) console.log('[Company Creation] Company saved:', savedCompany.id);
 
     // Auto-generate company wallet if user has a master wallet
     try {
       const hasMasterWallet = await this.walletService.hasMasterWallet(userId);
-      console.log('[Company Creation] User has master wallet:', hasMasterWallet);
+      if (isDev) console.log('[Company Creation] User has master wallet:', hasMasterWallet);
       
       if (hasMasterWallet) {
-        console.log('[Company Creation] Starting wallet generation for company:', savedCompany.id);
+        if (isDev) console.log('[Company Creation] Starting wallet generation for company:', savedCompany.id);
         try {
           const walletResult = await this.walletService.generateCompanyWallet(userId, savedCompany.id);
-          console.log('[Company Creation] Generated company wallet:', walletResult);
+          if (isDev) console.log('[Company Creation] Generated company wallet:', walletResult);
         } catch (walletError) {
-          console.error('[Company Creation] Wallet generation error:', walletError.message, walletError.stack);
+          if (isDev) console.error('[Company Creation] Wallet generation error:', walletError.message, walletError.stack);
           throw walletError;
         }
       } else {
-        console.log('[Company Creation] User does not have master wallet, skipping wallet generation');
+        if (isDev) console.log('[Company Creation] User does not have master wallet, skipping wallet generation');
       }
     } catch (error) {
       // Log but don't fail company creation if wallet generation fails
@@ -129,7 +130,7 @@ export class CompaniesService {
       relations: ['owner']
     });
 
-    console.log('[Company Creation] Final company state:', {
+    if (isDev) console.log('[Company Creation] Final company state:', {
       id: updatedCompany?.id,
       ethAddress: updatedCompany?.ethAddress,
       avaxAddress: updatedCompany?.avaxAddress

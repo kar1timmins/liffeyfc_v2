@@ -39,9 +39,31 @@ export const app = {
 
 // Debug logger factory
 export const createLogger = (namespace: string) => {
-	return (...args: any[]) => {
-		if (isDebugEnabled && typeof window !== 'undefined') {
-			console.log(`[${namespace}]`, ...args);
+	return {
+		log: (...args: any[]) => {
+			if (isDebugEnabled && typeof window !== 'undefined') {
+				console.log(`[${namespace}]`, ...args);
+			}
+		},
+		info: (...args: any[]) => {
+			if (isDebugEnabled && typeof window !== 'undefined') {
+				console.log(`[${namespace}]`, ...args);
+			}
+		},
+		warn: (...args: any[]) => {
+			if (typeof window !== 'undefined') {
+				console.warn(`[${namespace}]`, ...args);
+			}
+		},
+		error: (...args: any[]) => {
+			if (typeof window !== 'undefined') {
+				console.error(`[${namespace}]`, ...args);
+			}
+		},
+		debug: (...args: any[]) => {
+			if (isDebugEnabled && typeof window !== 'undefined') {
+				console.log(`[${namespace}]`, ...args);
+			}
 		}
 	};
 };
@@ -57,6 +79,25 @@ export const getEnvInfo = () => ({
 	isBrowser: typeof window !== 'undefined'
 });
 
+// Simple conditional logging for development
+export const devLog = (...args: any[]) => {
+	if (isDebugEnabled && typeof window !== 'undefined') {
+		console.log(...args);
+	}
+};
+
+export const devWarn = (...args: any[]) => {
+	if (typeof window !== 'undefined') {
+		console.warn(...args);
+	}
+};
+
+export const devError = (...args: any[]) => {
+	if (typeof window !== 'undefined') {
+		console.error(...args);
+	}
+};
+
 export default {
 	isDev,
 	isDebugEnabled,
@@ -64,5 +105,8 @@ export default {
 	api,
 	app,
 	createLogger,
-	getEnvInfo
+	getEnvInfo,
+	devLog,
+	devWarn,
+	devError
 };

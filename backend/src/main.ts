@@ -9,7 +9,9 @@ import { ThrottlerExceptionFilter } from './common/filters/throttler-exception.f
 
 async function bootstrap() {
   // Validate critical security configurations before starting
-  console.log('🔐 Validating security configuration...');
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('🔐 Validating security configuration...');
+  }
   try {
     JwtConfig.validate();
   } catch (error) {
@@ -73,11 +75,16 @@ async function bootstrap() {
     maxAge: 3600,
   });
   
-  console.log(`🌍 CORS enabled in ${isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION'} mode`);
-  console.log(`📡 Allowed origins: ${corsOrigins.join(', ')}`);
+  if (isDevelopment) {
+    console.log(`🌍 CORS enabled in DEVELOPMENT mode`);
+    console.log(`📡 Allowed origins: ${corsOrigins.join(', ')}`);
+  }
   
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
-  console.log(`🚀 Backend server is running on port ${port}`);
+  
+  if (isDevelopment) {
+    console.log(`🚀 Backend server is running on port ${port}`);
+  }
 }
 bootstrap();

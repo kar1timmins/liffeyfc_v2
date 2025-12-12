@@ -29,7 +29,9 @@ function parseDatabaseConfig() {
       };
     } catch (err) {
       console.error('Invalid DATABASE_URL format:', err.message);
-      console.log('Falling back to individual DB_* env vars');
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('Falling back to individual DB_* env vars');
+      }
     }
   }
 
