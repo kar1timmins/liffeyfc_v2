@@ -135,7 +135,10 @@ export class CryptoPricesService implements OnModuleInit {
 
       this.logger.log(`Feed ${feedAddress}: decimals=${decimals}, answer=${roundData.answer.toString()}`);
 
-      const price = Number(roundData.answer) / Math.pow(10, decimals);
+      // Convert BigInt values to Number for calculation
+      const decimalsNum = Number(decimals);
+      const answerNum = Number(roundData.answer);
+      const price = answerNum / Math.pow(10, decimalsNum);
       this.logger.log(`Calculated price: ${price}`);
       
       return price;
