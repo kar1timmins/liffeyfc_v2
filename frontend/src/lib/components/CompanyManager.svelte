@@ -1105,10 +1105,11 @@
         </div>
 
         <div>
-          <label class="label">
+          <label class="label" for="delete-confirm-input">
             <span class="label-text">Type <strong>"delete"</strong> to confirm</span>
           </label>
           <input
+            id="delete-confirm-input"
             type="text"
             class="input input-bordered w-full"
             placeholder="Type 'delete' here"

@@ -691,7 +691,7 @@
                   
                   {#if formData.deployToEthereum}
                     <div class="form-control w-full">
-                      <label class="label px-0 pb-1">
+                      <label class="label px-0 pb-1" for="ethereum-amount">
                         <span class="label-text text-xs font-medium flex items-center gap-1">
                           <span class="badge badge-primary badge-xs"></span>
                           Ethereum Amount
@@ -700,6 +700,7 @@
                       </label>
                       <div class="join w-full">
                         <input
+                          id="ethereum-amount"
                           type="number"
                           bind:value={formData.targetAmountEth}
                           oninput={updateFromEth}
@@ -715,7 +716,7 @@
 
                   {#if formData.deployToAvalanche}
                     <div class="form-control w-full">
-                      <label class="label px-0 pb-1">
+                      <label class="label px-0 pb-1" for="avalanche-amount">
                         <span class="label-text text-xs font-medium flex items-center gap-1">
                           <span class="badge badge-error badge-xs"></span>
                           Avalanche Amount
@@ -724,6 +725,7 @@
                       </label>
                       <div class="join w-full">
                         <input
+                          id="avalanche-amount"
                           type="number"
                           bind:value={formData.targetAmountAvax}
                           oninput={updateFromAvax}
@@ -785,9 +787,7 @@
 
                 <!-- Blockchain Networks -->
                 <div class="form-control w-full">
-                  <label class="label px-0 pb-2">
-                    <span class="label-text text-xs font-medium">Deploy to Networks</span>
-                  </label>
+                  <p class="text-xs font-semibold opacity-70 pb-2">Deploy to Networks</p>
                   <div class="space-y-2">
                     <label class="label cursor-pointer justify-start gap-3 px-0">
                       <input
