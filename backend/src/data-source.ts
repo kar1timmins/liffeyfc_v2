@@ -49,8 +49,10 @@ const AppDataSource = new DataSource({
   type: 'postgres',
   ...dbConfig,
   entities: [User, Wallet, RefreshToken, Company, WishlistItem, UserWallet, CompanyWallet, EscrowDeployment, Contribution],
-  migrations: [__dirname + '/migrations/*.{ts,js}'],
+  migrations: [__dirname + '/migrations/**/*{.ts,.js}'],
+  migrationsRun: false, // Don't auto-run migrations - use CLI explicitly
   synchronize: process.env.TYPEORM_SYNCHRONIZE === 'true',
+  logging: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
 });
 
 export default AppDataSource;
