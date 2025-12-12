@@ -277,6 +277,7 @@ SECURITY REMINDERS:
         <!-- Recovery Phrase -->
         <div class="space-y-2">
           <h4 class="font-semibold">Recovery Phrase (12 Words):</h4>
+          <p class="text-xs text-base-content/70">Save this phrase. It's the ONLY way to recover your wallet and all derived company wallets.</p>
           <div class="bg-base-200 p-4 rounded relative">
             <div class="grid grid-cols-3 gap-2 mb-3">
               {#each walletData.mnemonic.split(' ') as word, i}
@@ -312,6 +313,21 @@ SECURITY REMINDERS:
               <Download class="w-4 h-4" />
               Download Wallet File
             </button>
+          </div>
+        </div>
+
+        <!-- Child Wallet Derivation Info -->
+        <div class="alert alert-info">
+          <AlertTriangle class="w-5 h-5" />
+          <div class="text-sm space-y-2">
+            <p class="font-semibold">✅ Child Wallet Derivation Enabled</p>
+            <p>You can now create multiple companies. Each company gets a unique child wallet address derived from your recovery phrase.</p>
+            <ul class="list-disc list-inside space-y-1 text-xs">
+              <li><strong>Each company = unique wallet</strong> (Company A: 0x1234..., Company B: 0x5678...)</li>
+              <li><strong>Deterministic derivation:</strong> Same addresses if wallet is restored from this phrase</li>
+              <li><strong>All funds forward to master wallet</strong> when bounties complete (secure!)</li>
+              <li><strong>Important:</strong> Keep your recovery phrase safe - losing it means losing ability to recover all wallets</li>
+            </ul>
           </div>
         </div>
 

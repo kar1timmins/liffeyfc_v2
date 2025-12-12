@@ -186,7 +186,23 @@
             </label>
           </div>
 
-          {#if error}
+          <!-- Private Key Specific Warning -->
+          {#if inputType === 'privateKey'}
+            <div class="alert alert-error border-2">
+              <AlertCircle class="w-5 h-5" />
+              <div class="text-sm space-y-2">
+                <p class="font-bold">⚠️ CRITICAL: Private Key Restoration Limitation</p>
+                <p>You are restoring from a <strong>private key only</strong>. This means:</p>
+                <ul class="list-disc list-inside space-y-1 ml-2 text-xs">
+                  <li><strong>✓ Good:</strong> Master wallet can always be restored</li>
+                  <li><strong>✓ Safe:</strong> All bounty funds auto-forward to master wallet</li>
+                  <li><strong>✗ Important:</strong> Child wallet addresses CANNOT be derived in the future</li>
+                  <li><strong>✗ Action Required:</strong> After creating companies, save their wallet addresses (copy them to password manager or backup)</li>
+                </ul>
+                <p class="font-semibold mt-2">💡 Recommendation: Restore from your 24-word seed phrase instead for full recovery.</p>
+              </div>
+            </div>
+          {/if}
             <div class="alert alert-error">
               <AlertCircle class="w-5 h-5" />
               <span>{error}</span>
