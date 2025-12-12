@@ -160,8 +160,33 @@ export class EscrowController {
       };
     } catch (error) {
       this.logger.error('❌ Failed to create escrow:', error);
+
+      // User-friendly error messages without exposing infrastructure details
+      let userMessage = 'Failed to deploy escrow contracts';
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      // Check for common blockchain/RPC errors
+      if (error.message?.includes('No working') || error.message?.includes('RPC')) {
+        userMessage = 'Blockchain service temporarily unavailable. Please try again in a few moments.';
+      } else if (error.message?.includes('insufficient funds')) {
+        userMessage = 'Insufficient funds in wallet. Please ensure you have enough balance for gas fees.';
+      } else if (error.message?.includes('invalid address')) {
+        userMessage = 'Invalid wallet address. Please check your wallet configuration.';
+      } else if (error.message?.includes('nonce')) {
+        userMessage = 'Transaction ordering issue. Please try again.';
+      } else if (error.code === 'ETIMEDOUT' || error.code === 'ECONNREFUSED') {
+        userMessage = 'Network connection error. Please check your internet connection and try again.';
+      }
+
       throw new HttpException(
-        error.message || 'Failed to create escrow contracts',
+        {
+          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+          message: userMessage,
+          error: 'DeploymentFailed',
+        },
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }

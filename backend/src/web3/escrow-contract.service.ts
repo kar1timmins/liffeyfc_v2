@@ -68,7 +68,7 @@ export interface CampaignStatus {
 export class EscrowContractService {
   private readonly logger = new Logger(EscrowContractService.name);
 
-  // RPC Providers
+  // RPC Providers with fallbacks
   private ethereumProvider: ethers.JsonRpcProvider;
   private avalancheProvider: ethers.JsonRpcProvider;
 
@@ -80,19 +80,34 @@ export class EscrowContractService {
   private ethereumFactoryAddress: string;
   private avalancheFactoryAddress: string;
 
+  // RPC Endpoint fallbacks
+  private ethereumRPCEndpoints = [
+    'https://sepolia.drpc.org',
+    'https://sepolia-rpc.publicnode.com',
+    'https://ethereum-sepolia.publicnode.com',
+    'https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
+    'https://rpc.sepolia.org'
+  ];
+
+  private avalancheRPCEndpoints = [
+    'https://api.avax-test.network/ext/bc/C/rpc',
+    'https://avalanche-fuji-c-chain.publicnode.com',
+    'https://avalanche-fuji.drpc.org'
+  ];
+
   constructor(
     @InjectRepository(WishlistItem)
     private wishlistRepo: Repository<WishlistItem>,
     @InjectRepository(Company)
     private companyRepo: Repository<Company>,
   ) {
-    // Initialize providers
-    this.ethereumProvider = new ethers.JsonRpcProvider(
-      process.env.ETHEREUM_RPC_URL || 'http://localhost:8545'
-    );
-    this.avalancheProvider = new ethers.JsonRpcProvider(
-      process.env.AVALANCHE_RPC_URL || 'https://api.avax.network/ext/bc/C/rpc'
-    );
+    // Get RPC URLs from environment or use first fallback
+    const ethereumRpcUrl = process.env.ETHEREUM_RPC_URL || this.ethereumRPCEndpoints[0];
+    const avalancheRpcUrl = process.env.AVALANCHE_RPC_URL || this.avalancheRPCEndpoints[0];
+
+    // Initialize providers with fallback retry logic
+    this.ethereumProvider = new ethers.JsonRpcProvider(ethereumRpcUrl);
+    this.avalancheProvider = new ethers.JsonRpcProvider(avalancheRpcUrl);
 
     // Initialize signers if private key is available
     const privateKey = process.env.WEB3_PRIVATE_KEY;
@@ -107,6 +122,65 @@ export class EscrowContractService {
 
     if (!this.ethereumFactoryAddress || !this.avalancheFactoryAddress) {
       this.logger.warn('⚠️  Factory contract addresses not configured. Escrow functionality will be limited.');
+    }
+
+    this.logger.log(`📡 Using Ethereum RPC: ${ethereumRpcUrl}`);
+    this.logger.log(`📡 Using Avalanche RPC: ${avalancheRpcUrl}`);
+  }
+
+  /**
+   * Get working Ethereum provider with fallback
+   */
+  private async getWorkingEthereumProvider(): Promise<ethers.JsonRpcProvider> {
+    try {
+      // Test current provider
+      await this.ethereumProvider.getNetwork();
+      return this.ethereumProvider;
+    } catch (error) {
+      this.logger.warn('⚠️  Current Ethereum RPC endpoint failed, trying fallbacks...');
+      for (const rpcUrl of this.ethereumRPCEndpoints) {
+        try {
+          const provider = new ethers.JsonRpcProvider(rpcUrl);
+          await provider.getNetwork();
+          this.logger.log(`✅ Successfully switched to Ethereum RPC: ${rpcUrl}`);
+          this.ethereumProvider = provider;
+          if (this.ethereumSigner) {
+            this.ethereumSigner = this.ethereumSigner.connect(provider);
+          }
+          return provider;
+        } catch (e) {
+          this.logger.debug(`Failed to connect to ${rpcUrl}`);
+        }
+      }
+      throw new Error('No working Ethereum RPC endpoint available');
+    }
+  }
+
+  /**
+   * Get working Avalanche provider with fallback
+   */
+  private async getWorkingAvalancheProvider(): Promise<ethers.JsonRpcProvider> {
+    try {
+      // Test current provider
+      await this.avalancheProvider.getNetwork();
+      return this.avalancheProvider;
+    } catch (error) {
+      this.logger.warn('⚠️  Current Avalanche RPC endpoint failed, trying fallbacks...');
+      for (const rpcUrl of this.avalancheRPCEndpoints) {
+        try {
+          const provider = new ethers.JsonRpcProvider(rpcUrl);
+          await provider.getNetwork();
+          this.logger.log(`✅ Successfully switched to Avalanche RPC: ${rpcUrl}`);
+          this.avalancheProvider = provider;
+          if (this.avalancheSigner) {
+            this.avalancheSigner = this.avalancheSigner.connect(provider);
+          }
+          return provider;
+        } catch (e) {
+          this.logger.debug(`Failed to connect to ${rpcUrl}`);
+        }
+      }
+      throw new Error('No working Avalanche RPC endpoint available');
     }
   }
 
@@ -132,10 +206,13 @@ export class EscrowContractService {
     // Deploy to Ethereum
     if (chains.includes('ethereum') && this.ethereumSigner && this.ethereumFactoryAddress) {
       try {
+        const provider = await this.getWorkingEthereumProvider();
+        const signer = this.ethereumSigner.connect(provider);
+
         const factory = new ethers.Contract(
           this.ethereumFactoryAddress,
           ESCROW_FACTORY_ABI,
-          this.ethereumSigner
+          signer
         );
 
         const tx = await factory.createEscrow(
@@ -171,6 +248,9 @@ export class EscrowContractService {
     // Deploy to Avalanche
     if (chains.includes('avalanche') && this.avalancheSigner && this.avalancheFactoryAddress) {
       try {
+        const provider = await this.getWorkingAvalancheProvider();
+        const signer = this.avalancheSigner.connect(provider);
+
         const factory = new ethers.Contract(
           this.avalancheFactoryAddress,
           ESCROW_FACTORY_ABI,
