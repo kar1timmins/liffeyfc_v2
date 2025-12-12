@@ -252,7 +252,7 @@
                     bind:value={targetAmountEur}
                     oninput={updateEthAmount}
                     min="100"
-                    step="100"
+                    step="1"
                   />
                 </div>
               </div>
