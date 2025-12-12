@@ -313,9 +313,9 @@
 			<form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="space-y-6">
 				<!-- Chain Selection -->
 				<div class="form-control">
-					<label class="label">
+					<div class="label">
 						<span class="label-text font-semibold">Select Network</span>
-					</label>
+					</div>
 					<div class="grid grid-cols-2 gap-3">
 						<button
 							type="button"
@@ -363,7 +363,7 @@
 
 				<!-- Recipient Address -->
 				<div class="form-control">
-					<label class="label">
+					<label class="label" for="recipient-address">
 						<span class="label-text font-semibold">Recipient Address</span>
 						<span class="label-text-alt text-xs opacity-60">0x...</span>
 					</label>
