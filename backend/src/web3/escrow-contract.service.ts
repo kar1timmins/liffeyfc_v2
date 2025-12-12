@@ -1,9 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ethers } from 'ethers';
+import * as crypto from 'crypto';
 import { WishlistItem } from '../entities/wishlist-item.entity';
 import { Company } from '../entities/company.entity';
+import { UserWallet } from '../entities/user-wallet.entity';
+import { CompanyWallet } from '../entities/company-wallet.entity';
 
 // ABI for EscrowFactory contract
 const ESCROW_FACTORY_ABI = [
@@ -67,14 +70,12 @@ export interface CampaignStatus {
 @Injectable()
 export class EscrowContractService {
   private readonly logger = new Logger(EscrowContractService.name);
+  private readonly ENCRYPTION_ALGORITHM = 'aes-256-gcm';
+  private readonly ENCRYPTION_KEY: Buffer;
 
   // RPC Providers with fallbacks
   private ethereumProvider: ethers.JsonRpcProvider;
   private avalancheProvider: ethers.JsonRpcProvider;
-
-  // Signers (for deploying contracts)
-  private ethereumSigner: ethers.Wallet | null = null;
-  private avalancheSigner: ethers.Wallet | null = null;
 
   // Factory contract addresses
   private ethereumFactoryAddress: string;
@@ -100,7 +101,18 @@ export class EscrowContractService {
     private wishlistRepo: Repository<WishlistItem>,
     @InjectRepository(Company)
     private companyRepo: Repository<Company>,
+    @InjectRepository(UserWallet)
+    private userWalletRepo: Repository<UserWallet>,
+    @InjectRepository(CompanyWallet)
+    private companyWalletRepo: Repository<CompanyWallet>,
   ) {
+    // Get encryption key from environment variable (for decrypting stored wallets)
+    const key = process.env.WALLET_ENCRYPTION_KEY;
+    if (!key || key.length !== 64) {
+      throw new Error('WALLET_ENCRYPTION_KEY must be set and be 64 hex characters (32 bytes)');
+    }
+    this.ENCRYPTION_KEY = Buffer.from(key, 'hex');
+
     // Get RPC URLs from environment or use first fallback
     const ethereumRpcUrl = process.env.ETHEREUM_RPC_URL || this.ethereumRPCEndpoints[0];
     const avalancheRpcUrl = process.env.AVALANCHE_RPC_URL || this.avalancheRPCEndpoints[0];
@@ -108,13 +120,6 @@ export class EscrowContractService {
     // Initialize providers with fallback retry logic
     this.ethereumProvider = new ethers.JsonRpcProvider(ethereumRpcUrl);
     this.avalancheProvider = new ethers.JsonRpcProvider(avalancheRpcUrl);
-
-    // Initialize signers if private key is available
-    const privateKey = process.env.WEB3_PRIVATE_KEY;
-    if (privateKey) {
-      this.ethereumSigner = new ethers.Wallet(privateKey, this.ethereumProvider);
-      this.avalancheSigner = new ethers.Wallet(privateKey, this.avalancheProvider);
-    }
 
     // Factory addresses from environment
     this.ethereumFactoryAddress = process.env.ETHEREUM_FACTORY_ADDRESS || '';
@@ -126,6 +131,32 @@ export class EscrowContractService {
 
     this.logger.log(`📡 Using Ethereum RPC: ${ethereumRpcUrl}`);
     this.logger.log(`📡 Using Avalanche RPC: ${avalancheRpcUrl}`);
+  }
+
+  /**
+   * Decrypt data encrypted with AES-256-GCM
+   */
+  private decrypt(encryptedData: string): string {
+    const parts = encryptedData.split(':');
+    if (parts.length !== 3) {
+      throw new Error('Invalid encrypted data format');
+    }
+
+    const iv = Buffer.from(parts[0], 'hex');
+    const authTag = Buffer.from(parts[1], 'hex');
+    const encrypted = parts[2];
+
+    const decipher = crypto.createDecipheriv(
+      this.ENCRYPTION_ALGORITHM,
+      this.ENCRYPTION_KEY,
+      iv,
+    );
+    decipher.setAuthTag(authTag);
+
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+
+    return decrypted;
   }
 
   /**
@@ -185,16 +216,57 @@ export class EscrowContractService {
   }
 
   /**
-   * Deploy escrow contracts for a wishlist item
+   * Get user's private key from database (decrypted)
+   * This retrieves the user's master wallet private key from the database
+   */
+  async getUserPrivateKey(userId: string, chain: 'ethereum' | 'avalanche'): Promise<string> {
+    const userWallet = await this.userWalletRepo.findOne({
+      where: { userId }
+    });
+
+    if (!userWallet) {
+      throw new BadRequestException('User wallet not found. Please generate a wallet first.');
+    }
+
+    try {
+      const decryptedPrivateKey = this.decrypt(userWallet.encryptedPrivateKey);
+      return decryptedPrivateKey;
+    } catch (error) {
+      this.logger.error('Failed to decrypt user private key:', error);
+      throw new BadRequestException('Failed to decrypt wallet. Please try again.');
+    }
+  }
+
+  /**
+   * Create signer for user's wallet
+   */
+  async createUserSigner(
+    userId: string,
+    chain: 'ethereum' | 'avalanche'
+  ): Promise<ethers.Wallet> {
+    const privateKey = await this.getUserPrivateKey(userId, chain);
+    
+    if (chain === 'ethereum') {
+      const provider = await this.getWorkingEthereumProvider();
+      return new ethers.Wallet(privateKey, provider);
+    } else {
+      const provider = await this.getWorkingAvalancheProvider();
+      return new ethers.Wallet(privateKey, provider);
+    }
+  }
+
+  /**
+   * Deploy escrow contracts for a wishlist item using user's wallet
    */
   async deployEscrowContracts(
+    userId: string,
     wishlistItemId: string,
     companyWalletAddress: string,
     targetAmountEth: number,
     durationInDays: number,
     chains: ('ethereum' | 'avalanche')[] = ['ethereum', 'avalanche']
   ): Promise<EscrowDeploymentResult> {
-    this.logger.log(`📝 Deploying escrow contracts for wishlist item: ${wishlistItemId}`);
+    this.logger.log(`📝 Deploying escrow contracts for wishlist item: ${wishlistItemId} by user: ${userId}`);
 
     const result: EscrowDeploymentResult = {
       transactionHashes: {}
@@ -204,16 +276,17 @@ export class EscrowContractService {
     const targetAmountWei = ethers.parseEther(targetAmountEth.toString());
 
     // Deploy to Ethereum
-    if (chains.includes('ethereum') && this.ethereumSigner && this.ethereumFactoryAddress) {
+    if (chains.includes('ethereum') && this.ethereumFactoryAddress) {
       try {
-        const provider = await this.getWorkingEthereumProvider();
-        const signer = this.ethereumSigner.connect(provider);
+        const signer = await this.createUserSigner(userId, 'ethereum');
 
         const factory = new ethers.Contract(
           this.ethereumFactoryAddress,
           ESCROW_FACTORY_ABI,
           signer
         );
+
+        this.logger.log(`🔑 Using wallet: ${signer.address} for Ethereum deployment`);
 
         const tx = await factory.createEscrow(
           companyWalletAddress,
@@ -246,16 +319,17 @@ export class EscrowContractService {
     }
 
     // Deploy to Avalanche
-    if (chains.includes('avalanche') && this.avalancheSigner && this.avalancheFactoryAddress) {
+    if (chains.includes('avalanche') && this.avalancheFactoryAddress) {
       try {
-        const provider = await this.getWorkingAvalancheProvider();
-        const signer = this.avalancheSigner.connect(provider);
+        const signer = await this.createUserSigner(userId, 'avalanche');
 
         const factory = new ethers.Contract(
           this.avalancheFactoryAddress,
           ESCROW_FACTORY_ABI,
-          this.avalancheSigner
+          signer
         );
+
+        this.logger.log(`🔑 Using wallet: ${signer.address} for Avalanche deployment`);
 
         const tx = await factory.createEscrow(
           companyWalletAddress,
@@ -286,15 +360,6 @@ export class EscrowContractService {
         throw error;
       }
     }
-
-    // Update wishlist item with contract addresses
-    await this.wishlistRepo.update(wishlistItemId, {
-      ethereumEscrowAddress: result.ethereumAddress,
-      avalancheEscrowAddress: result.avalancheAddress,
-      campaignDurationDays: durationInDays,
-      campaignDeadline: new Date(Date.now() + durationInDays * 24 * 60 * 60 * 1000),
-      isEscrowActive: true,
-    });
 
     return result;
   }
@@ -455,12 +520,7 @@ export class EscrowContractService {
    * Check if contracts are deployed and configured
    */
   isConfigured(): boolean {
-    return !!(
-      this.ethereumFactoryAddress &&
-      this.avalancheFactoryAddress &&
-      this.ethereumSigner &&
-      this.avalancheSigner
-    );
+    return !!(this.ethereumFactoryAddress && this.avalancheFactoryAddress);
   }
 
   /**

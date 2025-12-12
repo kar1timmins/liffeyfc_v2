@@ -94,8 +94,9 @@ export class EscrowController {
       // Use company's primary wallet address (prefer ETH, fallback to AVAX)
       const walletAddress = company.ethAddress || company.avaxAddress!;
 
-      // Deploy escrow contracts
+      // Deploy escrow contracts using user's private key from database
       const result = await this.escrowService.deployEscrowContracts(
+        user.sub, // Pass userId to fetch user's wallet from database
         dto.wishlistItemId,
         walletAddress,
         dto.targetAmountEth,
