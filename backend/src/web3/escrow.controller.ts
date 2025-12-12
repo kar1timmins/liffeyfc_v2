@@ -13,11 +13,12 @@ import { IsString, IsNumber, IsOptional, IsArray, IsNotEmpty, IsIn } from 'class
 import { AuthGuard } from '@nestjs/passport';
 import { EscrowContractService } from './escrow-contract.service';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { WishlistItem } from '../entities/wishlist-item.entity';
 import { Company } from '../entities/company.entity';
 import { EscrowDeployment } from '../entities/escrow-deployment.entity';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { backfillEscrowAddresses } from './backfill-escrow-addresses';
 
 class CreateEscrowDto {
   @IsString()
@@ -41,6 +42,7 @@ export class EscrowController {
 
   constructor(
     private readonly escrowService: EscrowContractService,
+    private readonly dataSource: DataSource,
     @InjectRepository(WishlistItem)
     private wishlistRepo: Repository<WishlistItem>,
     @InjectRepository(Company)
@@ -160,6 +162,28 @@ export class EscrowController {
       this.logger.error('❌ Failed to create escrow:', error);
       throw new HttpException(
         error.message || 'Failed to create escrow contracts',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * Backfill wishlist items with escrow addresses from deployment records
+   * One-time migration endpoint to fix existing data
+   */
+  @Post('backfill-addresses')
+  async backfillAddresses() {
+    try {
+      this.logger.log('🔄 Starting escrow address backfill...');
+      await backfillEscrowAddresses(this.dataSource);
+      return {
+        success: true,
+        message: 'Escrow addresses backfilled successfully',
+      };
+    } catch (error) {
+      this.logger.error('❌ Failed to backfill addresses:', error);
+      throw new HttpException(
+        error.message || 'Failed to backfill escrow addresses',
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
