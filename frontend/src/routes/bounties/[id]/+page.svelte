@@ -56,10 +56,14 @@
 
       if (data.success) {
         bounty = data.data;
-        console.log('Bounty data:', {
+        console.log('📦 Bounty data loaded:', {
+          id: bounty.id,
+          title: bounty.title,
           isEscrowActive: bounty.isEscrowActive,
           ethereumEscrowAddress: bounty.ethereumEscrowAddress,
-          avalancheEscrowAddress: bounty.avalancheEscrowAddress
+          avalancheEscrowAddress: bounty.avalancheEscrowAddress,
+          hasEthAddress: !!bounty.ethereumEscrowAddress,
+          hasAvaxAddress: !!bounty.avalancheEscrowAddress
         });
       } else {
         error = data.message || 'Failed to fetch bounty';
@@ -295,7 +299,7 @@
                   <span class="text-sm">Funds are held securely in blockchain escrow contracts. You can verify transactions on the blockchain explorer.</span>
                 </div>
 
-                {#if (!bounty.ethereumEscrowAddress || bounty.ethereumEscrowAddress === '') && (!bounty.avalancheEscrowAddress || bounty.avalancheEscrowAddress === '')}
+                {#if !bounty.ethereumEscrowAddress && !bounty.avalancheEscrowAddress}
                   <div class="alert alert-warning">
                     <AlertCircle class="w-5 h-5" />
                     <div class="flex-1">
