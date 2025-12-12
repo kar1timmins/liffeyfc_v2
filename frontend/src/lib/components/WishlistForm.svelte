@@ -29,6 +29,7 @@
     // Escrow/bounty fields
     enableEscrow: false,
     targetAmountEth: 0.5,
+    targetAmountAvax: 0,
     durationDays: 30,
     deployToEthereum: true,
     deployToAvalanche: true
@@ -42,6 +43,7 @@
   let isEstimatingGas = $state(false);
 
   const ETH_EUR_RATE = 3200; // Approximate rate for estimation
+  const AVAX_EUR_RATE = 35; // Approximate rate for estimation
 
   const DURATION_PRESETS = [
     { days: 7, label: '1 Week' },
@@ -78,28 +80,41 @@
       priority: 'medium',
       enableEscrow: false,
       targetAmountEth: 0.5,
+      targetAmountAvax: 0,
       durationDays: 30,
       deployToEthereum: true,
       deployToAvalanche: true
     };
   }
 
-  function updateEthAmount() {
+  function updateCryptoAmounts() {
     if (formData.value && parseFloat(formData.value) > 0) {
-      formData.targetAmountEth = Math.round(parseFloat(formData.value) / ETH_EUR_RATE * 10000) / 10000;
+      const eurValue = parseFloat(formData.value);
+      formData.targetAmountEth = Math.round(eurValue / ETH_EUR_RATE * 10000) / 10000;
+      formData.targetAmountAvax = Math.round(eurValue / AVAX_EUR_RATE * 100) / 100;
     }
   }
 
-  function updateEurAmount() {
+  function updateFromEth() {
     if (formData.targetAmountEth > 0) {
-      formData.value = String(Math.round(formData.targetAmountEth * ETH_EUR_RATE * 100) / 100);
+      const eurValue = formData.targetAmountEth * ETH_EUR_RATE;
+      formData.value = String(Math.round(eurValue * 100) / 100);
+      formData.targetAmountAvax = Math.round(eurValue / AVAX_EUR_RATE * 100) / 100;
     }
   }
 
-  // Update ETH amount when EUR value changes
+  function updateFromAvax() {
+    if (formData.targetAmountAvax > 0) {
+      const eurValue = formData.targetAmountAvax * AVAX_EUR_RATE;
+      formData.value = String(Math.round(eurValue * 100) / 100);
+      formData.targetAmountEth = Math.round(eurValue / ETH_EUR_RATE * 10000) / 10000;
+    }
+  }
+
+  // Update crypto amounts when EUR value changes
   $effect(() => {
     if (formData.enableEscrow && formData.value) {
-      updateEthAmount();
+      updateCryptoAmounts();
     }
   });
 
@@ -646,22 +661,62 @@
                   </div>
                 {/if}
 
-                <!-- Target Amount in ETH -->
-                <div class="form-control w-full">
-                  <!-- svelte-ignore a11y_label_has_associated_control -->
-                  <label class="label px-0 pb-2">
-                    <span class="label-text text-xs font-medium">Target Amount (ETH)</span>
-                    <span class="label-text-alt text-xs opacity-60">≈ €{Math.round(formData.targetAmountEth * ETH_EUR_RATE).toLocaleString()}</span>
-                  </label>
-                  <input
-                    type="number"
-                    bind:value={formData.targetAmountEth}
-                    oninput={updateEurAmount}
-                    step="0.1"
-                    min="0.01"
-                    class="input input-bordered input-sm focus:ring-2 focus:ring-primary w-full"
-                    disabled={isSubmitting}
-                  />
+                <!-- Target Amounts -->
+                <div class="space-y-3">
+                  <p class="text-xs font-semibold opacity-70">Target Campaign Amounts</p>
+                  
+                  {#if formData.deployToEthereum}
+                    <div class="form-control w-full">
+                      <label class="label px-0 pb-1">
+                        <span class="label-text text-xs font-medium flex items-center gap-1">
+                          <span class="badge badge-primary badge-xs"></span>
+                          Ethereum Amount
+                        </span>
+                        <span class="label-text-alt text-xs opacity-60">≈ €{Math.round(formData.targetAmountEth * ETH_EUR_RATE).toLocaleString()}</span>
+                      </label>
+                      <div class="join w-full">
+                        <input
+                          type="number"
+                          bind:value={formData.targetAmountEth}
+                          oninput={updateFromEth}
+                          step="0.01"
+                          min="0.01"
+                          class="input input-bordered input-sm join-item focus:ring-2 focus:ring-primary flex-1"
+                          disabled={isSubmitting}
+                        />
+                        <span class="btn btn-sm join-item no-animation pointer-events-none">ETH</span>
+                      </div>
+                    </div>
+                  {/if}
+
+                  {#if formData.deployToAvalanche}
+                    <div class="form-control w-full">
+                      <label class="label px-0 pb-1">
+                        <span class="label-text text-xs font-medium flex items-center gap-1">
+                          <span class="badge badge-error badge-xs"></span>
+                          Avalanche Amount
+                        </span>
+                        <span class="label-text-alt text-xs opacity-60">≈ €{Math.round(formData.targetAmountAvax * AVAX_EUR_RATE).toLocaleString()}</span>
+                      </label>
+                      <div class="join w-full">
+                        <input
+                          type="number"
+                          bind:value={formData.targetAmountAvax}
+                          oninput={updateFromAvax}
+                          step="0.1"
+                          min="0.1"
+                          class="input input-bordered input-sm join-item focus:ring-2 focus:ring-primary flex-1"
+                          disabled={isSubmitting}
+                        />
+                        <span class="btn btn-sm join-item no-animation pointer-events-none">AVAX</span>
+                      </div>
+                    </div>
+                  {/if}
+
+                  <div class="alert alert-info py-2">
+                    <AlertCircle class="w-3 h-3 shrink-0" />
+                    <p class="text-xs">Each network has its own independent campaign goal. Adjust amounts based on current exchange rates.</p>
+                  </div>
                 </div>
 
                 <!-- Campaign Duration -->
