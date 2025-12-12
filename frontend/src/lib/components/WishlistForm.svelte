@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Plus, X, Target, AlertCircle, Euro, Rocket, Calendar } from 'lucide-svelte';
   import { PUBLIC_API_URL } from '$env/static/public';
+import { devLog } from '$lib/env';
   import { authStore } from '$lib/stores/auth';
   import { toastStore } from '$lib/stores/toast';
   import { tick } from 'svelte';
@@ -163,7 +164,7 @@
     if (!walletToCheck) return;
 
     isLoadingBalances = true;
-    console.log('Starting balance fetch for wallet:', walletToCheck);
+    devLog('Starting balance fetch for wallet:', walletToCheck);
     try {
       // Fetch both balances in parallel
       const [ethResponse, avaxResponse] = await Promise.all([
@@ -174,9 +175,9 @@
       // Process Ethereum balance
       if (ethResponse.ok) {
         const ethData = await ethResponse.json();
-        console.log('ETH Response:', ethData);
+        devLog('ETH Response:', ethData);
         ethBalance = ethData.balanceEth;
-        console.log(`ETH Balance set to: ${ethBalance}`);
+        devLog(`ETH Balance set to: ${ethBalance}`);
       } else {
         console.error('Failed to fetch ETH balance:', await ethResponse.text());
         ethBalance = '0.000000';
@@ -185,9 +186,9 @@
       // Process Avalanche balance
       if (avaxResponse.ok) {
         const avaxData = await avaxResponse.json();
-        console.log('AVAX Response:', avaxData);
+        devLog('AVAX Response:', avaxData);
         avaxBalance = avaxData.balanceAvax;
-        console.log(`AVAX Balance set to: ${avaxBalance}`);
+        devLog(`AVAX Balance set to: ${avaxBalance}`);
       } else {
         console.error('Failed to fetch AVAX balance:', await avaxResponse.text());
         avaxBalance = '0.000000';
@@ -198,7 +199,7 @@
       avaxBalance = '0.000000';
       toastStore.add({ message: 'Error fetching wallet balances', type: 'error', ttl: 3000 });
     } finally {
-      console.log('Balance fetch complete, setting isLoadingBalances to false');
+      devLog('Balance fetch complete, setting isLoadingBalances to false');
       isLoadingBalances = false;
     }
   }
@@ -214,13 +215,13 @@
           const gasPriceResponse = await fetch(`${PUBLIC_API_URL}/wallet-balance/gas-price?chain=ethereum`);
           if (gasPriceResponse.ok) {
             const gasPriceData = await gasPriceResponse.json();
-            console.log('ETH gas price response:', gasPriceData);
+            devLog('ETH gas price response:', gasPriceData);
             const gasPriceGwei = parseFloat(gasPriceData.gasPriceGwei);
             if (!isNaN(gasPriceGwei) && gasPriceGwei > 0) {
               const estimatedGas = 500000; // Conservative estimate for contract deployment
               const gasCostEth = (gasPriceGwei * estimatedGas) / 1e9;
               costs.ethereum = gasCostEth.toFixed(6);
-              console.log('ETH gas cost calculated:', costs.ethereum);
+              devLog('ETH gas cost calculated:', costs.ethereum);
             } else {
               console.warn('Invalid ETH gas price:', gasPriceGwei);
               costs.ethereum = '0.005'; // Fallback estimate
@@ -241,13 +242,13 @@
           const gasPriceResponse = await fetch(`${PUBLIC_API_URL}/wallet-balance/gas-price?chain=avalanche`);
           if (gasPriceResponse.ok) {
             const gasPriceData = await gasPriceResponse.json();
-            console.log('AVAX gas price response:', gasPriceData);
+            devLog('AVAX gas price response:', gasPriceData);
             const gasPriceGwei = parseFloat(gasPriceData.gasPriceGwei);
             if (!isNaN(gasPriceGwei) && gasPriceGwei > 0.001) {
               const estimatedGas = 500000;
               const gasCostAvax = (gasPriceGwei * estimatedGas) / 1e9;
               costs.avalanche = gasCostAvax.toFixed(6);
-              console.log('AVAX gas cost calculated:', costs.avalanche);
+              devLog('AVAX gas cost calculated:', costs.avalanche);
             } else {
               console.warn('Invalid AVAX gas price:', gasPriceGwei);
               costs.avalanche = '0.005'; // Fallback estimate

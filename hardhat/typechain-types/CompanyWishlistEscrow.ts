@@ -41,6 +41,7 @@ export interface CompanyWishlistEscrowInterface extends Interface {
       | "isActive"
       | "isFinalized"
       | "isSuccessful"
+      | "masterWallet"
       | "targetAmount"
       | "totalRaised"
   ): FunctionFragment;
@@ -99,6 +100,10 @@ export interface CompanyWishlistEscrowInterface extends Interface {
     values?: undefined
   ): string;
   encodeFunctionData(
+    functionFragment: "masterWallet",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
     functionFragment: "targetAmount",
     values?: undefined
   ): string;
@@ -147,6 +152,10 @@ export interface CompanyWishlistEscrowInterface extends Interface {
   ): Result;
   decodeFunctionResult(
     functionFragment: "isSuccessful",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "masterWallet",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -311,6 +320,8 @@ export interface CompanyWishlistEscrow extends BaseContract {
 
   isSuccessful: TypedContractMethod<[], [boolean], "view">;
 
+  masterWallet: TypedContractMethod<[], [string], "view">;
+
   targetAmount: TypedContractMethod<[], [bigint], "view">;
 
   totalRaised: TypedContractMethod<[], [bigint], "view">;
@@ -378,6 +389,9 @@ export interface CompanyWishlistEscrow extends BaseContract {
   getFunction(
     nameOrSignature: "isSuccessful"
   ): TypedContractMethod<[], [boolean], "view">;
+  getFunction(
+    nameOrSignature: "masterWallet"
+  ): TypedContractMethod<[], [string], "view">;
   getFunction(
     nameOrSignature: "targetAmount"
   ): TypedContractMethod<[], [bigint], "view">;

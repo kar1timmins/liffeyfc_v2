@@ -3,11 +3,12 @@ import { ethers } from "hardhat";
 async function main() {
   console.log("🚀 Deploying EscrowFactory contract...");
 
-  const [deployer] = await ethers.getSigners();
+  const signers = await ethers.getSigners();
+  const deployer = signers[0];
   console.log("📝 Deploying with account:", deployer.address);
 
   // Get account balance
-  const balance = await ethers.provider.getBalance(deployer.address);
+  const balance = await deployer.provider!.getBalance(deployer.address);
   console.log("💰 Account balance:", ethers.formatEther(balance), "ETH");
 
   // Deploy EscrowFactory
@@ -24,8 +25,9 @@ async function main() {
 
   console.log("\n📋 Deployment Summary:");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  console.log("Network:", (await ethers.provider.getNetwork()).name);
-  console.log("Chain ID:", (await ethers.provider.getNetwork()).chainId);
+  const network = await deployer.provider!.getNetwork();
+  console.log("Network:", network.name);
+  console.log("Chain ID:", network.chainId);
   console.log("Factory Address:", factoryAddress);
   console.log("Deployer:", deployer.address);
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");

@@ -25,7 +25,7 @@ const config: HardhatUserConfig = {
     },
     // Ethereum Sepolia Testnet
     sepolia: {
-      url: process.env.ETHEREUM_RPC_URL || "https://eth-sepolia.g.alchemy.com/v2/YOUR-API-KEY",
+      url: process.env.ETHEREUM_RPC_URL || "https://sepolia.drpc.org",
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       chainId: 11155111,
     },

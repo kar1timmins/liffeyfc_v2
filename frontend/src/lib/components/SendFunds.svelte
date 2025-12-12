@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { Send, AlertCircle, Loader, CheckCircle, Copy, WalletCards, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-svelte';
 	import { PUBLIC_API_URL } from '$env/static/public';
+	import { devLog } from '$lib/env';
 	import { authStore } from '$lib/stores/auth';
 	import { toastStore } from '$lib/stores/toast';
 
@@ -113,12 +114,12 @@
 					ethereum: result.data.ethAddress,
 					avalanche: result.data.avaxAddress
 				};
-				console.log('Wallet addresses loaded:', userWalletAddress);
-				currentStep = 'form';
-				// Auto-fetch balance when wallet is loaded
-				// Use setTimeout to ensure reactivity and proper chain selection
-				setTimeout(async () => {
-					console.log('Auto-fetching balance for chain:', selectedChain);
+			devLog('Wallet addresses loaded:', userWalletAddress);
+			currentStep = 'form';
+			// Auto-fetch balance when wallet is loaded
+			// Use setTimeout to ensure reactivity and proper chain selection
+			setTimeout(async () => {
+				devLog('Auto-fetching balance for chain:', selectedChain);
 					await fetchUserBalance();
 				}, 100);
 				// Fetch transaction history
@@ -142,7 +143,7 @@
 
 	async function fetchUserBalance() {
 		if (!userWalletAddress?.[selectedChain]) {
-			console.warn('No wallet address for chain:', selectedChain);
+			devLog('No wallet address for chain:', selectedChain);
 			return;
 		}
 
@@ -150,7 +151,7 @@
 		try {
 			const walletAddr = userWalletAddress[selectedChain];
 			const url = `${PUBLIC_API_URL}/wallet-balance?address=${walletAddr}&chain=${selectedChain}`;
-			console.log('Fetching balance from:', url);
+			devLog('Fetching balance from:', url);
 
 			const response = await fetch(url);
 
@@ -159,12 +160,12 @@
 			}
 
 			const data = await response.json();
-			console.log('Balance response:', data);
+		devLog('Balance response:', data);
 
-			// balanceEth for ethereum, balanceAvax for avalanche
-			const balance = selectedChain === 'ethereum' ? data.balanceEth : data.balanceAvax;
-			userBalance[selectedChain] = parseFloat(balance || '0').toFixed(6);
-			console.log(`Updated ${selectedChain} balance to:`, userBalance[selectedChain]);
+		// balanceEth for ethereum, balanceAvax for avalanche
+		const balance = selectedChain === 'ethereum' ? data.balanceEth : data.balanceAvax;
+		userBalance[selectedChain] = parseFloat(balance || '0').toFixed(6);
+		devLog(`Updated ${selectedChain} balance to:`, userBalance[selectedChain]);
 		} catch (err) {
 			console.error('Balance fetch error:', err);
 			userBalance[selectedChain] = '0';
@@ -252,11 +253,11 @@
 				if (activeBounty) {
 					selectedBountyId = activeBounty.id;
 				}
-				console.log('Address lookup success:', result.data);
+				devLog('Address lookup success:', result.data);
 			} else {
 				lookupError = result.message || 'Wallet address not found in system';
 				lookedUpCompany = null;
-				console.log('Address not found or not associated with any company');
+				devLog('Address not found or not associated with any company');
 			}
 		} catch (err: any) {
 			console.error('Address lookup error:', err);
@@ -445,7 +446,7 @@
 	// Fetch balance when chain changes
 	$effect(() => {
 		if (selectedChain && userWalletAddress?.[selectedChain]) {
-			console.log('Chain changed to:', selectedChain, 'Fetching balance...');
+			devLog('Chain changed to:', selectedChain, 'Fetching balance...');
 			fetchUserBalance();
 		}
 	});

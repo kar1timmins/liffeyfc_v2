@@ -49,7 +49,7 @@ export interface EscrowFactoryInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "createEscrow",
-    values: [AddressLike, BigNumberish, BigNumberish]
+    values: [AddressLike, AddressLike, BigNumberish, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "escrowToCompany",
@@ -193,6 +193,7 @@ export interface EscrowFactory extends BaseContract {
   createEscrow: TypedContractMethod<
     [
       _company: AddressLike,
+      _masterWallet: AddressLike,
       _targetAmount: BigNumberish,
       _durationInDays: BigNumberish
     ],
@@ -252,6 +253,7 @@ export interface EscrowFactory extends BaseContract {
   ): TypedContractMethod<
     [
       _company: AddressLike,
+      _masterWallet: AddressLike,
       _targetAmount: BigNumberish,
       _durationInDays: BigNumberish
     ],
