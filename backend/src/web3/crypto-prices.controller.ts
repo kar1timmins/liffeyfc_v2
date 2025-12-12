@@ -1,0 +1,45 @@
+import { Controller, Get, Post, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import { CryptoPricesService } from './crypto-prices.service';
+
+@Controller('crypto-prices')
+export class CryptoPricesController {
+  private readonly logger = new Logger(CryptoPricesController.name);
+
+  constructor(private readonly pricesService: CryptoPricesService) {}
+
+  @Get()
+  async getPrices() {
+    try {
+      const prices = await this.pricesService.getPrices();
+      return {
+        success: true,
+        data: prices
+      };
+    } catch (error) {
+      this.logger.error('Failed to get crypto prices:', error);
+      throw new HttpException(
+        'Failed to fetch crypto prices',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Post('refresh')
+  async refreshPrices() {
+    try {
+      await this.pricesService.clearCache();
+      const prices = await this.pricesService.getPrices();
+      return {
+        success: true,
+        message: 'Prices refreshed from Chainlink',
+        data: prices
+      };
+    } catch (error) {
+      this.logger.error('Failed to refresh prices:', error);
+      throw new HttpException(
+        'Failed to refresh crypto prices',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+}

@@ -42,8 +42,10 @@
   let isLoadingBalances = $state(false);
   let isEstimatingGas = $state(false);
 
-  const ETH_EUR_RATE = 3200; // Approximate rate for estimation
-  const AVAX_EUR_RATE = 35; // Approximate rate for estimation
+  // Crypto prices from Chainlink (fetched from backend)
+  let ethEurRate = $state(3200); // Default fallback
+  let avaxEurRate = $state(35);  // Default fallback
+  let isLoadingPrices = $state(false);
 
   const DURATION_PRESETS = [
     { days: 7, label: '1 Week' },
@@ -90,24 +92,48 @@
   function updateCryptoAmounts() {
     if (formData.value && parseFloat(formData.value) > 0) {
       const eurValue = parseFloat(formData.value);
-      formData.targetAmountEth = Math.round(eurValue / ETH_EUR_RATE * 10000) / 10000;
-      formData.targetAmountAvax = Math.round(eurValue / AVAX_EUR_RATE * 100) / 100;
+      formData.targetAmountEth = Math.round(eurValue / ethEurRate * 10000) / 10000;
+      formData.targetAmountAvax = Math.round(eurValue / avaxEurRate * 100) / 100;
     }
   }
 
   function updateFromEth() {
     if (formData.targetAmountEth > 0) {
-      const eurValue = formData.targetAmountEth * ETH_EUR_RATE;
+      const eurValue = formData.targetAmountEth * ethEurRate;
       formData.value = String(Math.round(eurValue * 100) / 100);
-      formData.targetAmountAvax = Math.round(eurValue / AVAX_EUR_RATE * 100) / 100;
+      formData.targetAmountAvax = Math.round(eurValue / avaxEurRate * 100) / 100;
     }
   }
 
   function updateFromAvax() {
     if (formData.targetAmountAvax > 0) {
-      const eurValue = formData.targetAmountAvax * AVAX_EUR_RATE;
+      const eurValue = formData.targetAmountAvax * avaxEurRate;
       formData.value = String(Math.round(eurValue * 100) / 100);
-      formData.targetAmountEth = Math.round(eurValue / ETH_EUR_RATE * 10000) / 10000;
+      formData.targetAmountEth = Math.round(eurValue / ethEurRate * 10000) / 10000;
+    }
+  }
+
+  async function fetchCryptoPrices() {
+    isLoadingPrices = true;
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const response = await fetch(`${apiUrl}/crypto-prices`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          ethEurRate = data.data.ethEur;
+          avaxEurRate = data.data.avaxEur;
+          console.log('📊 Chainlink prices loaded:', { ethEurRate, avaxEurRate });
+          // Recalculate amounts with new rates
+          if (formData.value) {
+            updateCryptoAmounts();
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch crypto prices, using defaults:', err);
+    } finally {
+      isLoadingPrices = false;
     }
   }
 
@@ -122,6 +148,8 @@
     if (formData.enableEscrow && companyWallet) {
       // Wait for Svelte to render the conditional block
       await tick();
+      // Fetch latest crypto prices from Chainlink
+      await fetchCryptoPrices();
       updateBalances();
       estimateGasCosts();
     }
@@ -672,7 +700,7 @@
                           <span class="badge badge-primary badge-xs"></span>
                           Ethereum Amount
                         </span>
-                        <span class="label-text-alt text-xs opacity-60">≈ €{Math.round(formData.targetAmountEth * ETH_EUR_RATE).toLocaleString()}</span>
+                        <span class="label-text-alt text-xs opacity-60">≈ €{Math.round(formData.targetAmountEth * ethEurRate).toLocaleString()}</span>
                       </label>
                       <div class="join w-full">
                         <input
@@ -696,7 +724,7 @@
                           <span class="badge badge-error badge-xs"></span>
                           Avalanche Amount
                         </span>
-                        <span class="label-text-alt text-xs opacity-60">≈ €{Math.round(formData.targetAmountAvax * AVAX_EUR_RATE).toLocaleString()}</span>
+                        <span class="label-text-alt text-xs opacity-60">≈ €{Math.round(formData.targetAmountAvax * avaxEurRate).toLocaleString()}</span>
                       </label>
                       <div class="join w-full">
                         <input
@@ -715,7 +743,14 @@
 
                   <div class="alert alert-info py-2">
                     <AlertCircle class="w-3 h-3 shrink-0" />
-                    <p class="text-xs">Each network has its own independent campaign goal. Adjust amounts based on current exchange rates.</p>
+                    <p class="text-xs">
+                      {#if isLoadingPrices}
+                        <span class="loading loading-spinner loading-xs"></span>
+                        Loading real-time prices from Chainlink...
+                      {:else}
+                        Prices from Chainlink oracle: 1 ETH ≈ €{ethEurRate.toLocaleString()}, 1 AVAX ≈ €{avaxEurRate.toFixed(2)}
+                      {/if}
+                    </p>
                   </div>
                 </div>
 

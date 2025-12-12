@@ -5,10 +5,12 @@ import { WalletController } from './wallet.controller';
 import { EscrowController } from './escrow.controller';
 import { BountiesController } from './bounties.controller';
 import { WalletBalanceController } from './wallet-balance.controller';
+import { CryptoPricesController } from './crypto-prices.controller';
 import { Web3Service } from './web3.service';
 import { WalletGenerationService } from './wallet-generation.service';
 import { EscrowContractService } from './escrow-contract.service';
 import { BountiesService } from './bounties.service';
+import { CryptoPricesService } from './crypto-prices.service';
 import { NonceService } from './nonce.service';
 import { RedisNonceService } from './nonce.redis.service';
 import { UserWallet } from '../entities/user-wallet.entity';
@@ -34,8 +36,8 @@ const nonceProvider: Provider = {
   imports: [
     TypeOrmModule.forFeature([UserWallet, CompanyWallet, WishlistItem, User, Company, EscrowDeployment, Contribution]),
   ],
-  controllers: [Web3Controller, WalletController, EscrowController, BountiesController, WalletBalanceController],
-  providers: [Web3Service, WalletGenerationService, EscrowContractService, BountiesService, nonceProvider],
-  exports: [Web3Service, WalletGenerationService, EscrowContractService, BountiesService, NonceService],
+  controllers: [Web3Controller, WalletController, EscrowController, BountiesController, WalletBalanceController, CryptoPricesController],
+  providers: [Web3Service, WalletGenerationService, EscrowContractService, BountiesService, CryptoPricesService, nonceProvider],
+  exports: [Web3Service, WalletGenerationService, EscrowContractService, BountiesService, CryptoPricesService, NonceService],
 })
 export class Web3Module {}
