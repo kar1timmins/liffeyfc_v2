@@ -236,26 +236,22 @@
 					<div class="p-3 rounded-lg bg-gradient-to-br from-success/20 to-success/10">
 						<Wallet size={24} class="text-success" />
 					</div>
-					<h2 class="card-title text-xl">Web3 Wallets</h2>
+					<h2 class="card-title text-xl">Send Funds</h2>
 				</div>
-				<p class="text-base-content/70 mb-4 flex-grow">Connect and manage your Web3 wallets for blockchain interactions.</p>
+				<p class="text-base-content/70 mb-4 flex-grow">Transfer cryptocurrency to any wallet address on supported networks.</p>
 				<div class="card-actions">
 					{#if $authStore.isAuthenticated}
-						{#if $isConnected}
-							<div class="w-full space-y-2">
-								<div class="p-3 rounded-lg bg-success/10 border border-success/20">
-									<div class="text-xs text-success font-semibold mb-1">Connected</div>
-									<div class="font-mono text-sm">{$formattedAddress}</div>
-								</div>
-								<button class="btn btn-outline btn-error btn-sm btn-block" onclick={() => walletStore.disconnect()}>
-									Disconnect Wallet
-								</button>
-							</div>
-						{:else}
-							<button class="btn btn-success btn-block" onclick={connectWallet}>
-								Connect Wallet
-							</button>
-						{/if}
+						<button 
+							class="btn btn-success btn-block"
+							onclick={() => {
+								const element = document.querySelector('[data-send-funds]');
+								if (element) {
+									element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+								}
+							}}
+						>
+							Go to Send Funds
+						</button>
 					{:else}
 						<button class="btn btn-disabled btn-block" disabled>
 							Sign in to manage
@@ -267,7 +263,7 @@
 	</div>
 
 	<!-- Send Funds Section -->
-	<div class="mt-12">
+	<div class="mt-12" data-send-funds>
 		<div class="mb-6">
 			<h2 class="text-3xl font-bold">Transactions</h2>
 			<p class="text-base-content/70">Send funds to any wallet address on supported networks</p>
