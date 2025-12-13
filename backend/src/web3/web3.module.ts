@@ -20,6 +20,8 @@ import { User } from '../entities/user.entity';
 import { Company } from '../entities/company.entity';
 import { EscrowDeployment } from '../entities/escrow-deployment.entity';
 import { Contribution } from '../entities/contribution.entity';
+import { UsersModule } from '../users/users.module';
+import { CommonModule } from '../common/common.module';
 
 const nonceProvider: Provider = {
   provide: NonceService,
@@ -35,6 +37,8 @@ const nonceProvider: Provider = {
 @Module({
   imports: [
     TypeOrmModule.forFeature([UserWallet, CompanyWallet, WishlistItem, User, Company, EscrowDeployment, Contribution]),
+    UsersModule,
+    CommonModule,
   ],
   controllers: [Web3Controller, WalletController, EscrowController, BountiesController, WalletBalanceController, CryptoPricesController],
   providers: [Web3Service, WalletGenerationService, EscrowContractService, BountiesService, CryptoPricesService, nonceProvider],

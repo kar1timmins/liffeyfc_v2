@@ -24,7 +24,9 @@ contract EscrowFactory {
         address indexed company,
         uint256 targetAmount,
         uint256 deadline,
-        uint256 timestamp
+        uint256 timestamp,
+        string campaignName,
+        string campaignDescription
     );
     
     /**
@@ -39,14 +41,18 @@ contract EscrowFactory {
         address _company,
         address _masterWallet,
         uint256 _targetAmount,
-        uint256 _durationInDays
+        uint256 _durationInDays,
+        string calldata _campaignName,
+        string calldata _campaignDescription
     ) external returns (address escrowAddress) {
         // Deploy new escrow contract
         CompanyWishlistEscrow escrow = new CompanyWishlistEscrow(
             _company,
             _masterWallet,
             _targetAmount,
-            _durationInDays
+            _durationInDays,
+            _campaignName,
+            _campaignDescription
         );
         
         escrowAddress = address(escrow);
@@ -61,7 +67,9 @@ contract EscrowFactory {
             _company,
             _targetAmount,
             block.timestamp + (_durationInDays * 1 days),
-            block.timestamp
+            block.timestamp,
+            _campaignName,
+            _campaignDescription
         );
         
         return escrowAddress;
@@ -104,7 +112,9 @@ contract EscrowFactory {
         uint256 targetAmount,
         uint256 deadline,
         bool isFinalized,
-        bool isSuccessful
+        bool isSuccessful,
+        string memory campaignName,
+        string memory campaignDescription
     ) {
         CompanyWishlistEscrow escrow = CompanyWishlistEscrow(payable(_escrow));
         
@@ -114,5 +124,7 @@ contract EscrowFactory {
         deadline = escrow.deadline();
         isFinalized = escrow.isFinalized();
         isSuccessful = escrow.isSuccessful();
+        campaignName = escrow.campaignName();
+        campaignDescription = escrow.campaignDescription();
     }
 }

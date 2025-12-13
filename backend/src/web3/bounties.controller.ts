@@ -12,6 +12,8 @@ import {
 } from '@nestjs/common';
 import { IsString, IsNumber, IsOptional, IsNotEmpty } from 'class-validator';
 import { BountiesService } from './bounties.service';
+import { UsersService } from '../users/users.service';
+import { GcpStorageService } from '../common/gcp-storage.service';
 import { AuthGuard } from '@nestjs/passport';
 import { CurrentUser } from '../auth/current-user.decorator';
 
@@ -29,13 +31,25 @@ class CreateBountyDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @IsString()
+  @IsOptional()
+  campaignName?: string;
+
+  @IsString()
+  @IsOptional()
+  campaignDescription?: string;
 }
 
 @Controller('bounties')
 export class BountiesController {
   private readonly logger = new Logger(BountiesController.name);
 
-  constructor(private readonly bountiesService: BountiesService) {}
+  constructor(
+    private readonly bountiesService: BountiesService,
+    private readonly usersService: UsersService,
+    private readonly gcpStorageService: GcpStorageService,
+  ) {}
 
   /**
    * Get all active bounties (public)
@@ -52,6 +66,36 @@ export class BountiesController {
         category,
         companyId,
       });
+
+      // For each bounty, attach owner sanitized data and signed profile photo URL where applicable
+      await Promise.all(
+        bounties.map(async (bounty) => {
+          try {
+            const ownerId = bounty.company?.ownerId;
+            if (ownerId) {
+              const user = await this.usersService.findById(ownerId);
+              if (user) {
+                let profileUrl = user.profilePhotoUrl ?? null;
+                if (profileUrl && !profileUrl.startsWith('http')) {
+                  try {
+                    profileUrl = await this.gcpStorageService.generateSignedUrl(profileUrl);
+                  } catch (err) {
+                    // keep original path if signed url generation fails
+                    this.logger.warn(`Failed to generate signed URL for user ${ownerId}: ${err.message}`);
+                  }
+                }
+                bounty.company.owner = {
+                  id: user.id,
+                  name: user.name ?? null,
+                  profilePhotoUrl: profileUrl,
+                } as any;
+              }
+            }
+          } catch (err) {
+            this.logger.warn(`Failed to attach owner data for bounty ${bounty.id}: ${err.message}`);
+          }
+        }),
+      );
 
       return {
         success: true,
@@ -77,6 +121,26 @@ export class BountiesController {
 
       if (!bounty) {
         throw new HttpException('Bounty not found', HttpStatus.NOT_FOUND);
+      }
+
+      // Attach owner data for single bounty
+      if (bounty?.company?.ownerId) {
+        const owner = await this.usersService.findById(bounty.company.ownerId);
+        if (owner) {
+          let profileUrl = owner.profilePhotoUrl ?? null;
+          if (profileUrl && !profileUrl.startsWith('http')) {
+            try {
+              profileUrl = await this.gcpStorageService.generateSignedUrl(profileUrl);
+            } catch (err) {
+              this.logger.warn(`Failed to generate signed URL for user ${owner.id}: ${err.message}`);
+            }
+          }
+          bounty.company.owner = {
+            id: owner.id,
+            name: owner.name ?? null,
+            profilePhotoUrl: profileUrl,
+          } as any;
+        }
       }
 
       return {
@@ -155,6 +219,32 @@ export class BountiesController {
     try {
       const contributors = await this.bountiesService.getContributors(id);
 
+      // Enrich each contributor with user profile (if available) and signed avatar URL
+      await Promise.all(
+        contributors.map(async (contributor) => {
+          try {
+            const user = await this.usersService.findByWallet(contributor.address);
+            if (user) {
+              let profileUrl = user.profilePhotoUrl ?? null;
+              if (profileUrl && !profileUrl.startsWith('http')) {
+                try {
+                  profileUrl = await this.gcpStorageService.generateSignedUrl(profileUrl);
+                } catch (err) {
+                  this.logger.warn(`Failed to generate signed URL for contributor ${user.id}: ${err.message}`);
+                }
+              }
+              contributor.user = {
+                id: user.id,
+                name: user.name ?? null,
+                profilePhotoUrl: profileUrl,
+              } as any;
+            }
+          } catch (err) {
+            this.logger.warn(`Failed to enrich contributor ${contributor.address}: ${err.message}`);
+          }
+        }),
+      );
+
       return {
         success: true,
         data: contributors,
@@ -197,6 +287,35 @@ export class BountiesController {
   async getCompanyBounties(@Param('companyId') companyId: string) {
     try {
       const bounties = await this.bountiesService.findByCompany(companyId);
+
+      // Attach owner data for each bounty similar to /bounties endpoint
+      await Promise.all(
+        bounties.map(async (bounty) => {
+          try {
+            const ownerId = bounty.company?.ownerId;
+            if (ownerId) {
+              const user = await this.usersService.findById(ownerId);
+              if (user) {
+                let profileUrl = user.profilePhotoUrl ?? null;
+                if (profileUrl && !profileUrl.startsWith('http')) {
+                  try {
+                    profileUrl = await this.gcpStorageService.generateSignedUrl(profileUrl);
+                  } catch (err) {
+                    this.logger.warn(`Failed to generate signed URL for user ${ownerId}: ${err.message}`);
+                  }
+                }
+                bounty.company.owner = {
+                  id: user.id,
+                  name: user.name ?? null,
+                  profilePhotoUrl: profileUrl,
+                } as any;
+              }
+            }
+          } catch (err) {
+            this.logger.warn(`Failed to attach owner data for bounty ${bounty.id}: ${err.message}`);
+          }
+        }),
+      );
 
       return {
         success: true,

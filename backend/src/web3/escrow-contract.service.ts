@@ -10,10 +10,10 @@ import { CompanyWallet } from '../entities/company-wallet.entity';
 
 // ABI for EscrowFactory contract
 const ESCROW_FACTORY_ABI = [
-  "function createEscrow(address _company, address _masterWallet, uint256 _targetAmount, uint256 _durationInDays) external returns (address)",
+  "function createEscrow(address _company, address _masterWallet, uint256 _targetAmount, uint256 _durationInDays, string _campaignName, string _campaignDescription) external returns (address)",
   "function getCompanyEscrows(address _company) external view returns (address[])",
-  "function getEscrowDetails(address _escrow) external view returns (address company, uint256 totalRaised, uint256 targetAmount, uint256 deadline, bool isFinalized, bool isSuccessful)",
-  "event EscrowCreated(address indexed escrowAddress, address indexed company, uint256 targetAmount, uint256 deadline, uint256 timestamp)"
+  "function getEscrowDetails(address _escrow) external view returns (address company, uint256 totalRaised, uint256 targetAmount, uint256 deadline, bool isFinalized, bool isSuccessful, string campaignName, string campaignDescription)",
+  "event EscrowCreated(address indexed escrowAddress, address indexed company, uint256 targetAmount, uint256 deadline, uint256 timestamp, string campaignName, string campaignDescription)"
 ];
 
 // ABI for CompanyWishlistEscrow contract
@@ -31,6 +31,8 @@ const ESCROW_ABI = [
   "function totalRaised() external view returns (uint256)",
   "function isFinalized() external view returns (bool)",
   "function isSuccessful() external view returns (bool)",
+  "function campaignName() external view returns (string)",
+  "function campaignDescription() external view returns (string)",
   "function contributors(uint256 index) external view returns (address)",
   "function contributions(address contributor) external view returns (uint256)",
   "event ContributionReceived(address indexed contributor, uint256 amount, uint256 totalRaised)",
@@ -65,6 +67,8 @@ export interface CampaignStatus {
   progressPercentage: number;
   isActive: boolean;
   contributors?: ContributorInfo[];
+  campaignName?: string | null;
+  campaignDescription?: string | null;
 }
 
 @Injectable()
@@ -264,7 +268,9 @@ export class EscrowContractService {
     masterWalletAddress: string,
     targetAmountEth: number,
     durationInDays: number,
-    chains: ('ethereum' | 'avalanche')[] = ['ethereum', 'avalanche']
+    chains: ('ethereum' | 'avalanche')[] = ['ethereum', 'avalanche'],
+    campaignName: string | null = null,
+    campaignDescription: string | null = null,
   ): Promise<EscrowDeploymentResult> {
     this.logger.log(`📝 Deploying escrow contracts for wishlist item: ${wishlistItemId} by user: ${userId}`);
     this.logger.log(`   Company Wallet: ${companyWalletAddress}`);
@@ -319,7 +325,9 @@ export class EscrowContractService {
           companyWalletAddress,
           masterWalletAddress,
           targetAmountWei,
-          durationInDays
+          durationInDays,
+          campaignName || '',
+          campaignDescription || ''
         );
 
         const receipt = await tx.wait();
@@ -338,7 +346,7 @@ export class EscrowContractService {
 
         if (event) {
           result.ethereumAddress = event.args.escrowAddress;
-          this.logger.log(`✅ Ethereum escrow deployed: ${result.ethereumAddress}`);
+          this.logger.log(`✅ Ethereum escrow deployed: ${result.ethereumAddress} (${event.args.campaignName || 'Unnamed'})`);
         }
       } catch (error) {
         this.logger.error('❌ Failed to deploy Ethereum escrow:', error);
@@ -363,7 +371,9 @@ export class EscrowContractService {
           companyWalletAddress,
           masterWalletAddress,
           targetAmountWei,
-          durationInDays
+          durationInDays,
+          campaignName || '',
+          campaignDescription || ''
         );
 
         const receipt = await tx.wait();
@@ -382,7 +392,7 @@ export class EscrowContractService {
 
         if (event) {
           result.avalancheAddress = event.args.escrowAddress;
-          this.logger.log(`✅ Avalanche escrow deployed: ${result.avalancheAddress}`);
+          this.logger.log(`✅ Avalanche escrow deployed: ${result.avalancheAddress} (${event.args.campaignName || 'Unnamed'})`);
         }
       } catch (error) {
         this.logger.error('❌ Failed to deploy Avalanche escrow:', error);
@@ -402,7 +412,9 @@ export class EscrowContractService {
     companyWalletAddress: string,
     targetAmountEth: number,
     durationInDays: number,
-    chains: ('ethereum' | 'avalanche')[] = ['ethereum', 'avalanche']
+    chains: ('ethereum' | 'avalanche')[] = ['ethereum', 'avalanche'],
+    campaignName: string | null = null,
+    campaignDescription: string | null = null,
   ) {
     this.logger.log(`📊 Estimating gas costs for escrow deployment`);
 
@@ -414,8 +426,9 @@ export class EscrowContractService {
     // Get current gas prices using fee data (supports EIP-1559 networks)
     const ethereumFeeData = chains.includes('ethereum') ? await this.ethereumProvider.getFeeData() : null;
     const avalancheFeeData = chains.includes('avalanche') ? await this.avalancheProvider.getFeeData() : null;
-    const ethereumGasPrice = ethereumFeeData ? (ethereumFeeData.gasPrice ?? ethereumFeeData.maxFeePerGas ?? ethereumFeeData.maxPriorityFeePerGas) : null;
-    const avalancheGasPrice = avalancheFeeData ? (avalancheFeeData.gasPrice ?? avalancheFeeData.maxFeePerGas ?? avalancheFeeData.maxPriorityFeePerGas) : null;
+    // Prefer maxFeePerGas (EIP-1559), otherwise fall back to gasPrice or priority fee
+    const ethereumGasPrice = ethereumFeeData ? (ethereumFeeData.maxFeePerGas ?? ethereumFeeData.gasPrice ?? ethereumFeeData.maxPriorityFeePerGas) : null;
+    const avalancheGasPrice = avalancheFeeData ? (avalancheFeeData.maxFeePerGas ?? avalancheFeeData.gasPrice ?? avalancheFeeData.maxPriorityFeePerGas) : null;
 
     // Estimate Ethereum deployment
     if (chains.includes('ethereum') && this.ethereumFactoryAddress && ethereumGasPrice) {
@@ -434,7 +447,9 @@ export class EscrowContractService {
           companyWalletAddress,
           signer.address, // masterWallet for fund forwarding
           targetAmountWei,
-          durationInDays
+          durationInDays,
+          campaignName || '',
+          campaignDescription || ''
         );
 
         const gasCostWei = estimatedGas * ethereumGasPrice;
@@ -475,7 +490,9 @@ export class EscrowContractService {
           companyWalletAddress,
           signer.address, // masterWallet for fund forwarding
           targetAmountWei,
-          durationInDays
+          durationInDays,
+          campaignName || '',
+          campaignDescription || ''
         );
 
         const gasCostWei = estimatedGas * avalancheGasPrice;
@@ -542,6 +559,16 @@ export class EscrowContractService {
     // Optionally include contributor details
     if (includeContributors && Number(contributorCount) > 0) {
       status.contributors = await this.getContributors(escrowAddress, Number(contributorCount), chain);
+    }
+
+    try {
+      // Attempt to read name & description from contract
+      const name = await escrow.campaignName();
+      const description = await escrow.campaignDescription();
+      status.campaignName = name || null;
+      status.campaignDescription = description || null;
+    } catch (err) {
+      // Not all contracts or older versions may have these; ignore errors
     }
 
     return status;

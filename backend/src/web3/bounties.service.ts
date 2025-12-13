@@ -19,6 +19,8 @@ export interface BountyDeployment {
   contractAddress: string;
   deploymentTxHash?: string;
   deployedAt: string;
+  campaignName?: string | null;
+  campaignDescription?: string | null;
 }
 
 export interface BountyResponse {
@@ -38,6 +40,7 @@ export interface BountyResponse {
     industry: string;
     avatar?: string;
     ownerId: string;
+    owner?: { id: string; name?: string | null; profilePhotoUrl?: string | null };
   };
   isEscrowActive: boolean;
   ethereumEscrowAddress: string | null;
@@ -476,6 +479,8 @@ export class BountiesService {
         contractAddress: deployment.contractAddress,
         deploymentTxHash: deployment.deploymentTxHash,
         deployedAt: deployment.createdAt.toISOString(),
+        campaignName: deployment.campaignName || null,
+        campaignDescription: deployment.campaignDescription || null,
       }));
     } catch (error) {
       this.logger.warn(`⚠️  Failed to fetch deployments for ${wishlistItem.id}:`, error.message);

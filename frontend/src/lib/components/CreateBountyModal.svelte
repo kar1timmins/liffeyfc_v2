@@ -29,6 +29,8 @@
   let targetAmountEur = $state(wishlistItem.value || 10000);
   let targetAmountEth = $state(0.5);
   let durationDays = $state(30);
+  let campaignName = $state(wishlistItem.title || '');
+  let campaignDescription = $state(wishlistItem.description || '');
   let deployToEthereum = $state(true);
   let deployToAvalanche = $state(true);
   
@@ -130,6 +132,8 @@
           wishlistItemId: wishlistItem.id,
           targetAmountEur: roundedEurAmount,
           durationInDays: roundedDurationDays,
+          campaignName,
+          campaignDescription,
         }),
       });
 
@@ -151,6 +155,8 @@
           targetAmountEth: roundedEthAmount,
           durationInDays: roundedDurationDays,
           chains,
+          campaignName,
+          campaignDescription,
         }),
       });
 
@@ -234,6 +240,37 @@
           </div>
 
           <!-- Target Amount -->
+          <!-- Campaign Name and Description -->
+          <div class="form-control mb-4">
+            <label class="label" for="campaign-name">
+              <span class="label-text font-semibold">Campaign Name</span>
+            </label>
+            <input
+              id="campaign-name"
+              type="text"
+              class="input input-bordered w-full"
+              bind:value={campaignName}
+              maxlength={255}
+            />
+            <div class="label">
+              <span class="label-text-alt opacity-70">Display name for this escrow campaign</span>
+            </div>
+          </div>
+
+          <div class="form-control mb-4">
+            <label class="label" for="campaign-description">
+              <span class="label-text font-semibold">Campaign Description</span>
+            </label>
+            <textarea
+              id="campaign-description"
+              class="textarea textarea-bordered w-full"
+              rows={3}
+              bind:value={campaignDescription}
+            />
+            <div class="label">
+              <span class="label-text-alt opacity-70">Short purpose or details for this campaign</span>
+            </div>
+          </div>
           <div class="form-control mb-4">
             <div class="label">
               <span class="label-text font-semibold">Target Amount</span>

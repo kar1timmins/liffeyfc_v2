@@ -405,6 +405,8 @@ import { devLog } from '$lib/env';
             targetAmountEth: roundedEthAmount,
             durationInDays: roundedDurationDays,
             chains,
+            campaignName: formData.title,
+            campaignDescription: formData.description || '',
           }),
         });
 

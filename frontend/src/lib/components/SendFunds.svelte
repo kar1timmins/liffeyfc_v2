@@ -688,7 +688,7 @@
 									{#each lookedUpCompany.bounties as bounty (bounty.id)}
 										{#if bounty.status === 'active'}
 											<option value={bounty.id}>
-												{bounty.title} ({bounty.currentAmount}/{bounty.targetAmount} {bounty.chain === 'ethereum' ? 'ETH' : 'AVAX'})
+												{(bounty.deployments && bounty.deployments.length > 0 && bounty.deployments[0].campaignName) ? bounty.deployments[0].campaignName : bounty.title} ({bounty.currentAmount}/{bounty.targetAmount} {bounty.chain === 'ethereum' ? 'ETH' : 'AVAX'})
 											</option>
 										{/if}
 									{/each}
@@ -701,7 +701,7 @@
 										<div class="bg-base-200/50 rounded p-3 space-y-2 border border-success/20">
 											<div class="flex justify-between items-start">
 												<div>
-													<div class="font-semibold">{selectedBounty.title}</div>
+													<div class="font-semibold">{(selectedBounty.deployments && selectedBounty.deployments.length > 0 && selectedBounty.deployments[0].campaignName) ? selectedBounty.deployments[0].campaignName : selectedBounty.title}</div>
 													{#if selectedBounty.description}
 														<p class="text-xs opacity-70 mt-1">{selectedBounty.description}</p>
 													{/if}

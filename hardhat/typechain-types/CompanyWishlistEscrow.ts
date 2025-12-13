@@ -26,6 +26,8 @@ import type {
 export interface CompanyWishlistEscrowInterface extends Interface {
   getFunction(
     nameOrSignature:
+      | "campaignDescription"
+      | "campaignName"
       | "claimRefund"
       | "company"
       | "contribute"
@@ -54,6 +56,14 @@ export interface CompanyWishlistEscrowInterface extends Interface {
       | "RefundIssued"
   ): EventFragment;
 
+  encodeFunctionData(
+    functionFragment: "campaignDescription",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "campaignName",
+    values?: undefined
+  ): string;
   encodeFunctionData(
     functionFragment: "claimRefund",
     values?: undefined
@@ -112,6 +122,14 @@ export interface CompanyWishlistEscrowInterface extends Interface {
     values?: undefined
   ): string;
 
+  decodeFunctionResult(
+    functionFragment: "campaignDescription",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "campaignName",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(
     functionFragment: "claimRefund",
     data: BytesLike
@@ -272,6 +290,10 @@ export interface CompanyWishlistEscrow extends BaseContract {
     event?: TCEvent
   ): Promise<this>;
 
+  campaignDescription: TypedContractMethod<[], [string], "view">;
+
+  campaignName: TypedContractMethod<[], [string], "view">;
+
   claimRefund: TypedContractMethod<[], [void], "nonpayable">;
 
   company: TypedContractMethod<[], [string], "view">;
@@ -330,6 +352,12 @@ export interface CompanyWishlistEscrow extends BaseContract {
     key: string | FunctionFragment
   ): T;
 
+  getFunction(
+    nameOrSignature: "campaignDescription"
+  ): TypedContractMethod<[], [string], "view">;
+  getFunction(
+    nameOrSignature: "campaignName"
+  ): TypedContractMethod<[], [string], "view">;
   getFunction(
     nameOrSignature: "claimRefund"
   ): TypedContractMethod<[], [void], "nonpayable">;

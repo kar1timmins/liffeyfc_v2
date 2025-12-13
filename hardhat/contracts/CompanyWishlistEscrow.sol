@@ -23,6 +23,8 @@ contract CompanyWishlistEscrow {
     uint256 public totalRaised;
     bool public isFinalized;
     bool public isSuccessful;
+    string public campaignName;
+    string public campaignDescription;
     
     // Mapping to track individual contributions
     mapping(address => uint256) public contributions;
@@ -57,7 +59,9 @@ contract CompanyWishlistEscrow {
         address _company,
         address _masterWallet,
         uint256 _targetAmount,
-        uint256 _durationInDays
+        uint256 _durationInDays,
+        string memory _campaignName,
+        string memory _campaignDescription
     ) {
         if (_company == address(0)) revert InvalidAddress();
         if (_masterWallet == address(0)) revert InvalidAddress();
@@ -69,6 +73,8 @@ contract CompanyWishlistEscrow {
         creator = msg.sender;
         targetAmount = _targetAmount;
         deadline = block.timestamp + (_durationInDays * 1 days);
+        campaignName = _campaignName;
+        campaignDescription = _campaignDescription;
     }
     
     /**

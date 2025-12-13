@@ -13,10 +13,12 @@ import { ConnectWalletDto, VerifySignatureDto } from './dto/connect-wallet.dto';
 export class Web3Service {
   private readonly chainConfigs: Map<string, ChainInfo>;
   private readonly providers: Map<string, ethers.JsonRpcProvider>;
+  private readonly overrides?: Map<string, ethers.JsonRpcProvider>;
 
-  constructor() {
+  constructor(overrides?: Map<string, ethers.JsonRpcProvider>) {
     this.chainConfigs = new Map();
     this.providers = new Map();
+    this.overrides = overrides;
     this.initializeChains();
   }
 
@@ -78,7 +80,7 @@ export class Web3Service {
 
     // Initialize providers
     this.chainConfigs.forEach((config, chainId) => {
-      const provider = new ethers.JsonRpcProvider(config.rpcUrls[0]);
+      const provider = this.overrides?.get(chainId) ?? new ethers.JsonRpcProvider(config.rpcUrls[0]);
       this.providers.set(chainId, provider);
     });
   }

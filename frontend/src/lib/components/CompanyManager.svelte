@@ -1345,6 +1345,12 @@
                                             <div class="text-[10px] opacity-60">
                                               {new Date(deployment.deployedAt).toLocaleDateString()} {new Date(deployment.deployedAt).toLocaleTimeString()}
                                             </div>
+                                              {#if deployment.campaignName}
+                                                <div class="mt-1 text-sm font-semibold">{deployment.campaignName}</div>
+                                              {/if}
+                                              {#if deployment.campaignDescription}
+                                                <div class="text-xs opacity-80">{deployment.campaignDescription}</div>
+                                              {/if}
                                           </div>
                                         {/each}
                                       </div>

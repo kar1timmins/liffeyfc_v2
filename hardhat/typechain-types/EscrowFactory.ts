@@ -49,7 +49,14 @@ export interface EscrowFactoryInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "createEscrow",
-    values: [AddressLike, AddressLike, BigNumberish, BigNumberish]
+    values: [
+      AddressLike,
+      AddressLike,
+      BigNumberish,
+      BigNumberish,
+      string,
+      string
+    ]
   ): string;
   encodeFunctionData(
     functionFragment: "escrowToCompany",
@@ -117,14 +124,18 @@ export namespace EscrowCreatedEvent {
     company: AddressLike,
     targetAmount: BigNumberish,
     deadline: BigNumberish,
-    timestamp: BigNumberish
+    timestamp: BigNumberish,
+    campaignName: string,
+    campaignDescription: string
   ];
   export type OutputTuple = [
     escrowAddress: string,
     company: string,
     targetAmount: bigint,
     deadline: bigint,
-    timestamp: bigint
+    timestamp: bigint,
+    campaignName: string,
+    campaignDescription: string
   ];
   export interface OutputObject {
     escrowAddress: string;
@@ -132,6 +143,8 @@ export namespace EscrowCreatedEvent {
     targetAmount: bigint;
     deadline: bigint;
     timestamp: bigint;
+    campaignName: string;
+    campaignDescription: string;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -195,7 +208,9 @@ export interface EscrowFactory extends BaseContract {
       _company: AddressLike,
       _masterWallet: AddressLike,
       _targetAmount: BigNumberish,
-      _durationInDays: BigNumberish
+      _durationInDays: BigNumberish,
+      _campaignName: string,
+      _campaignDescription: string
     ],
     [string],
     "nonpayable"
@@ -222,13 +237,15 @@ export interface EscrowFactory extends BaseContract {
   getEscrowDetails: TypedContractMethod<
     [_escrow: AddressLike],
     [
-      [string, bigint, bigint, bigint, boolean, boolean] & {
+      [string, bigint, bigint, bigint, boolean, boolean, string, string] & {
         company: string;
         totalRaised: bigint;
         targetAmount: bigint;
         deadline: bigint;
         isFinalized: boolean;
         isSuccessful: boolean;
+        campaignName: string;
+        campaignDescription: string;
       }
     ],
     "view"
@@ -255,7 +272,9 @@ export interface EscrowFactory extends BaseContract {
       _company: AddressLike,
       _masterWallet: AddressLike,
       _targetAmount: BigNumberish,
-      _durationInDays: BigNumberish
+      _durationInDays: BigNumberish,
+      _campaignName: string,
+      _campaignDescription: string
     ],
     [string],
     "nonpayable"
@@ -280,13 +299,15 @@ export interface EscrowFactory extends BaseContract {
   ): TypedContractMethod<
     [_escrow: AddressLike],
     [
-      [string, bigint, bigint, bigint, boolean, boolean] & {
+      [string, bigint, bigint, bigint, boolean, boolean, string, string] & {
         company: string;
         totalRaised: bigint;
         targetAmount: bigint;
         deadline: bigint;
         isFinalized: boolean;
         isSuccessful: boolean;
+        campaignName: string;
+        campaignDescription: string;
       }
     ],
     "view"
@@ -301,7 +322,7 @@ export interface EscrowFactory extends BaseContract {
   >;
 
   filters: {
-    "EscrowCreated(address,address,uint256,uint256,uint256)": TypedContractEvent<
+    "EscrowCreated(address,address,uint256,uint256,uint256,string,string)": TypedContractEvent<
       EscrowCreatedEvent.InputTuple,
       EscrowCreatedEvent.OutputTuple,
       EscrowCreatedEvent.OutputObject

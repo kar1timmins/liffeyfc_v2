@@ -35,6 +35,14 @@ class CreateEscrowDto {
   @IsArray()
   @IsOptional()
   chains?: ('ethereum' | 'avalanche')[];
+
+  @IsString()
+  @IsOptional()
+  campaignName?: string;
+
+  @IsString()
+  @IsOptional()
+  campaignDescription?: string;
 }
 
 @Controller('escrow')
@@ -120,7 +128,9 @@ export class EscrowController {
         masterWalletAddress,
         dto.targetAmountEth,
         dto.durationInDays,
-        dto.chains
+        dto.chains,
+        dto.campaignName || wishlistItem.title,
+        dto.campaignDescription || wishlistItem.description || ''
       );
 
       // Save deployment records to database
@@ -137,7 +147,7 @@ export class EscrowController {
 
       const deploymentRecords: EscrowDeployment[] = [];
 
-      if (result.ethereumAddress) {
+        if (result.ethereumAddress) {
         const ethDeployment = this.escrowDeploymentRepo.create({
           contractAddress: result.ethereumAddress,
           chain: 'ethereum',
@@ -148,13 +158,15 @@ export class EscrowController {
           deadline,
           deployedById: user.sub,
           wishlistItemId: dto.wishlistItemId,
+          campaignName: dto.campaignName || wishlistItem.title,
+          campaignDescription: dto.campaignDescription || wishlistItem.description || '',
           status: 'active',
         });
         const savedDeployment = await this.escrowDeploymentRepo.save(ethDeployment);
         deploymentRecords.push(savedDeployment);
       }
 
-      if (result.avalancheAddress) {
+        if (result.avalancheAddress) {
         const avaxDeployment = this.escrowDeploymentRepo.create({
           contractAddress: result.avalancheAddress,
           chain: 'avalanche',
@@ -165,6 +177,8 @@ export class EscrowController {
           deadline,
           deployedById: user.sub,
           wishlistItemId: dto.wishlistItemId,
+          campaignName: dto.campaignName || wishlistItem.title,
+          campaignDescription: dto.campaignDescription || wishlistItem.description || '',
           status: 'active',
         });
         const savedDeployment = await this.escrowDeploymentRepo.save(avaxDeployment);
@@ -260,7 +274,9 @@ export class EscrowController {
         company.ethAddress || company.avaxAddress!,
         dto.targetAmountEth,
         dto.durationInDays,
-        dto.chains
+        dto.chains,
+        dto.campaignName || wishlistItem.title,
+        dto.campaignDescription || wishlistItem.description || ''
       );
 
       return {

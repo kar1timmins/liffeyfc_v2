@@ -31,6 +31,12 @@
   const bountyId = $derived($page.params.id);
   const isInvestor = $derived($authStore.user?.role === 'investor');
 
+  // Prefer on-chain campaign name if available
+  let displayTitle = $state<string>('Bounty');
+  $effect(() => {
+    displayTitle = (bounty && bounty.deployments && bounty.deployments.length && bounty.deployments[0].campaignName) ? bounty.deployments[0].campaignName : (bounty?.title || 'Bounty');
+  });
+
   onMount(() => {
     fetchBounty();
     fetchContributors();
@@ -206,7 +212,7 @@
 </script>
 
 <svelte:head>
-  <title>{bounty?.title || 'Bounty'} - Liffey Founders Club</title>
+  <title>{displayTitle} - Liffey Founders Club</title>
 </svelte:head>
 
 <div class="min-h-screen py-12">
@@ -255,14 +261,29 @@
               </div>
 
               <!-- Title -->
-              <h1 class="text-3xl font-bold mb-4">{bounty.title}</h1>
+              {#if bounty && bounty.deployments && bounty.deployments.length > 0 && bounty.deployments[0].campaignName}
+                <h1 class="text-3xl font-bold mb-4">{bounty.deployments[0].campaignName}</h1>
+                <div class="text-sm opacity-70 mb-2">{bounty.title}</div>
+              {:else}
+                <h1 class="text-3xl font-bold mb-4">{bounty.title}</h1>
+              {/if}
 
               <!-- Company Info -->
               <div class="flex items-center gap-3 p-4 bg-base-200 rounded-lg">
                 <div class="avatar placeholder">
-                  <div class="bg-primary text-primary-content rounded-full w-12">
-                    <span>{bounty.company?.name?.charAt(0) || 'C'}</span>
-                  </div>
+                  {#if bounty.company?.owner?.profilePhotoUrl}
+                    <div class="w-12 h-12 rounded-full overflow-hidden">
+                      <img src={bounty.company.owner.profilePhotoUrl} alt={bounty.company?.name} class="w-full h-full object-cover" />
+                    </div>
+                  {:else if bounty.company?.avatar}
+                    <div class="w-12 h-12 rounded-full overflow-hidden">
+                      <img src={bounty.company.avatar} alt={bounty.company?.name} class="w-full h-full object-cover" />
+                    </div>
+                  {:else}
+                    <div class="bg-primary text-primary-content rounded-full w-12">
+                      <span>{bounty.company?.name?.charAt(0) || 'C'}</span>
+                    </div>
+                  {/if}
                 </div>
                 <div>
                   <h3 class="font-semibold">{bounty.company?.name || 'Unknown Company'}</h3>
@@ -343,6 +364,18 @@
                               </div>
                             </div>
                             <div class="space-y-2">
+                              {#if deployment.campaignName}
+                                <div>
+                                  <div class="text-xs font-semibold opacity-70 block mb-1">Campaign Name</div>
+                                  <div class="text-sm font-semibold">{deployment.campaignName}</div>
+                                </div>
+                              {/if}
+                              {#if deployment.campaignDescription}
+                                <div>
+                                  <div class="text-xs font-semibold opacity-70 block mb-1">Campaign Description</div>
+                                  <div class="text-sm whitespace-pre-wrap opacity-80">{deployment.campaignDescription}</div>
+                                </div>
+                              {/if}
                               <div>
                                 <div class="text-xs font-semibold opacity-70 block mb-1">Contract Address</div>
                                 <div class="bg-base-200 p-3 rounded font-mono text-xs break-all">
@@ -552,9 +585,15 @@
                       <div class="flex items-center justify-between p-3 bg-base-200 rounded-lg hover:bg-base-300 transition-colors">
                         <div class="flex items-center gap-3">
                           <div class="avatar placeholder">
-                            <div class="bg-neutral text-neutral-content rounded-full w-10">
-                              <span class="text-xs">#{index + 1}</span>
-                            </div>
+                            {#if contributor.user?.profilePhotoUrl}
+                              <div class="w-10 h-10 rounded-full overflow-hidden">
+                                <img src={contributor.user.profilePhotoUrl} alt={contributor.user?.name || contributor.address} class="w-full h-full object-cover" />
+                              </div>
+                            {:else}
+                              <div class="bg-neutral text-neutral-content rounded-full w-10">
+                                <span class="text-xs">#{index + 1}</span>
+                              </div>
+                            {/if}
                           </div>
                           <div>
                             <code class="text-sm font-mono">{formatAddress(contributor.address)}</code>

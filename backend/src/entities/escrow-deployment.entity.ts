@@ -45,6 +45,12 @@ export class EscrowDeployment {
   @Column({ type: 'varchar' })
   wishlistItemId: string;
 
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  campaignName?: string;
+
+  @Column({ type: 'text', nullable: true })
+  campaignDescription?: string;
+
   @ManyToOne(() => WishlistItem, (wishlistItem) => wishlistItem.escrowDeployments)
   @JoinColumn({ name: 'wishlistItemId' })
   wishlistItem: WishlistItem;

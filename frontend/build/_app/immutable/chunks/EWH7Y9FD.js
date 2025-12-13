@@ -1,6 +1,0 @@
-import"./DcKgRf5s.js";import"./Cljqr8YE.js";import{c as r,f as p,a as _}from"./pJbLid0C.js";import{I as l,a as c}from"./Clg_0GN6.js";import{l as m,b as P}from"./DQinkebW.js";function B(t,e){const a=m(e,["children","$$slots","$$events","$$legacy"]);/**
- * @license lucide-svelte v0.462.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */const n=[["path",{d:"M12 2v4"}],["path",{d:"m16.2 7.8 2.9-2.9"}],["path",{d:"M18 12h4"}],["path",{d:"m16.2 16.2 2.9 2.9"}],["path",{d:"M12 18v4"}],["path",{d:"m4.9 19.1 2.9-2.9"}],["path",{d:"M2 12h4"}],["path",{d:"m4.9 4.9 2.9 2.9"}]];l(t,P({name:"loader"},()=>a,{get iconNode(){return n},children:(d,L)=>{var s=r(),i=p(s);c(i,e,"default",{}),_(d,s)},$$slots:{default:!0}}))}const o=globalThis.__sveltekit_12jopaq.env,h=o.PUBLIC_APP_ENV==="development"||typeof window<"u"&&window.location.hostname==="localhost",f=h||o.PUBLIC_DEBUG_LOGS==="1"||o.PUBLIC_DEBUG_LOGS==="true";o.PUBLIC_RECAPTCHA_SITE_KEY,o.PUBLIC_RECAPTCHA_SITE_KEY;o.PUBLIC_API_URL,o.PUBLIC_FORM_API_URL;o.PUBLIC_APP_ENV,o.PUBLIC_APP_ENV;const E=(...t)=>{f&&typeof window<"u"&&console.log(...t)};export{B as L,E as d};

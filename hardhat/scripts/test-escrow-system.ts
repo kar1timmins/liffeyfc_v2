@@ -30,7 +30,9 @@ async function main() {
   const targetAmount = ethers.parseEther("1.0"); // 1 ETH target
   const durationInDays = 7; // 7 day campaign
 
-  const tx = await factory.createEscrow(company.address, targetAmount, durationInDays);
+  const campaignName = "Liffey Test Campaign";
+  const campaignDescription = "Test campaign for Liffey Founders Club escrow";
+  const tx = await factory.createEscrow(company.address, company.address, targetAmount, durationInDays, campaignName, campaignDescription);
   const receipt = await tx.wait();
 
   // Get escrow address from event
@@ -52,6 +54,10 @@ async function main() {
 
   // Get escrow contract
   const escrow = await ethers.getContractAt("CompanyWishlistEscrow", escrowAddress);
+  const onchainName = await escrow.campaignName();
+  const onchainDescription = await escrow.campaignDescription();
+  console.log('   🔖 On-chain campaign name:', onchainName);
+  console.log('   🗒️ On-chain campaign description:', onchainDescription);
 
   // Contributions
   console.log("3️⃣  Making contributions...");
@@ -108,7 +114,7 @@ async function main() {
 
   // Test failed campaign scenario
   console.log("7️⃣  Testing failed campaign scenario...");
-  const tx2 = await factory.createEscrow(company.address, ethers.parseEther("2.0"), durationInDays);
+  const tx2 = await factory.createEscrow(company.address, company.address, ethers.parseEther("2.0"), durationInDays, "Failed Campaign", "This campaign should fail in test case");
   const receipt2 = await tx2.wait();
 
   const event2 = receipt2?.logs

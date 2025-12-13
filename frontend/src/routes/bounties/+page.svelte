@@ -254,9 +254,19 @@
               <!-- Company Info -->
               <div class="flex items-center gap-3 mb-3">
                 <div class="avatar placeholder">
-                  <div class="bg-primary text-primary-content rounded-full w-10">
-                    <span class="text-xs">{bounty.company?.name?.charAt(0) || 'C'}</span>
-                  </div>
+                  {#if bounty.company?.owner?.profilePhotoUrl}
+                    <div class="w-10 h-10 rounded-full overflow-hidden">
+                      <img src={bounty.company.owner.profilePhotoUrl} alt={bounty.company?.name} class="w-full h-full object-cover" />
+                    </div>
+                  {:else if bounty.company?.avatar}
+                    <div class="w-10 h-10 rounded-full overflow-hidden">
+                      <img src={bounty.company.avatar} alt={bounty.company?.name} class="w-full h-full object-cover" />
+                    </div>
+                  {:else}
+                    <div class="bg-primary text-primary-content rounded-full w-10">
+                      <span class="text-xs">{bounty.company?.name?.charAt(0) || 'C'}</span>
+                    </div>
+                  {/if}
                 </div>
                 <div>
                   <h3 class="font-semibold text-sm">{bounty.company?.name || 'Unknown Company'}</h3>
@@ -269,7 +279,11 @@
 
               <!-- Bounty Title -->
               <h2 class="card-title text-lg line-clamp-2">
-                {bounty.title}
+                {#if bounty.deployments && bounty.deployments.length > 0 && bounty.deployments[0].campaignName}
+                  {bounty.deployments[0].campaignName}
+                {:else}
+                  {bounty.title}
+                {/if}
               </h2>
 
               <!-- Description -->

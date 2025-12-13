@@ -171,18 +171,19 @@ export class WalletBalanceController {
 
           if (data.result) {
             const gasPriceWei = BigInt(data.result);
+            // Compute Gwei with higher precision (6 decimals) to avoid rounding to 0 for low testnet prices
             const gasPriceGwei = Number(gasPriceWei) / 1e9;
-            
+
             // Validate gas price is reasonable (not 0 or suspiciously low)
             if (gasPriceGwei < 0.001) {
               this.logger.warn(`Gas price too low (${gasPriceGwei} Gwei), trying next RPC...`);
               continue;
             }
-            
+
             const result = {
               chain,
               gasPriceWei: gasPriceWei.toString(),
-              gasPriceGwei: gasPriceGwei.toFixed(2)
+              gasPriceGwei: gasPriceGwei.toFixed(6)
             };
             
             this.logger.log(`✅ Returning gas price for ${chain}:`, JSON.stringify(result));
@@ -207,7 +208,7 @@ export class WalletBalanceController {
       return {
         chain,
         gasPriceWei: fallbackWei.toString(),
-        gasPriceGwei: fallbackGwei.toFixed(2)
+        gasPriceGwei: fallbackGwei.toFixed(6)
       };
     } catch (err) {
       this.logger.error(`Failed to fetch gas price for ${chain}:`, err);
