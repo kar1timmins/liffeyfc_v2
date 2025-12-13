@@ -255,11 +255,23 @@ export class CompaniesService {
   async deleteWishlistItem(itemId: string, companyId: string, userId: string): Promise<boolean> {
     const item = await this.wishlistRepo.findOne({
       where: { id: itemId, companyId },
-      relations: ['company'],
+      relations: ['company', 'escrowDeployments'],
     });
 
     if (!item || item.company.ownerId !== userId) {
       return false;
+    }
+
+    // Prevent deletion if escrow contracts are deployed for this wishlist item
+    if (item.escrowDeployments && item.escrowDeployments.length > 0) {
+      // Check if any deployments are active (not failed or expired)
+      const activeDeployments = item.escrowDeployments.filter(
+        deployment => deployment.status === 'active'
+      );
+      
+      if (activeDeployments.length > 0) {
+        throw new Error('Cannot delete wishlist item with active escrow contracts. Please finalize or expire contracts first.');
+      }
     }
 
     const result = await this.wishlistRepo.delete(itemId);

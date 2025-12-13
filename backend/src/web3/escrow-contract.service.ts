@@ -7,6 +7,8 @@ import { WishlistItem } from '../entities/wishlist-item.entity';
 import { Company } from '../entities/company.entity';
 import { UserWallet } from '../entities/user-wallet.entity';
 import { CompanyWallet } from '../entities/company-wallet.entity';
+import { ContractHistoryService } from './contract-history.service';
+import { ContractAction } from '../entities/contract-deployment-history.entity';
 
 // ABI for EscrowFactory contract
 const ESCROW_FACTORY_ABI = [
@@ -116,6 +118,7 @@ export class EscrowContractService {
     private userWalletRepo: Repository<UserWallet>,
     @InjectRepository(CompanyWallet)
     private companyWalletRepo: Repository<CompanyWallet>,
+    private readonly contractHistoryService: ContractHistoryService,
   ) {
     // Get encryption key from environment variable (for decrypting stored wallets)
     const key = process.env.WALLET_ENCRYPTION_KEY;
@@ -283,6 +286,18 @@ export class EscrowContractService {
     this.logger.log(`   Company Wallet: ${companyWalletAddress}`);
     this.logger.log(`   Master Wallet (funds recipient): ${masterWalletAddress}`);
 
+    // Get wishlist item to extract company ID for history logging
+    const wishlistItem = await this.wishlistRepo.findOne({
+      where: { id: wishlistItemId },
+      relations: ['company'],
+    });
+
+    if (!wishlistItem) {
+      throw new BadRequestException(`Wishlist item ${wishlistItemId} not found`);
+    }
+
+    const companyId = wishlistItem.companyId;
+
     // Validate that factory addresses are configured
     if (!this.ethereumFactoryAddress && !this.avalancheFactoryAddress) {
       throw new Error(
@@ -406,6 +421,26 @@ export class EscrowContractService {
         if (event) {
           result.ethereumAddress = event.args.escrowAddress;
           this.logger.log(`✅ Ethereum escrow deployed: ${result.ethereumAddress} (${event.args.campaignName || 'Unnamed'})`);
+
+          // Log deployment to history
+          await this.contractHistoryService.logAction({
+            userId,
+            companyId,
+            wishlistItemId,
+            contractAddress: result.ethereumAddress,
+            fromAddress: signer.address,
+            chain: 'ethereum',
+            network: 'sepolia',
+            action: ContractAction.DEPLOYED,
+            transactionHash: receipt.hash,
+            metadata: {
+              targetAmountEth,
+              durationInDays,
+              campaignName: campaignName || '',
+              campaignDescription: campaignDescription || '',
+              factoryAddress: this.ethereumFactoryAddress,
+            },
+          });
         }
       } catch (error) {
         this.logger.error('❌ Failed to deploy Ethereum escrow:', error);
@@ -487,6 +522,26 @@ export class EscrowContractService {
         if (event) {
           result.avalancheAddress = event.args.escrowAddress;
           this.logger.log(`✅ Avalanche escrow deployed: ${result.avalancheAddress} (${event.args.campaignName || 'Unnamed'})`);
+
+          // Log deployment to history
+          await this.contractHistoryService.logAction({
+            userId,
+            companyId,
+            wishlistItemId,
+            contractAddress: result.avalancheAddress,
+            fromAddress: signer.address,
+            chain: 'avalanche',
+            network: 'fuji',
+            action: ContractAction.DEPLOYED,
+            transactionHash: receipt.hash,
+            metadata: {
+              targetAmountEth,
+              durationInDays,
+              campaignName: campaignName || '',
+              campaignDescription: campaignDescription || '',
+              factoryAddress: this.avalancheFactoryAddress,
+            },
+          });
         }
       } catch (error) {
         this.logger.error('❌ Failed to deploy Avalanche escrow:', error);

@@ -20,6 +20,8 @@ import { User } from '../entities/user.entity';
 import { Company } from '../entities/company.entity';
 import { EscrowDeployment } from '../entities/escrow-deployment.entity';
 import { Contribution } from '../entities/contribution.entity';
+import { ContractDeploymentHistory } from '../entities/contract-deployment-history.entity';
+import { ContractHistoryService } from './contract-history.service';
 import { UsersModule } from '../users/users.module';
 import { CommonModule } from '../common/common.module';
 
@@ -36,12 +38,12 @@ const nonceProvider: Provider = {
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([UserWallet, CompanyWallet, WishlistItem, User, Company, EscrowDeployment, Contribution]),
+    TypeOrmModule.forFeature([UserWallet, CompanyWallet, WishlistItem, User, Company, EscrowDeployment, Contribution, ContractDeploymentHistory]),
     UsersModule,
     CommonModule,
   ],
   controllers: [Web3Controller, WalletController, EscrowController, BountiesController, WalletBalanceController, CryptoPricesController],
-  providers: [Web3Service, WalletGenerationService, EscrowContractService, BountiesService, CryptoPricesService, nonceProvider],
-  exports: [Web3Service, WalletGenerationService, EscrowContractService, BountiesService, CryptoPricesService, NonceService],
+  providers: [Web3Service, WalletGenerationService, EscrowContractService, BountiesService, CryptoPricesService, ContractHistoryService, nonceProvider],
+  exports: [Web3Service, WalletGenerationService, EscrowContractService, BountiesService, CryptoPricesService, ContractHistoryService, NonceService],
 })
 export class Web3Module {}
