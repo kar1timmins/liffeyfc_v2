@@ -3,7 +3,9 @@
   "version": "0.0.1",
   "description": "Hardhat project for Liffey Founders Club",
   "scripts": {
-    "test": "hardhat test"
+    "test": "hardhat test",
+    "deploy:upgradeable-factory": "hardhat run scripts/deploy-upgradeable-factory.ts --network sepolia",
+    "upgrade:factory": "hardhat run scripts/upgrade-factory.ts --network sepolia"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
@@ -12,6 +14,9 @@
     "ethers": "^6.13.0",
     "hardhat": "^2.22.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "@openzeppelin/contracts-upgradeable": "^4.9.3",
+    "@openzeppelin/hardhat-upgrades": "^3.9.1",
+    "@openzeppelin/contracts": "^4.9.3"
   }
 }

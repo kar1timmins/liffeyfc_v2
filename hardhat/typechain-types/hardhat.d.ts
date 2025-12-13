@@ -14,6 +14,38 @@ import * as Contracts from ".";
 declare module "hardhat/types/runtime" {
   interface HardhatEthersHelpers extends HardhatEthersHelpersBase {
     getContractFactory(
+      name: "OwnableUpgradeable",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.OwnableUpgradeable__factory>;
+    getContractFactory(
+      name: "IERC1822ProxiableUpgradeable",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IERC1822ProxiableUpgradeable__factory>;
+    getContractFactory(
+      name: "IERC1967Upgradeable",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IERC1967Upgradeable__factory>;
+    getContractFactory(
+      name: "IBeaconUpgradeable",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IBeaconUpgradeable__factory>;
+    getContractFactory(
+      name: "ERC1967UpgradeUpgradeable",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.ERC1967UpgradeUpgradeable__factory>;
+    getContractFactory(
+      name: "Initializable",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.Initializable__factory>;
+    getContractFactory(
+      name: "UUPSUpgradeable",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.UUPSUpgradeable__factory>;
+    getContractFactory(
+      name: "ContextUpgradeable",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.ContextUpgradeable__factory>;
+    getContractFactory(
       name: "CompanyWishlistEscrow",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.CompanyWishlistEscrow__factory>;
@@ -21,7 +53,55 @@ declare module "hardhat/types/runtime" {
       name: "EscrowFactory",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.EscrowFactory__factory>;
+    getContractFactory(
+      name: "EscrowFactoryUpgradeable",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.EscrowFactoryUpgradeable__factory>;
+    getContractFactory(
+      name: "EscrowFactoryV2Upgradeable",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.EscrowFactoryV2Upgradeable__factory>;
 
+    getContractAt(
+      name: "OwnableUpgradeable",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.OwnableUpgradeable>;
+    getContractAt(
+      name: "IERC1822ProxiableUpgradeable",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.IERC1822ProxiableUpgradeable>;
+    getContractAt(
+      name: "IERC1967Upgradeable",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.IERC1967Upgradeable>;
+    getContractAt(
+      name: "IBeaconUpgradeable",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.IBeaconUpgradeable>;
+    getContractAt(
+      name: "ERC1967UpgradeUpgradeable",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.ERC1967UpgradeUpgradeable>;
+    getContractAt(
+      name: "Initializable",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.Initializable>;
+    getContractAt(
+      name: "UUPSUpgradeable",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.UUPSUpgradeable>;
+    getContractAt(
+      name: "ContextUpgradeable",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.ContextUpgradeable>;
     getContractAt(
       name: "CompanyWishlistEscrow",
       address: string | ethers.Addressable,
@@ -32,7 +112,49 @@ declare module "hardhat/types/runtime" {
       address: string | ethers.Addressable,
       signer?: ethers.Signer
     ): Promise<Contracts.EscrowFactory>;
+    getContractAt(
+      name: "EscrowFactoryUpgradeable",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.EscrowFactoryUpgradeable>;
+    getContractAt(
+      name: "EscrowFactoryV2Upgradeable",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.EscrowFactoryV2Upgradeable>;
 
+    deployContract(
+      name: "OwnableUpgradeable",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.OwnableUpgradeable>;
+    deployContract(
+      name: "IERC1822ProxiableUpgradeable",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.IERC1822ProxiableUpgradeable>;
+    deployContract(
+      name: "IERC1967Upgradeable",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.IERC1967Upgradeable>;
+    deployContract(
+      name: "IBeaconUpgradeable",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.IBeaconUpgradeable>;
+    deployContract(
+      name: "ERC1967UpgradeUpgradeable",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.ERC1967UpgradeUpgradeable>;
+    deployContract(
+      name: "Initializable",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.Initializable>;
+    deployContract(
+      name: "UUPSUpgradeable",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.UUPSUpgradeable>;
+    deployContract(
+      name: "ContextUpgradeable",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.ContextUpgradeable>;
     deployContract(
       name: "CompanyWishlistEscrow",
       signerOrOptions?: ethers.Signer | DeployContractOptions
@@ -41,7 +163,55 @@ declare module "hardhat/types/runtime" {
       name: "EscrowFactory",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.EscrowFactory>;
+    deployContract(
+      name: "EscrowFactoryUpgradeable",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.EscrowFactoryUpgradeable>;
+    deployContract(
+      name: "EscrowFactoryV2Upgradeable",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.EscrowFactoryV2Upgradeable>;
 
+    deployContract(
+      name: "OwnableUpgradeable",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.OwnableUpgradeable>;
+    deployContract(
+      name: "IERC1822ProxiableUpgradeable",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.IERC1822ProxiableUpgradeable>;
+    deployContract(
+      name: "IERC1967Upgradeable",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.IERC1967Upgradeable>;
+    deployContract(
+      name: "IBeaconUpgradeable",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.IBeaconUpgradeable>;
+    deployContract(
+      name: "ERC1967UpgradeUpgradeable",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.ERC1967UpgradeUpgradeable>;
+    deployContract(
+      name: "Initializable",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.Initializable>;
+    deployContract(
+      name: "UUPSUpgradeable",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.UUPSUpgradeable>;
+    deployContract(
+      name: "ContextUpgradeable",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.ContextUpgradeable>;
     deployContract(
       name: "CompanyWishlistEscrow",
       args: any[],
@@ -52,6 +222,16 @@ declare module "hardhat/types/runtime" {
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.EscrowFactory>;
+    deployContract(
+      name: "EscrowFactoryUpgradeable",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.EscrowFactoryUpgradeable>;
+    deployContract(
+      name: "EscrowFactoryV2Upgradeable",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.EscrowFactoryV2Upgradeable>;
 
     // default types
     getContractFactory(
