@@ -415,29 +415,48 @@ import { devLog } from '$lib/env';
           throw new Error(escrowData.message || 'Failed to deploy escrow contracts');
         }
 
-        toastStore.add({ 
-          message: '🎉 Wishlist item created and escrow contracts deployed!', 
-          type: 'success',
-          ttl: 5000 
-        });
-        
-        // Store contract addresses to show immediately
-        const deployedAddresses = escrowData.data;
-        if (deployedAddresses) {
-          const addresses = [];
-          if (deployedAddresses.ethereumAddress) {
-            addresses.push(`Ethereum: ${deployedAddresses.ethereumAddress}`);
-          }
-          if (deployedAddresses.avalancheAddress) {
-            addresses.push(`Avalanche: ${deployedAddresses.avalancheAddress}`);
-          }
-          if (addresses.length > 0) {
-            toastStore.add({ 
-              message: `📝 Contract${addresses.length > 1 ? 's' : ''} deployed: ${addresses.join(', ')}`, 
-              type: 'info',
-              ttl: 8000 
-            });
-          }
+        // Rich toast with contract metadata (replace any prior contract toasts)
+        const deployedAddresses = escrowData.data || {};
+        const addresses = [];
+        if (deployedAddresses.ethereumAddress) {
+          addresses.push({
+            chain: 'ethereum',
+            address: deployedAddresses.ethereumAddress,
+            txHash: deployedAddresses.ethereumTxHash || deployedAddresses.deploymentTxHash || null,
+          });
+        }
+        if (deployedAddresses.avalancheAddress) {
+          addresses.push({
+            chain: 'avalanche',
+            address: deployedAddresses.avalancheAddress,
+            txHash: deployedAddresses.avalancheTxHash || deployedAddresses.deploymentTxHash || null,
+          });
+        }
+
+        if (addresses.length > 0) {
+          toastStore.add({
+            message: `🎉 Escrow contract${addresses.length > 1 ? 's' : ''} deployed`,
+            type: 'success',
+            ttl: 12000,
+            group: 'contract_deploy',
+            data: {
+              campaignName: formData.title,
+              campaignDescription: formData.description || '',
+              addresses,
+            },
+          });
+
+          // Notify parent with richer deployed payload (addresses + optional tx hashes)
+          const deployedPayload = {
+            addresses,
+            campaignName: formData.title,
+            campaignDescription: formData.description || '',
+          };
+
+          setTimeout(() => onItemAdded(deployedPayload), 1000);
+        } else {
+          toastStore.add({ message: '🎉 Wishlist item created and escrow contracts deployed!', type: 'success', ttl: 5000 });
+          setTimeout(() => onItemAdded(), 1000);
         }
       } else {
         toastStore.add({ 
@@ -452,7 +471,7 @@ import { devLog } from '$lib/env';
       
       // Delay refresh slightly to ensure backend has saved the contract addresses
       if (formData.enableEscrow) {
-        setTimeout(() => onItemAdded(), 1000);
+        setTimeout(() => onItemAdded(addresses), 1000);
       } else {
         onItemAdded();
       }

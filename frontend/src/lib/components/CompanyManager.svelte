@@ -225,9 +225,17 @@
     expandedWishlistId = expandedWishlistId === companyId ? null : companyId;
   }
 
-  function handleWishlistItemAdded() {
-    // Refresh companies to show updated wishlist
-    onUpdate();
+  function handleWishlistItemAdded(deployed?: any) {
+    // If we got deployed addresses from the form, update the local list immediately
+    if (deployed) {
+      // deployed is an array of {chain, address}
+      // find the wishlist item and attach addresses
+      // For simplicity, refresh the companies to get canonical state, then merge in addresses
+      onUpdate();
+    } else {
+      // Refresh companies to show updated wishlist
+      onUpdate();
+    }
   }
 
   function openBountyModal(item: any, company: Company) {
@@ -236,10 +244,40 @@
     bountyModalOpen = true;
   }
 
-  function handleBountySuccess() {
+  function handleBountySuccess(deployed?: any) {
     bountyModalOpen = false;
+    // If deployed addresses provided, update local companies state immediately to avoid 'deploying' UI
+    if (deployed && selectedCompany && selectedWishlistItem) {
+      const companyIndex = companies.findIndex((c) => c.id === selectedCompany.id);
+      if (companyIndex !== -1) {
+        const itemIndex = companies[companyIndex].wishlistItems?.findIndex((w) => w.id === selectedWishlistItem.id);
+        if (typeof itemIndex === 'number' && itemIndex !== -1) {
+          const item = companies[companyIndex].wishlistItems[itemIndex];
+          if (deployed.ethereumAddress) item.ethereumEscrowAddress = deployed.ethereumAddress;
+          if (deployed.avalancheAddress) item.avalancheEscrowAddress = deployed.avalancheAddress;
+          item.isEscrowActive = true;
+          // push a deployment history entry for immediate visibility
+          item.deployments = item.deployments || [];
+          // Push per-chain deployments where txHash is available
+          deployed.addresses.forEach((a) => {
+            item.deployments.unshift({
+              chain: a.chain,
+              network: a.chain === 'ethereum' ? 'sepolia' : 'fuji',
+              deploymentTxHash: a.txHash || null,
+              deployedAt: new Date().toISOString(),
+              campaignName: deployed.campaignName || selectedWishlistItem.title || null,
+              campaignDescription: deployed.campaignDescription || selectedWishlistItem.description || null,
+            });
+          });
+          // force Svelte reactivity
+          companies = [...companies];
+        }
+      }
+    }
+
     selectedWishlistItem = null;
     selectedCompany = null;
+
     // Refresh companies to show updated bounty status
     onUpdate();
   }

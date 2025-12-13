@@ -1,6 +1,7 @@
 <script lang="ts">
   import { X, Target, Calendar, DollarSign, Loader, CheckCircle, AlertCircle, Wallet } from 'lucide-svelte';
   import { PUBLIC_API_URL } from '$env/static/public';
+  import { toastStore } from '$lib/stores/toast';
   import { authStore } from '$lib/stores/auth';
 
   interface WishlistItem {
@@ -170,9 +171,34 @@
       currentStep = 'success';
       success = true;
 
-      // Call success callback after short delay
+      // Show rich toast so user can quickly access contract addresses
+      const deployed = escrowData.data || {};
+      const addrs = [];
+      if (deployed.ethereumAddress) addrs.push({ chain: 'ethereum', address: deployed.ethereumAddress });
+      if (deployed.avalancheAddress) addrs.push({ chain: 'avalanche', address: deployed.avalancheAddress });
+      if (addrs.length > 0) {
+        toastStore.add({
+          message: `🎉 Escrow contract${addrs.length > 1 ? 's' : ''} deployed`,
+          type: 'success',
+          ttl: 12000,
+          group: 'contract_deploy',
+          data: {
+            campaignName,
+            campaignDescription,
+            addresses: addrs,
+          },
+        });
+      }
+
+      // Call success callback with deployed addresses so parent can update UI immediately
+      const deployedAddresses = deploymentResult || {};
       setTimeout(() => {
-        onSuccess();
+        try {
+          onSuccess(deployedAddresses);
+        } catch (e) {
+          // ignore if handler doesn't expect argument
+          onSuccess();
+        }
         close();
       }, 3000);
 
@@ -485,12 +511,20 @@
                       <div class="font-semibold text-sm">Ethereum Sepolia</div>
                       <code class="text-xs opacity-70">{deploymentResult.ethereumAddress}</code>
                     </div>
-                    <button
-                      class="btn btn-xs btn-ghost"
-                      onclick={() => viewOnExplorer('ethereum', deploymentResult.ethereumAddress)}
-                    >
-                      View
-                    </button>
+                    <div class="flex items-center gap-2">
+                      <button
+                        class="btn btn-xs btn-ghost"
+                        onclick={() => navigator.clipboard?.writeText(deploymentResult.ethereumAddress)}
+                      >
+                        Copy
+                      </button>
+                      <button
+                        class="btn btn-xs btn-ghost"
+                        onclick={() => viewOnExplorer('ethereum', deploymentResult.ethereumAddress)}
+                      >
+                        View
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -503,12 +537,20 @@
                       <div class="font-semibold text-sm">Avalanche Fuji</div>
                       <code class="text-xs opacity-70">{deploymentResult.avalancheAddress}</code>
                     </div>
-                    <button
-                      class="btn btn-xs btn-ghost"
-                      onclick={() => viewOnExplorer('avalanche', deploymentResult.avalancheAddress)}
-                    >
-                      View
-                    </button>
+                    <div class="flex items-center gap-2">
+                      <button
+                        class="btn btn-xs btn-ghost"
+                        onclick={() => navigator.clipboard?.writeText(deploymentResult.avalancheAddress)}
+                      >
+                        Copy
+                      </button>
+                      <button
+                        class="btn btn-xs btn-ghost"
+                        onclick={() => viewOnExplorer('avalanche', deploymentResult.avalancheAddress)}
+                      >
+                        View
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
