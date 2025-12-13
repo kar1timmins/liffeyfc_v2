@@ -201,10 +201,12 @@ export class EscrowController {
         data: result,
       };
     } catch (error) {
-      this.logger.error('❌ Failed to create escrow:', error);
+      this.logger.error(`❌ Failed to create escrow: ${error?.message || error}`);
+      this.logger.error(error?.stack);
 
       // User-friendly error messages without exposing infrastructure details
       let userMessage = 'Failed to deploy escrow contracts';
+      let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
 
       if (error instanceof HttpException) {
         throw error;
@@ -213,25 +215,33 @@ export class EscrowController {
       // Check for common blockchain/RPC errors
       if (error.message?.includes('factories are not configured') || error.message?.includes('factory contracts configured')) {
         userMessage = 'Smart contract deployment is not yet configured on this network. Please contact support.';
+      } else if (error.message?.includes('No contract code found')) {
+        userMessage = 'Smart contract factory is not deployed on the requested network. Please contact support.';
       } else if (error.message?.includes('No working') || error.message?.includes('RPC')) {
         userMessage = 'Blockchain service temporarily unavailable. Please try again in a few moments.';
-      } else if (error.message?.includes('insufficient funds')) {
+      } else if (error.message?.includes('Insufficient funds') || error.message?.includes('insufficient funds') || error.message?.includes('zero balance')) {
         userMessage = 'Insufficient funds in wallet. Please ensure you have enough balance for gas fees.';
-      } else if (error.message?.includes('invalid address')) {
+      } else if (error.message?.includes('Invalid') || error.message?.includes('invalid address')) {
         userMessage = 'Invalid wallet address. Please check your wallet configuration.';
+      } else if (error.message?.includes('Simulation failed') || error.message?.includes('reverted')) {
+        userMessage = 'Contract deployment validation failed. This may be due to incorrect parameters or network issues.';
       } else if (error.message?.includes('nonce')) {
         userMessage = 'Transaction ordering issue. Please try again.';
       } else if (error.code === 'ETIMEDOUT' || error.code === 'ECONNREFUSED') {
         userMessage = 'Network connection error. Please check your internet connection and try again.';
+      } else if (error.message?.includes('wallet not found')) {
+        userMessage = error.message;
+        statusCode = HttpStatus.BAD_REQUEST;
       }
 
       throw new HttpException(
         {
-          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+          statusCode,
           message: userMessage,
           error: 'DeploymentFailed',
+          details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         },
-        HttpStatus.INTERNAL_SERVER_ERROR
+        statusCode
       );
     }
   }
@@ -245,6 +255,9 @@ export class EscrowController {
     @Body() dto: CreateEscrowDto,
     @CurrentUser() user: any
   ) {
+    this.logger.log(`📊 Estimating gas for wishlist item: ${dto.wishlistItemId} by user: ${user.sub}`);
+    this.logger.debug(`DTO: ${JSON.stringify(dto)}`);
+
     try {
       // Verify wishlist item exists and user has permission
       const wishlistItem = await this.wishlistRepo.findOne({
@@ -267,6 +280,27 @@ export class EscrowController {
         );
       }
 
+      // Get user's master wallet
+      const user_ = await this.userRepo.findOne({
+        where: { id: user.sub },
+        relations: ['userWallet'],
+      });
+
+      if (!user_ || !user_.userWallet) {
+        throw new HttpException(
+          'User does not have a master wallet configured. Please generate a wallet first.',
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      // Check if company has wallet addresses
+      if (!company.ethAddress && !company.avaxAddress) {
+        throw new HttpException(
+          'Company must have at least one wallet address configured',
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
       // Estimate gas costs
       const gasEstimate = await this.escrowService.estimateDeploymentGas(
         user.sub,
@@ -284,11 +318,26 @@ export class EscrowController {
         data: gasEstimate,
       };
     } catch (error) {
-      this.logger.error('❌ Failed to estimate gas:', error);
-      throw new HttpException(
-        error.message || 'Failed to estimate gas costs',
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
+      this.logger.error(`❌ Failed to estimate gas: ${error?.message || error}`);
+      this.logger.error(error?.stack);
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      // Return more specific error messages
+      let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
+      let message = error?.message || 'Failed to estimate gas costs';
+
+      // Check for validation/setup errors (400)
+      if (message.includes('wallet not found') || 
+          message.includes('wallet configured') ||
+          message.includes('Invalid') ||
+          message.includes('must have')) {
+        statusCode = HttpStatus.BAD_REQUEST;
+      }
+
+      throw new HttpException(message, statusCode);
     }
   }
 
