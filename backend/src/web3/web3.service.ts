@@ -1,4 +1,4 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus, Optional } from '@nestjs/common';
 import { ethers } from 'ethers';
 import {
   WalletConnection,
@@ -15,7 +15,7 @@ export class Web3Service {
   private readonly providers: Map<string, ethers.JsonRpcProvider>;
   private readonly overrides?: Map<string, ethers.JsonRpcProvider>;
 
-  constructor(overrides?: Map<string, ethers.JsonRpcProvider>) {
+  constructor(@Optional() overrides?: Map<string, ethers.JsonRpcProvider>) {
     this.chainConfigs = new Map();
     this.providers = new Map();
     this.overrides = overrides;
