@@ -24,6 +24,7 @@ import { devLog } from '$lib/env';
   let isSubmitting = $state(false);
 
   let formData = $state({
+    id: '',
     title: '',
     description: '',
     value: '',
@@ -78,6 +79,7 @@ import { devLog } from '$lib/env';
 
   function resetForm() {
     formData = {
+      id: '',
       title: '',
       description: '',
       value: '',
@@ -207,65 +209,54 @@ import { devLog } from '$lib/env';
   async function estimateGasCosts() {
     isEstimatingGas = true;
     try {
-      const costs: { ethereum?: string; avalanche?: string } = {};
+      // Call backend to estimate gas costs
+      const response = await fetch(`${PUBLIC_API_URL}/escrow/estimate-gas`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${$authStore.accessToken}`
+        },
+        body: JSON.stringify({
+          wishlistItemId: formData.id || '',
+          targetAmountEth: formData.targetAmountEth,
+          durationInDays: formData.durationDays,
+          chains: [
+            ...(formData.deployToEthereum ? ['ethereum'] : []),
+            ...(formData.deployToAvalanche ? ['avalanche'] : [])
+          ]
+        })
+      });
 
-      // Estimate Ethereum gas
-      if (formData.deployToEthereum) {
-        try {
-          const gasPriceResponse = await fetch(`${PUBLIC_API_URL}/wallet-balance/gas-price?chain=ethereum`);
-          if (gasPriceResponse.ok) {
-            const gasPriceData = await gasPriceResponse.json();
-            devLog('ETH gas price response:', gasPriceData);
-            const gasPriceGwei = parseFloat(gasPriceData.gasPriceGwei);
-            if (!isNaN(gasPriceGwei) && gasPriceGwei > 0) {
-              const estimatedGas = 500000; // Conservative estimate for contract deployment
-              const gasCostEth = (gasPriceGwei * estimatedGas) / 1e9;
-              costs.ethereum = gasCostEth.toFixed(6);
-              devLog('ETH gas cost calculated:', costs.ethereum);
-            } else {
-              console.warn('Invalid ETH gas price:', gasPriceGwei);
-              costs.ethereum = '0.005'; // Fallback estimate
-            }
-          } else {
-            console.error('ETH gas price request failed:', gasPriceResponse.status, await gasPriceResponse.text());
-            costs.ethereum = '0.005'; // Fallback estimate
-          }
-        } catch (err) {
-          console.error('ETH gas estimation error:', err);
-          costs.ethereum = '0.005'; // Fallback estimate
-        }
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
       }
 
-      // Estimate Avalanche gas
-      if (formData.deployToAvalanche) {
-        try {
-          const gasPriceResponse = await fetch(`${PUBLIC_API_URL}/wallet-balance/gas-price?chain=avalanche`);
-          if (gasPriceResponse.ok) {
-            const gasPriceData = await gasPriceResponse.json();
-            devLog('AVAX gas price response:', gasPriceData);
-            const gasPriceGwei = parseFloat(gasPriceData.gasPriceGwei);
-            if (!isNaN(gasPriceGwei) && gasPriceGwei > 0.001) {
-              const estimatedGas = 500000;
-              const gasCostAvax = (gasPriceGwei * estimatedGas) / 1e9;
-              costs.avalanche = gasCostAvax.toFixed(6);
-              devLog('AVAX gas cost calculated:', costs.avalanche);
-            } else {
-              console.warn('Invalid AVAX gas price:', gasPriceGwei);
-              costs.avalanche = '0.005'; // Fallback estimate
-            }
-          } else {
-            console.error('AVAX gas price request failed:', gasPriceResponse.status, await gasPriceResponse.text());
-            costs.avalanche = '0.005'; // Fallback estimate
-          }
-        } catch (err) {
-          console.error('AVAX gas estimation error:', err);
-          costs.avalanche = '0.005'; // Fallback estimate
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        devLog('Gas estimation result:', result.data);
+        
+        const costs: { ethereum?: string; avalanche?: string } = {};
+        
+        if (result.data.ethereum) {
+          costs.ethereum = result.data.ethereum.estimatedGasEth;
+          devLog('ETH gas cost calculated:', costs.ethereum);
         }
+        
+        if (result.data.avalanche) {
+          costs.avalanche = result.data.avalanche.estimatedGasEth;
+          devLog('AVAX gas cost calculated:', costs.avalanche);
+        }
+        
+        estimatedGasCost = costs;
       }
-
-      estimatedGasCost = costs;
     } catch (err) {
-      console.error('Failed to estimate gas:', err);
+      devLog('Failed to estimate gas:', err);
+      // Use conservative fallback estimates
+      estimatedGasCost = {
+        ethereum: formData.deployToEthereum ? '0.005' : undefined,
+        avalanche: formData.deployToAvalanche ? '0.005' : undefined
+      };
     } finally {
       isEstimatingGas = false;
     }

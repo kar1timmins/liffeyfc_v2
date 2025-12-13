@@ -35,22 +35,22 @@
 		</script>
 		
 		<link href="./_app/immutable/assets/0.GE7_RO0W.css" rel="stylesheet">
-		<link rel="modulepreload" href="./_app/immutable/entry/start.BEb9jgza.js">
-		<link rel="modulepreload" href="./_app/immutable/chunks/C8UFymWs.js">
+		<link rel="modulepreload" href="./_app/immutable/entry/start.DzER-q4s.js">
+		<link rel="modulepreload" href="./_app/immutable/chunks/7HD-wv24.js">
 		<link rel="modulepreload" href="./_app/immutable/chunks/pJbLid0C.js">
-		<link rel="modulepreload" href="./_app/immutable/chunks/OUyTWZag.js">
-		<link rel="modulepreload" href="./_app/immutable/entry/app.BCqerZAT.js">
+		<link rel="modulepreload" href="./_app/immutable/chunks/C2Ey-u96.js">
+		<link rel="modulepreload" href="./_app/immutable/entry/app.BD-P1zuz.js">
 		<link rel="modulepreload" href="./_app/immutable/chunks/PPVm8Dsz.js">
 		<link rel="modulepreload" href="./_app/immutable/chunks/DcKgRf5s.js">
 		<link rel="modulepreload" href="./_app/immutable/chunks/BMW3zE8Q.js">
 		<link rel="modulepreload" href="./_app/immutable/chunks/CAd9uwGF.js">
 		<link rel="modulepreload" href="./_app/immutable/chunks/DQinkebW.js">
-		<link rel="modulepreload" href="./_app/immutable/nodes/0.CcyqWp16.js">
+		<link rel="modulepreload" href="./_app/immutable/nodes/0.BgwN5Opk.js">
 		<link rel="modulepreload" href="./_app/immutable/chunks/Clg_0GN6.js">
 		<link rel="modulepreload" href="./_app/immutable/chunks/Cljqr8YE.js">
 		<link rel="modulepreload" href="./_app/immutable/chunks/CuQ4d1eT.js">
 		<link rel="modulepreload" href="./_app/immutable/chunks/Bseb_IQX.js">
-		<link rel="modulepreload" href="./_app/immutable/chunks/CIA0RYOT.js">
+		<link rel="modulepreload" href="./_app/immutable/chunks/DuP5meBT.js">
 		<link rel="modulepreload" href="./_app/immutable/chunks/DerSX8KX.js">
 		<link rel="modulepreload" href="./_app/immutable/chunks/D8M7fB-W.js">
 		<link rel="modulepreload" href="./_app/immutable/chunks/DzH459nI.js">
@@ -62,13 +62,14 @@
 		<link rel="modulepreload" href="./_app/immutable/chunks/Be_4Hsre.js">
 		<link rel="modulepreload" href="./_app/immutable/chunks/B_MTVn1N.js">
 		<link rel="modulepreload" href="./_app/immutable/chunks/orFut_P9.js">
-		<link rel="modulepreload" href="./_app/immutable/nodes/6.D_fZRIh1.js">
+		<link rel="modulepreload" href="./_app/immutable/nodes/6.WorbNwvN.js">
 		<link rel="modulepreload" href="./_app/immutable/chunks/CTRZK6kH.js">
 		<link rel="modulepreload" href="./_app/immutable/chunks/BO_HMhty.js">
 		<link rel="modulepreload" href="./_app/immutable/chunks/C3Lx3Y3M.js">
 		<link rel="modulepreload" href="./_app/immutable/chunks/Dd8DOOkd.js">
 		<link rel="modulepreload" href="./_app/immutable/chunks/DsK61dDS.js">
-		<link rel="modulepreload" href="./_app/immutable/chunks/I9gFFico.js"><!--[--><meta name="robots" content="index, follow, noodp, noydir"/> <link rel="icon" type="image/x-icon" href="/img/favicon_io/favicon.ico"/> <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon_io/favicon-16x16.png"/> <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon_io/favicon-32x32.png"/> <link rel="apple-touch-icon" sizes="180x180" href="/img/favicon_io/apple-touch-icon.png"/> <link rel="manifest" href="/img/favicon_io/site.webmanifest"/> <script type="application/ld+json">
+		<link rel="modulepreload" href="./_app/immutable/chunks/I9gFFico.js">
+		<link rel="modulepreload" href="./_app/env.js"><!--[--><meta name="robots" content="index, follow, noodp, noydir"/> <link rel="icon" type="image/x-icon" href="/img/favicon_io/favicon.ico"/> <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon_io/favicon-16x16.png"/> <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon_io/favicon-32x32.png"/> <link rel="apple-touch-icon" sizes="180x180" href="/img/favicon_io/apple-touch-icon.png"/> <link rel="manifest" href="/img/favicon_io/site.webmanifest"/> <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "Organization",
@@ -169,21 +170,26 @@
 			
 			<script>
 				{
-					__sveltekit_14dr2uv = {
-						base: new URL(".", location).pathname.slice(0, -1)
+					__sveltekit_12jopaq = {
+						base: new URL(".", location).pathname.slice(0, -1),
+						env: null
 					};
 
 					const element = document.currentScript.parentElement;
 
-					Promise.all([
-						import("./_app/immutable/entry/start.BEb9jgza.js"),
-						import("./_app/immutable/entry/app.BCqerZAT.js")
-					]).then(([kit, app]) => {
-						kit.start(app, element, {
-							node_ids: [0, 6],
-							data: [null,null],
-							form: null,
-							error: null
+					import("./_app/env.js").then(({ env }) => {
+						__sveltekit_12jopaq.env = env;
+
+						Promise.all([
+							import("./_app/immutable/entry/start.DzER-q4s.js"),
+							import("./_app/immutable/entry/app.BD-P1zuz.js")
+						]).then(([kit, app]) => {
+							kit.start(app, element, {
+									node_ids: [0, 6],
+									data: [null,null],
+									form: null,
+									error: null
+								});
 						});
 					});
 				}

@@ -223,6 +223,60 @@ export class EscrowController {
   }
 
   /**
+   * Estimate gas costs for deploying escrow contracts
+   */
+  @Post('estimate-gas')
+  @UseGuards(AuthGuard('jwt'))
+  async estimateGas(
+    @Body() dto: CreateEscrowDto,
+    @CurrentUser() user: any
+  ) {
+    try {
+      // Verify wishlist item exists and user has permission
+      const wishlistItem = await this.wishlistRepo.findOne({
+        where: { id: dto.wishlistItemId },
+        relations: ['company'],
+      });
+
+      if (!wishlistItem) {
+        throw new HttpException('Wishlist item not found', HttpStatus.NOT_FOUND);
+      }
+
+      const company = await this.companyRepo.findOne({
+        where: { id: wishlistItem.companyId },
+      });
+
+      if (!company || company.ownerId !== user.sub) {
+        throw new HttpException(
+          'You do not have permission to estimate gas for this company',
+          HttpStatus.FORBIDDEN
+        );
+      }
+
+      // Estimate gas costs
+      const gasEstimate = await this.escrowService.estimateDeploymentGas(
+        user.sub,
+        dto.wishlistItemId,
+        company.ethAddress || company.avaxAddress!,
+        dto.targetAmountEth,
+        dto.durationInDays,
+        dto.chains
+      );
+
+      return {
+        success: true,
+        data: gasEstimate,
+      };
+    } catch (error) {
+      this.logger.error('❌ Failed to estimate gas:', error);
+      throw new HttpException(
+        error.message || 'Failed to estimate gas costs',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
    * Backfill wishlist items with escrow addresses from deployment records
    * One-time migration endpoint to fix existing data
    */

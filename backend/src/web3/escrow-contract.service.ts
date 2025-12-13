@@ -394,6 +394,115 @@ export class EscrowContractService {
   }
 
   /**
+   * Estimate gas costs for deploying escrow contracts
+   */
+  async estimateDeploymentGas(
+    userId: string,
+    wishlistItemId: string,
+    companyWalletAddress: string,
+    targetAmountEth: number,
+    durationInDays: number,
+    chains: ('ethereum' | 'avalanche')[] = ['ethereum', 'avalanche']
+  ) {
+    this.logger.log(`📊 Estimating gas costs for escrow deployment`);
+
+    const gasEstimate: {
+      ethereum?: { estimatedGasWei: string; estimatedGasEth: string; estimatedGasUsd: string };
+      avalanche?: { estimatedGasWei: string; estimatedGasEth: string; estimatedGasUsd: string };
+    } = {};
+
+    // Get current gas prices using fee data (supports EIP-1559 networks)
+    const ethereumFeeData = chains.includes('ethereum') ? await this.ethereumProvider.getFeeData() : null;
+    const avalancheFeeData = chains.includes('avalanche') ? await this.avalancheProvider.getFeeData() : null;
+    const ethereumGasPrice = ethereumFeeData ? (ethereumFeeData.gasPrice ?? ethereumFeeData.maxFeePerGas ?? ethereumFeeData.maxPriorityFeePerGas) : null;
+    const avalancheGasPrice = avalancheFeeData ? (avalancheFeeData.gasPrice ?? avalancheFeeData.maxFeePerGas ?? avalancheFeeData.maxPriorityFeePerGas) : null;
+
+    // Estimate Ethereum deployment
+    if (chains.includes('ethereum') && this.ethereumFactoryAddress && ethereumGasPrice) {
+      try {
+        const signer = await this.createUserSigner(userId, 'ethereum');
+        const factory = new ethers.Contract(
+          this.ethereumFactoryAddress,
+          ESCROW_FACTORY_ABI,
+          signer
+        );
+
+        const targetAmountWei = ethers.parseEther(targetAmountEth.toString());
+
+        // Estimate gas
+        const estimatedGas = await factory.createEscrow.estimateGas(
+          companyWalletAddress,
+          signer.address, // masterWallet for fund forwarding
+          targetAmountWei,
+          durationInDays
+        );
+
+        const gasCostWei = estimatedGas * ethereumGasPrice;
+        const gasCostEth = ethers.formatEther(gasCostWei);
+
+        gasEstimate.ethereum = {
+          estimatedGasWei: estimatedGas.toString(),
+          estimatedGasEth: gasCostEth,
+          estimatedGasUsd: (parseFloat(gasCostEth) * 2500).toFixed(2), // Rough USD estimate (1 ETH ≈ $2500)
+        };
+
+        this.logger.log(`✅ Ethereum gas estimate: ${gasCostEth} ETH (~$${gasEstimate.ethereum.estimatedGasUsd})`);
+      } catch (error) {
+        this.logger.warn(`⚠️  Failed to estimate Ethereum gas:`, error.message);
+        // Use conservative estimate if actual estimate fails
+        gasEstimate.ethereum = {
+          estimatedGasWei: '500000',
+          estimatedGasEth: ethers.formatEther(BigInt(500000) * ethereumGasPrice!),
+          estimatedGasUsd: '12.50', // Rough estimate
+        };
+      }
+    }
+
+    // Estimate Avalanche deployment
+    if (chains.includes('avalanche') && this.avalancheFactoryAddress && avalancheGasPrice) {
+      try {
+        const signer = await this.createUserSigner(userId, 'avalanche');
+        const factory = new ethers.Contract(
+          this.avalancheFactoryAddress,
+          ESCROW_FACTORY_ABI,
+          signer
+        );
+
+        const targetAmountWei = ethers.parseEther(targetAmountEth.toString());
+
+        // Estimate gas
+        const estimatedGas = await factory.createEscrow.estimateGas(
+          companyWalletAddress,
+          signer.address, // masterWallet for fund forwarding
+          targetAmountWei,
+          durationInDays
+        );
+
+        const gasCostWei = estimatedGas * avalancheGasPrice;
+        const gasCostAvax = ethers.formatEther(gasCostWei);
+
+        gasEstimate.avalanche = {
+          estimatedGasWei: estimatedGas.toString(),
+          estimatedGasEth: gasCostAvax,
+          estimatedGasUsd: (parseFloat(gasCostAvax) * 80).toFixed(2), // Rough USD estimate (1 AVAX ≈ $80)
+        };
+
+        this.logger.log(`✅ Avalanche gas estimate: ${gasCostAvax} AVAX (~$${gasEstimate.avalanche.estimatedGasUsd})`);
+      } catch (error) {
+        this.logger.warn(`⚠️  Failed to estimate Avalanche gas:`, error.message);
+        // Use conservative estimate if actual estimate fails
+        gasEstimate.avalanche = {
+          estimatedGasWei: '500000',
+          estimatedGasEth: ethers.formatEther(BigInt(500000) * avalancheGasPrice!),
+          estimatedGasUsd: '4.00', // Rough estimate
+        };
+      }
+    }
+
+    return gasEstimate;
+  }
+
+  /**
    * Get campaign status from blockchain
    */
   async getCampaignStatus(
