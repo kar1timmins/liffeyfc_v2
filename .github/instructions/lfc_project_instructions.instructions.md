@@ -4,6 +4,17 @@ applyTo: '**'
 # Liffey Founders Club - Project Instructions
 
 > **NOTE**: This file provides high-level Copilot context. Detailed setup, configuration, and feature documentation should be maintained in the respective README.md files:
+>
+> **See also**: A concise AI-friendly summary is available at `/.github/copilot-instructions.md` — use it for quick agent prompts and fast onboarding.
+
+> **Maintainers**: When editing this comprehensive document, update `/.github/copilot-instructions.md` with any critical changes (endpoints, public-facing commands, or CI rules). Small UI or implementation details belong in the canonical docs, but the Copilot brief should reflect user‑facing behavior and workflow changes.
+>
+> **Quick CI check**: Run the docs validator to spot mismatches and missing quick references:
+>
+> ```bash
+> chmod +x .github/scripts/check-copilot-instructions.sh
+> .github/scripts/check-copilot-instructions.sh
+> ```
 > - Root project overview: `/README.md` (to be created)
 > - Frontend specifics: `/frontend/README.md`
 > - Backend specifics: `/backend/README.md`
