@@ -10,3 +10,4 @@ export { WishlistItem } from './wishlist-item.entity';
 export { EscrowDeployment } from './escrow-deployment.entity';
 export { Contribution } from './contribution.entity';
 export { ContractDeploymentHistory } from './contract-deployment-history.entity';
+export { Payment } from './payment.entity';
