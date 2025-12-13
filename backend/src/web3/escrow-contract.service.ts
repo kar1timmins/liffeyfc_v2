@@ -370,9 +370,21 @@ export class EscrowContractService {
         }
         this.logger.log(`✅ Factory contract verified at ${this.ethereumFactoryAddress} (code length: ${factoryCode.length} bytes)`);
 
+        // Log deployment parameters BEFORE balance check
+        this.logger.log(`📋 Deployment Parameters:`);
+        this.logger.log(`   Company: ${companyWalletAddress} (valid: ${ethers.isAddress(companyWalletAddress)})`);
+        this.logger.log(`   Master Wallet: ${masterWalletAddress} (valid: ${ethers.isAddress(masterWalletAddress)})`);
+        this.logger.log(`   Same address check: ${companyWalletAddress.toLowerCase() === masterWalletAddress.toLowerCase() ? 'SAME (INVALID)' : 'Different (OK)'}`);
+        this.logger.log(`   Target Amount: ${ethers.formatEther(targetAmountWei)} ETH (${targetAmountWei.toString()} wei)`);
+        this.logger.log(`   Duration: ${durationInDays} days`);
+        this.logger.log(`   Campaign Name: "${campaignName || ''}" (length: ${(campaignName || '').length})`);
+        this.logger.log(`   Campaign Description: "${campaignDescription || ''}" (length: ${(campaignDescription || '').length})`);
+        this.logger.log(`   Factory: ${this.ethereumFactoryAddress}`);
+        this.logger.log(`   Signer: ${signer.address}`);
+
         // Quick balance check to avoid estimateGas failure when empty wallets are used
         const signerBalance = await signer.provider!.getBalance(signer.address);
-        this.logger.log(`💰 Signer balance: ${ethers.formatEther(signerBalance)} ETH`);
+        this.logger.log(`💰 Signer balance: ${ethers.formatEther(signerBalance)} ETH (${signerBalance.toString()} wei)`);
         
         // Require minimum balance for gas (0.001 ETH ~= $3 worth of gas on testnet)
         const minGasBalance = ethers.parseEther("0.001");
@@ -387,17 +399,6 @@ export class EscrowContractService {
 
         let tx;
         try {
-          // Log deployment parameters
-          this.logger.log(`📋 Deployment Parameters:`);
-          this.logger.log(`   Company: ${companyWalletAddress}`);
-          this.logger.log(`   Master Wallet: ${masterWalletAddress}`);
-          this.logger.log(`   Target Amount: ${ethers.formatEther(targetAmountWei)} ETH`);
-          this.logger.log(`   Duration: ${durationInDays} days`);
-          this.logger.log(`   Campaign Name: ${campaignName || '(empty)'}`);
-          this.logger.log(`   Campaign Description: ${campaignDescription ? campaignDescription.substring(0, 50) + '...' : '(empty)'}`);
-          this.logger.log(`   Factory: ${this.ethereumFactoryAddress}`);
-          this.logger.log(`   Signer: ${signer.address}`);
-          this.logger.log(`   Signer Balance: ${ethers.formatEther(signerBalance)} ETH`);
 
           // Try to estimate gas first - this will give us better error messages
           try {
