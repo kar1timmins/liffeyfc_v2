@@ -94,6 +94,10 @@ export class EscrowContractService {
   private ethereumFactoryAddress: string;
   private avalancheFactoryAddress: string;
 
+  // Throttle timestamps to avoid repeated RPC warnings
+  private lastEthereumRpcWarn: number;
+  private lastAvalancheRpcWarn: number;
+
   // RPC Endpoint fallbacks
   private ethereumRPCEndpoints = [
     'https://sepolia.drpc.org',
@@ -134,6 +138,10 @@ export class EscrowContractService {
     // Initialize providers with fallback retry logic
     this.ethereumProvider = new ethers.JsonRpcProvider(ethereumRpcUrl);
     this.avalancheProvider = new ethers.JsonRpcProvider(avalancheRpcUrl);
+
+    // Throttle repeated RPC warnings to avoid log spam on transient network issues
+    this.lastEthereumRpcWarn = 0;
+    this.lastAvalancheRpcWarn = 0;
 
     // Factory addresses from environment
     this.ethereumFactoryAddress = process.env.ETHEREUM_FACTORY_ADDRESS || '';
@@ -182,13 +190,23 @@ export class EscrowContractService {
       await this.ethereumProvider.getNetwork();
       return this.ethereumProvider;
     } catch (error) {
-      this.logger.warn('⚠️  Current Ethereum RPC endpoint failed, trying fallbacks...');
+      // Avoid spamming logs if network is flapping - only warn once per minute
+      const now = Date.now();
+      if (now - (this.lastEthereumRpcWarn || 0) > 60_000) {
+        this.logger.warn('⚠️  Current Ethereum RPC endpoint failed, trying fallbacks...');
+        this.lastEthereumRpcWarn = now;
+      } else {
+        this.logger.debug('Ethereum RPC endpoint temporarily failing; retrying silently.');
+      }
+
       for (const rpcUrl of this.ethereumRPCEndpoints) {
         try {
           const provider = new ethers.JsonRpcProvider(rpcUrl);
           await provider.getNetwork();
           this.logger.log(`✅ Successfully switched to Ethereum RPC: ${rpcUrl}`);
           this.ethereumProvider = provider;
+          // Reset the warn timer on success
+          this.lastEthereumRpcWarn = 0;
           return provider;
         } catch (e) {
           this.logger.debug(`Failed to connect to ${rpcUrl}`);
@@ -207,13 +225,23 @@ export class EscrowContractService {
       await this.avalancheProvider.getNetwork();
       return this.avalancheProvider;
     } catch (error) {
-      this.logger.warn('⚠️  Current Avalanche RPC endpoint failed, trying fallbacks...');
+      // Avoid spamming logs if network is flapping - only warn once per minute
+      const now = Date.now();
+      if (now - (this.lastAvalancheRpcWarn || 0) > 60_000) {
+        this.logger.warn('⚠️  Current Avalanche RPC endpoint failed, trying fallbacks...');
+        this.lastAvalancheRpcWarn = now;
+      } else {
+        this.logger.debug('Avalanche RPC endpoint temporarily failing; retrying silently.');
+      }
+
       for (const rpcUrl of this.avalancheRPCEndpoints) {
         try {
           const provider = new ethers.JsonRpcProvider(rpcUrl);
           await provider.getNetwork();
           this.logger.log(`✅ Successfully switched to Avalanche RPC: ${rpcUrl}`);
           this.avalancheProvider = provider;
+          // Reset the warn timer on success
+          this.lastAvalancheRpcWarn = 0;
           return provider;
         } catch (e) {
           this.logger.debug(`Failed to connect to ${rpcUrl}`);
