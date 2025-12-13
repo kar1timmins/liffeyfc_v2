@@ -117,7 +117,7 @@ export class EscrowController {
         }
       }
 
-      this.logger.log(`📋 Using company wallet: ${company.ethAddress || company.avaxAddress}`);
+      this.logger.log(`📋 Company wallet addresses - ETH: ${company.ethAddress || 'none'}, AVAX: ${company.avaxAddress || 'none'}`);
 
       // Get user's master wallet for fund forwarding
       const user_ = await this.userRepo.findOne({
@@ -132,14 +132,53 @@ export class EscrowController {
         );
       }
 
-      this.logger.log(`👤 Using master wallet: ${user_.userWallet.ethAddress || user_.userWallet.avaxAddress}`);
+      this.logger.log(`👤 Master wallet addresses - ETH: ${user_.userWallet.ethAddress || 'none'}, AVAX: ${user_.userWallet.avaxAddress || 'none'}`);
 
       // Use company's primary wallet address (prefer ETH, fallback to AVAX)
       const walletAddress = company.ethAddress || company.avaxAddress!;
       // Use user's master wallet (prefer ETH, fallback to AVAX) for fund forwarding
       const masterWalletAddress = user_.userWallet.ethAddress || user_.userWallet.avaxAddress!;
 
-      this.logger.log(`🔍 Addresses - Company: ${walletAddress}, Master: ${masterWalletAddress}, Same: ${walletAddress.toLowerCase() === masterWalletAddress.toLowerCase()}`);
+      this.logger.log(`🔍 Final addresses - Company: ${walletAddress}, Master: ${masterWalletAddress}, Same: ${walletAddress.toLowerCase() === masterWalletAddress.toLowerCase()}`);
+      
+      // Check if company wallet is mistakenly set to master wallet
+      if (walletAddress.toLowerCase() === masterWalletAddress.toLowerCase()) {
+        this.logger.error(`❌ Company ${company.id} wallet is incorrectly set to master wallet ${masterWalletAddress}`);
+        this.logger.log(`🔄 Attempting to regenerate company child wallet...`);
+        
+        // Force regenerate by deleting existing company wallet first
+        try {
+          await this.dataSource.query(
+            'DELETE FROM company_wallets WHERE "companyId" = $1',
+            [company.id]
+          );
+          this.logger.log(`🗑️  Deleted incorrect company wallet record`);
+          
+          // Generate new child wallet
+          const walletResult = await this.walletService.generateCompanyWallet(user.sub, company.id);
+          this.logger.log(`✅ Regenerated company wallet: ETH=${walletResult.ethAddress}, AVAX=${walletResult.avaxAddress}`);
+          
+          // Update company with new addresses
+          company.ethAddress = walletResult.ethAddress;
+          company.avaxAddress = walletResult.avaxAddress;
+          
+          // Verify they're different now
+          const newWalletAddress = company.ethAddress || company.avaxAddress!;
+          if (newWalletAddress.toLowerCase() === masterWalletAddress.toLowerCase()) {
+            throw new Error('Regenerated wallet is still the same as master wallet. This should not happen.');
+          }
+          
+          // Update local variable
+          Object.assign(walletAddress, newWalletAddress);
+          this.logger.log(`✅ Successfully regenerated different child wallet: ${newWalletAddress}`);
+        } catch (regenError) {
+          this.logger.error(`❌ Failed to regenerate company wallet: ${regenError.message}`);
+          throw new HttpException(
+            'Company wallet is incorrectly configured and auto-fix failed. Please delete the company and recreate it.',
+            HttpStatus.BAD_REQUEST
+          );
+        }
+      }
 
       // Deploy escrow contracts using user's private key from database
       const result = await this.escrowService.deployEscrowContracts(
