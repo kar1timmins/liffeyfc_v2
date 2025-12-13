@@ -266,7 +266,7 @@
               class="textarea textarea-bordered w-full"
               rows={3}
               bind:value={campaignDescription}
-            />
+            ></textarea>
             <div class="label">
               <span class="label-text-alt opacity-70">Short purpose or details for this campaign</span>
             </div>

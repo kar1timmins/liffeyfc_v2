@@ -50,10 +50,17 @@ export interface EscrowDeploymentResult {
   };
 }
 
+export interface ContributorUser {
+  id: string;
+  name?: string | null;
+  profilePhotoUrl?: string | null;
+}
+
 export interface ContributorInfo {
   address: string;
   amount: string;
   amountEth: string;
+  user?: ContributorUser | null;
 }
 
 export interface CampaignStatus {
