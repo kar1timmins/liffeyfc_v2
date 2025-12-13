@@ -370,17 +370,33 @@ export class EscrowContractService {
         }
         this.logger.log(`✅ Factory contract verified at ${this.ethereumFactoryAddress} (code length: ${factoryCode.length} bytes)`);
 
+        // Validate addresses FIRST
+        if (!ethers.isAddress(companyWalletAddress)) {
+          throw new Error(`❌ Invalid company wallet address: ${companyWalletAddress}. This address is not a valid Ethereum address.`);
+        }
+        if (!ethers.isAddress(masterWalletAddress)) {
+          throw new Error(`❌ Invalid master wallet address: ${masterWalletAddress}. This address is not a valid Ethereum address.`);
+        }
+
+        // Checksum the addresses to ensure proper formatting
+        const checksummedCompany = ethers.getAddress(companyWalletAddress);
+        const checksummedMaster = ethers.getAddress(masterWalletAddress);
+
         // Log deployment parameters BEFORE balance check
         this.logger.log(`📋 Deployment Parameters:`);
-        this.logger.log(`   Company: ${companyWalletAddress} (valid: ${ethers.isAddress(companyWalletAddress)})`);
-        this.logger.log(`   Master Wallet: ${masterWalletAddress} (valid: ${ethers.isAddress(masterWalletAddress)})`);
-        this.logger.log(`   Same address check: ${companyWalletAddress.toLowerCase() === masterWalletAddress.toLowerCase() ? 'SAME (INVALID)' : 'Different (OK)'}`);
+        this.logger.log(`   Company: ${companyWalletAddress} → ${checksummedCompany} (valid: ${ethers.isAddress(companyWalletAddress)})`);
+        this.logger.log(`   Master Wallet: ${masterWalletAddress} → ${checksummedMaster} (valid: ${ethers.isAddress(masterWalletAddress)})`);
+        this.logger.log(`   Same address check: ${checksummedCompany.toLowerCase() === checksummedMaster.toLowerCase() ? 'SAME (INVALID)' : 'Different (OK)'}`);
         this.logger.log(`   Target Amount: ${ethers.formatEther(targetAmountWei)} ETH (${targetAmountWei.toString()} wei)`);
         this.logger.log(`   Duration: ${durationInDays} days`);
         this.logger.log(`   Campaign Name: "${campaignName || ''}" (length: ${(campaignName || '').length})`);
         this.logger.log(`   Campaign Description: "${campaignDescription || ''}" (length: ${(campaignDescription || '').length})`);
         this.logger.log(`   Factory: ${this.ethereumFactoryAddress}`);
         this.logger.log(`   Signer: ${signer.address}`);
+
+        // Use checksummed addresses for deployment
+        companyWalletAddress = checksummedCompany;
+        masterWalletAddress = checksummedMaster;
 
         // Quick balance check to avoid estimateGas failure when empty wallets are used
         const signerBalance = await signer.provider!.getBalance(signer.address);
@@ -400,7 +416,18 @@ export class EscrowContractService {
         let tx;
         try {
 
+          // Log the exact parameters being sent to help debug
+          this.logger.log(`🔬 Exact parameters for createEscrow call:`);
+          this.logger.log(`   [0] company: ${companyWalletAddress} (address, valid: ${ethers.isAddress(companyWalletAddress)})`);
+          this.logger.log(`   [1] masterWallet: ${masterWalletAddress} (address, valid: ${ethers.isAddress(masterWalletAddress)})`);
+          this.logger.log(`   [2] targetAmountWei: ${targetAmountWei.toString()} wei (> 0: ${targetAmountWei > 0n})`);
+          this.logger.log(`   [3] durationInDays: ${durationInDays} (> 0: ${durationInDays > 0})`);
+          this.logger.log(`   [4] campaignName: "${campaignName || ''}" (length: ${(campaignName || '').length})`);
+          this.logger.log(`   [5] campaignDescription: "${campaignDescription || ''}" (length: ${(campaignDescription || '').length})`);
+          this.logger.log(`   Addresses are different: ${companyWalletAddress.toLowerCase() !== masterWalletAddress.toLowerCase()}`);
+
           // Try to estimate gas first - this will give us better error messages
+          this.logger.log(`⛽ Estimating gas for contract deployment...`);
           try {
             const gasEstimate = await factory.createEscrow.estimateGas(
               companyWalletAddress,
@@ -410,7 +437,7 @@ export class EscrowContractService {
               campaignName || '',
               campaignDescription || ''
             );
-            this.logger.log(`⛽ Estimated gas: ${gasEstimate.toString()}`);
+            this.logger.log(`✅ Gas estimation successful: ${gasEstimate.toString()} gas units`);
           } catch (gasErr: any) {
             this.logger.error(`❌ Gas estimation failed: ${gasErr?.message || gasErr}`);
             // Extract revert reason if available
@@ -420,6 +447,18 @@ export class EscrowContractService {
             if (gasErr?.reason) {
               this.logger.error(`   Revert reason: ${gasErr.reason}`);
             }
+            if (gasErr?.error) {
+              this.logger.error(`   Error details: ${JSON.stringify(gasErr.error, null, 2)}`);
+            }
+            
+            // Detailed parameter validation logging
+            this.logger.error(`\n❌ CONTRACT VALIDATION FAILED - Checking each parameter:`);
+            this.logger.error(`   ✓ Company is valid address: ${ethers.isAddress(companyWalletAddress)}`);
+            this.logger.error(`   ✓ Master is valid address: ${ethers.isAddress(masterWalletAddress)}`);
+            this.logger.error(`   ✓ Addresses are different: ${companyWalletAddress.toLowerCase() !== masterWalletAddress.toLowerCase()}`);
+            this.logger.error(`   ✓ Target amount > 0: ${targetAmountWei > 0n} (value: ${targetAmountWei.toString()})`);
+            this.logger.error(`   ✓ Duration > 0: ${durationInDays > 0} (value: ${durationInDays})`);
+            
             throw new Error(
               `Factory contract rejected the deployment. This could be due to: ` +
               `1) Invalid parameters, 2) Contract is paused, 3) Insufficient permissions. ` +
