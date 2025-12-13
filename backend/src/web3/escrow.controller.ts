@@ -12,6 +12,7 @@ import {
 import { IsString, IsNumber, IsOptional, IsArray, IsNotEmpty, IsIn } from 'class-validator';
 import { AuthGuard } from '@nestjs/passport';
 import { EscrowContractService } from './escrow-contract.service';
+import { WalletGenerationService } from './wallet-generation.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { WishlistItem } from '../entities/wishlist-item.entity';
@@ -51,6 +52,7 @@ export class EscrowController {
 
   constructor(
     private readonly escrowService: EscrowContractService,
+    private readonly walletService: WalletGenerationService,
     private readonly dataSource: DataSource,
     @InjectRepository(WishlistItem)
     private wishlistRepo: Repository<WishlistItem>,
@@ -96,11 +98,26 @@ export class EscrowController {
 
       // Check if company has wallet addresses
       if (!company.ethAddress && !company.avaxAddress) {
-        throw new HttpException(
-          'Company must have at least one wallet address configured',
-          HttpStatus.BAD_REQUEST
-        );
+        this.logger.warn(`⚠️  Company ${company.id} has no wallet addresses. Attempting to generate...`);
+        
+        // Try to auto-generate company wallet
+        try {
+          const walletResult = await this.walletService.generateCompanyWallet(user.sub, company.id);
+          this.logger.log(`✅ Auto-generated company wallet: ETH=${walletResult.ethAddress}, AVAX=${walletResult.avaxAddress}`);
+          
+          // Refresh company data
+          company.ethAddress = walletResult.ethAddress;
+          company.avaxAddress = walletResult.avaxAddress;
+        } catch (walletError) {
+          this.logger.error(`❌ Failed to auto-generate company wallet: ${walletError.message}`);
+          throw new HttpException(
+            'Company wallet generation failed. Please ensure you have a master wallet and try generating the company wallet manually.',
+            HttpStatus.BAD_REQUEST
+          );
+        }
       }
+
+      this.logger.log(`📋 Using company wallet: ${company.ethAddress || company.avaxAddress}`);
 
       // Get user's master wallet for fund forwarding
       const user_ = await this.userRepo.findOne({
@@ -115,10 +132,14 @@ export class EscrowController {
         );
       }
 
+      this.logger.log(`👤 Using master wallet: ${user_.userWallet.ethAddress || user_.userWallet.avaxAddress}`);
+
       // Use company's primary wallet address (prefer ETH, fallback to AVAX)
       const walletAddress = company.ethAddress || company.avaxAddress!;
       // Use user's master wallet (prefer ETH, fallback to AVAX) for fund forwarding
       const masterWalletAddress = user_.userWallet.ethAddress || user_.userWallet.avaxAddress!;
+
+      this.logger.log(`🔍 Addresses - Company: ${walletAddress}, Master: ${masterWalletAddress}, Same: ${walletAddress.toLowerCase() === masterWalletAddress.toLowerCase()}`);
 
       // Deploy escrow contracts using user's private key from database
       const result = await this.escrowService.deployEscrowContracts(

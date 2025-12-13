@@ -319,6 +319,14 @@ export class EscrowContractService {
     if (!ethers.isAddress(masterWalletAddress)) {
       throw new BadRequestException(`Invalid master wallet address: ${masterWalletAddress}`);
     }
+    
+    // Ensure company and master wallet addresses are different
+    if (companyWalletAddress.toLowerCase() === masterWalletAddress.toLowerCase()) {
+      throw new BadRequestException(
+        'Company wallet and master wallet must be different addresses. ' +
+        'Company wallet should be the company child wallet, not your personal master wallet.'
+      );
+    }
 
     // Convert target amount to wei
     const targetAmountWei = ethers.parseEther(targetAmountEth.toString());
@@ -376,7 +384,7 @@ export class EscrowContractService {
         } catch (err: any) {
           this.logger.error(`❌ Error while creating Ethereum escrow: ${err?.message || err}`);
           if (err?.code === 'CALL_EXCEPTION') {
-            throw new Error(`createEscrow reverted on Ethereum factory ${factory.address} for company ${companyWalletAddress}`);
+            throw new Error(`createEscrow reverted on Ethereum factory ${this.ethereumFactoryAddress} for company ${companyWalletAddress}`);
           }
           throw err;
         }
@@ -457,7 +465,7 @@ export class EscrowContractService {
         } catch (err: any) {
           this.logger.error(`❌ Error while creating Avalanche escrow: ${err?.message || err}`);
           if (err?.code === 'CALL_EXCEPTION') {
-            throw new Error(`createEscrow reverted on Avalanche factory ${factory.address} for company ${companyWalletAddress}`);
+            throw new Error(`createEscrow reverted on Avalanche factory ${this.avalancheFactoryAddress} for company ${companyWalletAddress}`);
           }
           throw err;
         }
