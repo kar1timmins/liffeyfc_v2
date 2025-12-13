@@ -134,12 +134,13 @@ export class EscrowController {
 
       this.logger.log(`👤 Master wallet addresses - ETH: ${user_.userWallet.ethAddress || 'none'}, AVAX: ${user_.userWallet.avaxAddress || 'none'}`);
 
-      // Use company's primary wallet address (prefer ETH, fallback to AVAX)
-      const walletAddress = company.ethAddress || company.avaxAddress!;
       // Use user's master wallet (prefer ETH, fallback to AVAX) for fund forwarding
       const masterWalletAddress = user_.userWallet.ethAddress || user_.userWallet.avaxAddress!;
 
-      this.logger.log(`🔍 Final addresses - Company: ${walletAddress}, Master: ${masterWalletAddress}, Same: ${walletAddress.toLowerCase() === masterWalletAddress.toLowerCase()}`);
+      // Use company's primary wallet address (prefer ETH, fallback to AVAX)
+      let walletAddress = company.ethAddress || company.avaxAddress!;
+
+      this.logger.log(`🔍 Initial addresses - Company: ${walletAddress}, Master: ${masterWalletAddress}, Same: ${walletAddress.toLowerCase() === masterWalletAddress.toLowerCase()}`);
       
       // Check if company wallet is mistakenly set to master wallet
       if (walletAddress.toLowerCase() === masterWalletAddress.toLowerCase()) {
@@ -162,15 +163,15 @@ export class EscrowController {
           company.ethAddress = walletResult.ethAddress;
           company.avaxAddress = walletResult.avaxAddress;
           
+          // Recalculate wallet address with new values
+          walletAddress = company.ethAddress || company.avaxAddress!;
+          
           // Verify they're different now
-          const newWalletAddress = company.ethAddress || company.avaxAddress!;
-          if (newWalletAddress.toLowerCase() === masterWalletAddress.toLowerCase()) {
+          if (walletAddress.toLowerCase() === masterWalletAddress.toLowerCase()) {
             throw new Error('Regenerated wallet is still the same as master wallet. This should not happen.');
           }
           
-          // Update local variable
-          Object.assign(walletAddress, newWalletAddress);
-          this.logger.log(`✅ Successfully regenerated different child wallet: ${newWalletAddress}`);
+          this.logger.log(`✅ Successfully regenerated different child wallet: ${walletAddress}`);
         } catch (regenError) {
           this.logger.error(`❌ Failed to regenerate company wallet: ${regenError.message}`);
           throw new HttpException(
