@@ -139,7 +139,7 @@ import { devLog } from '$lib/env';
   function updateFromEth() {
     if (formData.targetAmountEth > 0) {
       const eurValue = formData.targetAmountEth * ethEurRate;
-      formData.value = String(Math.round(eurValue * 100) / 100);
+      formData.value = eurValue.toFixed(2);
       formData.targetAmountAvax = Math.round(eurValue / avaxEurRate * 100) / 100;
     }
   }
@@ -147,7 +147,7 @@ import { devLog } from '$lib/env';
   function updateFromAvax() {
     if (formData.targetAmountAvax > 0) {
       const eurValue = formData.targetAmountAvax * avaxEurRate;
-      formData.value = String(Math.round(eurValue * 100) / 100);
+      formData.value = eurValue.toFixed(2);
       formData.targetAmountEth = Math.round(eurValue / ethEurRate * 10000) / 10000;
     }
   }
@@ -697,8 +697,8 @@ import { devLog } from '$lib/env';
               type="number"
               inputmode="decimal"
               bind:value={formData.value}
-              placeholder="5000"
-              step="1"
+              placeholder="5000 (e.g. 3334 or 3334.50)"
+              step="0.01"
               min="0"
               class="input input-bordered input-sm pl-8 focus:ring-2 focus:ring-primary w-full"
               disabled={isSubmitting}
@@ -706,7 +706,7 @@ import { devLog } from '$lib/env';
           </div>
           {#if formData.value}
             <p class="text-xs opacity-60 mt-2">
-              Amount: €{parseFloat(formData.value).toLocaleString('de-DE')}
+              Amount: €{parseFloat(formData.value).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
           {/if}
         </div>
@@ -810,7 +810,7 @@ import { devLog } from '$lib/env';
                           <span class="badge badge-primary badge-xs"></span>
                           Ethereum Amount
                         </span>
-                        <span class="label-text-alt text-xs opacity-60">≈ €{Math.round(formData.targetAmountEth * ethEurRate).toLocaleString()}</span>
+                        <span class="label-text-alt text-xs opacity-60">≈ €{(formData.targetAmountEth * ethEurRate).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </label>
                       <div class="join w-full">
                         <input
@@ -835,7 +835,7 @@ import { devLog } from '$lib/env';
                           <span class="badge badge-error badge-xs"></span>
                           Avalanche Amount
                         </span>
-                        <span class="label-text-alt text-xs opacity-60">≈ €{Math.round(formData.targetAmountAvax * avaxEurRate).toLocaleString()}</span>
+                        <span class="label-text-alt text-xs opacity-60">≈ €{(formData.targetAmountAvax * avaxEurRate).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </label>
                       <div class="join w-full">
                         <input
