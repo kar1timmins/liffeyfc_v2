@@ -8,6 +8,7 @@ import { Company } from '../entities/company.entity';
 import { UserWallet } from '../entities/user-wallet.entity';
 import { CompanyWallet } from '../entities/company-wallet.entity';
 import { ContractHistoryService } from './contract-history.service';
+import { PlatformWalletService } from './platform-wallet.service';
 import { ContractAction } from '../entities/contract-deployment-history.entity';
 
 // ABI for EscrowFactory contract
@@ -123,6 +124,7 @@ export class EscrowContractService {
     @InjectRepository(CompanyWallet)
     private companyWalletRepo: Repository<CompanyWallet>,
     private readonly contractHistoryService: ContractHistoryService,
+    private readonly platformWalletService: PlatformWalletService,
   ) {
     // Get encryption key from environment variable (for decrypting stored wallets)
     const key = process.env.WALLET_ENCRYPTION_KEY;
@@ -685,6 +687,333 @@ export class EscrowContractService {
         }
       } catch (error) {
         this.logger.error('❌ Failed to deploy Avalanche escrow:', error);
+        throw error;
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Deploy escrow contracts using PLATFORM wallet (X402 payment flow)
+   * 
+   * This method is called after user pays in USDC via X402 payment system.
+   * The platform wallet pays for gas instead of the user's wallet.
+   * 
+   * Key differences from deployEscrowContracts:
+   * - Uses platform wallet signer (not user's wallet)
+   * - Platform pays all gas fees (user paid in USDC)
+   * - No user private key needed
+   * 
+   * @param userId - User ID (for logging/tracking, not for wallet access)
+   * @param wishlistItemId - Wishlist item to deploy for
+   * @param companyWalletAddress - Company child wallet (funds recipient)
+   * @param masterWalletAddress - User's master wallet (tracking purposes)
+   * @param targetAmountEth - Campaign goal in ETH
+   * @param durationInDays - Campaign duration
+   * @param chains - Chains to deploy on
+   * @param campaignName - Optional campaign name
+   * @param campaignDescription - Optional campaign description
+   */
+  async deployEscrowContractsWithPlatformWallet(
+    userId: string,
+    wishlistItemId: string,
+    companyWalletAddress: string,
+    masterWalletAddress: string,
+    targetAmountEth: number,
+    durationInDays: number,
+    chains: ('ethereum' | 'avalanche')[] = ['ethereum', 'avalanche'],
+    campaignName: string | null = null,
+    campaignDescription: string | null = null,
+  ): Promise<EscrowDeploymentResult> {
+    this.logger.log(`📝 [PLATFORM WALLET] Deploying escrow contracts for wishlist item: ${wishlistItemId}`);
+    this.logger.log(`   User ID: ${userId}`);
+    this.logger.log(`   Company Wallet: ${companyWalletAddress}`);
+    this.logger.log(`   Master Wallet: ${masterWalletAddress}`);
+    this.logger.log(`   Payment Method: X402 USDC (Platform wallet pays gas)`);
+
+    // Get wishlist item to extract company ID for history logging
+    const wishlistItem = await this.wishlistRepo.findOne({
+      where: { id: wishlistItemId },
+      relations: ['company'],
+    });
+
+    if (!wishlistItem) {
+      throw new BadRequestException(`Wishlist item ${wishlistItemId} not found`);
+    }
+
+    const companyId = wishlistItem.companyId;
+
+    // Validate that factory addresses are configured
+    if (!this.ethereumFactoryAddress && !this.avalancheFactoryAddress) {
+      throw new Error(
+        'Smart contract factories are not configured. Please configure ETHEREUM_FACTORY_ADDRESS and/or AVALANCHE_FACTORY_ADDRESS environment variables.'
+      );
+    }
+
+    // Check if requested chains have factories configured
+    const unavailableChains = chains.filter(chain => {
+      if (chain === 'ethereum') return !this.ethereumFactoryAddress;
+      if (chain === 'avalanche') return !this.avalancheFactoryAddress;
+      return false;
+    });
+
+    if (unavailableChains.length === chains.length) {
+      throw new Error(
+        `None of the requested chains (${chains.join(', ')}) have factory contracts configured. ` +
+        `Available: ${this.ethereumFactoryAddress ? 'ethereum' : ''}${this.avalancheFactoryAddress ? ' avalanche' : ''}`.trim()
+      );
+    }
+
+    if (unavailableChains.length > 0) {
+      this.logger.warn(`⚠️  Skipping deployment on unavailable chains: ${unavailableChains.join(', ')}`);
+    }
+
+    const result: EscrowDeploymentResult = {
+      transactionHashes: {}
+    };
+
+    // Validate addresses
+    if (!ethers.isAddress(companyWalletAddress)) {
+      throw new BadRequestException(`Invalid company wallet address: ${companyWalletAddress}`);
+    }
+    if (!ethers.isAddress(masterWalletAddress)) {
+      throw new BadRequestException(`Invalid master wallet address: ${masterWalletAddress}`);
+    }
+    
+    // Ensure company and master wallet addresses are different
+    if (companyWalletAddress.toLowerCase() === masterWalletAddress.toLowerCase()) {
+      throw new BadRequestException(
+        'Company wallet and master wallet must be different addresses. ' +
+        'Company wallet should be the company child wallet, not your personal master wallet.'
+      );
+    }
+
+    // Convert target amount to wei
+    const targetAmountWei = ethers.parseEther(targetAmountEth.toString());
+
+    // Deploy to Ethereum using PLATFORM wallet
+    if (chains.includes('ethereum') && this.ethereumFactoryAddress) {
+      try {
+        // Use platform wallet signer instead of user's wallet
+        const signer = await this.platformWalletService.getEthereumSigner();
+
+        const factory = new ethers.Contract(
+          this.ethereumFactoryAddress,
+          ESCROW_FACTORY_ABI,
+          signer
+        );
+
+        this.logger.log(`🔑 [PLATFORM] Using platform wallet: ${signer.address} for Ethereum deployment`);
+
+        // Check platform wallet balance
+        const balance = await this.platformWalletService.getPlatformBalance('ethereum');
+        this.logger.log(`💰 [PLATFORM] Platform Ethereum balance: ${balance.balanceEth} ETH`);
+
+        // Estimate gas cost
+        const data = factory.interface.encodeFunctionData('createEscrow', [
+          ethers.getAddress(companyWalletAddress),
+          ethers.getAddress(masterWalletAddress),
+          targetAmountWei,
+          durationInDays,
+          campaignName || '',
+          campaignDescription || ''
+        ]);
+
+        const gasEstimate = await this.platformWalletService.estimateGasCost(
+          'ethereum',
+          this.ethereumFactoryAddress,
+          data
+        );
+
+        this.logger.log(`⛽ [PLATFORM] Estimated gas cost: ${gasEstimate.estimatedCostEth} ETH (${gasEstimate.gasLimit.toString()} gas units)`);
+
+        // Check sufficient balance
+        if (!await this.platformWalletService.hasSufficientGas('ethereum', gasEstimate.estimatedCostWei)) {
+          throw new Error(
+            `Platform wallet has insufficient balance for gas. ` +
+            `Required: ${gasEstimate.estimatedCostEth} ETH, ` +
+            `Available: ${balance.balanceEth} ETH`
+          );
+        }
+
+        // Send transaction using platform wallet
+        this.logger.log(`🚀 [PLATFORM] Deploying Ethereum escrow contract...`);
+        const tx = await factory.createEscrow(
+          ethers.getAddress(companyWalletAddress),
+          ethers.getAddress(masterWalletAddress),
+          targetAmountWei,
+          durationInDays,
+          campaignName || '',
+          campaignDescription || ''
+        );
+
+        this.logger.log(`⏳ [PLATFORM] Waiting for Ethereum transaction: ${tx.hash}`);
+        const receipt = await tx.wait();
+
+        if (!receipt || receipt.status !== 1) {
+          throw new Error('Ethereum transaction failed');
+        }
+
+        // Parse event to get escrow address
+        const iface = new ethers.Interface(ESCROW_FACTORY_ABI);
+        const log = receipt.logs.find(log => {
+          try {
+            const parsed = iface.parseLog({ topics: log.topics as string[], data: log.data });
+            return parsed?.name === 'EscrowCreated';
+          } catch {
+            return false;
+          }
+        });
+
+        if (log) {
+          const parsedLog = iface.parseLog({ topics: log.topics as string[], data: log.data });
+          result.ethereumAddress = parsedLog?.args[0];
+        }
+
+        result.transactionHashes.ethereum = tx.hash;
+
+        this.logger.log(`✅ [PLATFORM] Ethereum escrow deployed: ${result.ethereumAddress}`);
+        this.logger.log(`   Transaction: ${tx.hash}`);
+        this.logger.log(`   Gas Used: ${receipt.gasUsed.toString()}`);
+
+        // Log to contract history
+        await this.contractHistoryService.logAction({
+          userId,
+          companyId,
+          wishlistItemId,
+          contractAddress: result.ethereumAddress || '',
+          fromAddress: signer.address,
+          chain: 'ethereum',
+          network: 'sepolia',
+          action: ContractAction.DEPLOYED,
+          transactionHash: tx.hash,
+          metadata: {
+            deploymentMethod: 'platform_wallet',
+            paymentMethod: 'x402_usdc',
+            targetAmountEth,
+            durationInDays,
+            campaignName: campaignName || '',
+            campaignDescription: campaignDescription || '',
+            factoryAddress: this.ethereumFactoryAddress,
+          },
+          notes: `Platform wallet deployment via X402 USDC payment`,
+        });
+      } catch (error) {
+        this.logger.error(`❌ [PLATFORM] Failed to deploy Ethereum escrow: ${error.message}`);
+        throw error;
+      }
+    }
+
+    // Deploy to Avalanche using PLATFORM wallet
+    if (chains.includes('avalanche') && this.avalancheFactoryAddress) {
+      try {
+        // Use platform wallet signer instead of user's wallet
+        const signer = await this.platformWalletService.getAvalancheSigner();
+
+        const factory = new ethers.Contract(
+          this.avalancheFactoryAddress,
+          ESCROW_FACTORY_ABI,
+          signer
+        );
+
+        this.logger.log(`🔑 [PLATFORM] Using platform wallet: ${signer.address} for Avalanche deployment`);
+
+        // Check platform wallet balance
+        const balance = await this.platformWalletService.getPlatformBalance('avalanche');
+        this.logger.log(`💰 [PLATFORM] Platform Avalanche balance: ${balance.balanceEth} AVAX`);
+
+        // Estimate gas cost
+        const data = factory.interface.encodeFunctionData('createEscrow', [
+          ethers.getAddress(companyWalletAddress),
+          ethers.getAddress(masterWalletAddress),
+          targetAmountWei,
+          durationInDays,
+          campaignName || '',
+          campaignDescription || ''
+        ]);
+
+        const gasEstimate = await this.platformWalletService.estimateGasCost(
+          'avalanche',
+          this.avalancheFactoryAddress,
+          data
+        );
+
+        this.logger.log(`⛽ [PLATFORM] Estimated gas cost: ${gasEstimate.estimatedCostEth} AVAX (${gasEstimate.gasLimit.toString()} gas units)`);
+
+        // Check sufficient balance
+        if (!await this.platformWalletService.hasSufficientGas('avalanche', gasEstimate.estimatedCostWei)) {
+          throw new Error(
+            `Platform wallet has insufficient balance for gas. ` +
+            `Required: ${gasEstimate.estimatedCostEth} AVAX, ` +
+            `Available: ${balance.balanceEth} AVAX`
+          );
+        }
+
+        // Send transaction using platform wallet
+        this.logger.log(`🚀 [PLATFORM] Deploying Avalanche escrow contract...`);
+        const tx = await factory.createEscrow(
+          ethers.getAddress(companyWalletAddress),
+          ethers.getAddress(masterWalletAddress),
+          targetAmountWei,
+          durationInDays,
+          campaignName || '',
+          campaignDescription || ''
+        );
+
+        this.logger.log(`⏳ [PLATFORM] Waiting for Avalanche transaction: ${tx.hash}`);
+        const receipt = await tx.wait();
+
+        if (!receipt || receipt.status !== 1) {
+          throw new Error('Avalanche transaction failed');
+        }
+
+        // Parse event to get escrow address
+        const iface = new ethers.Interface(ESCROW_FACTORY_ABI);
+        const log = receipt.logs.find(log => {
+          try {
+            const parsed = iface.parseLog({ topics: log.topics as string[], data: log.data });
+            return parsed?.name === 'EscrowCreated';
+          } catch {
+            return false;
+          }
+        });
+
+        if (log) {
+          const parsedLog = iface.parseLog({ topics: log.topics as string[], data: log.data });
+          result.avalancheAddress = parsedLog?.args[0];
+        }
+
+        result.transactionHashes.avalanche = tx.hash;
+
+        this.logger.log(`✅ [PLATFORM] Avalanche escrow deployed: ${result.avalancheAddress}`);
+        this.logger.log(`   Transaction: ${tx.hash}`);
+        this.logger.log(`   Gas Used: ${receipt.gasUsed.toString()}`);
+
+        // Log to contract history
+        await this.contractHistoryService.logAction({
+          userId,
+          companyId,
+          wishlistItemId,
+          contractAddress: result.avalancheAddress || '',
+          fromAddress: signer.address,
+          chain: 'avalanche',
+          network: 'fuji',
+          action: ContractAction.DEPLOYED,
+          transactionHash: tx.hash,
+          metadata: {
+            deploymentMethod: 'platform_wallet',
+            paymentMethod: 'x402_usdc',
+            targetAmountEth,
+            durationInDays,
+            campaignName: campaignName || '',
+            campaignDescription: campaignDescription || '',
+            factoryAddress: this.avalancheFactoryAddress,
+          },
+          notes: `Platform wallet deployment via X402 USDC payment`,
+        });
+      } catch (error) {
+        this.logger.error(`❌ [PLATFORM] Failed to deploy Avalanche escrow: ${error.message}`);
         throw error;
       }
     }

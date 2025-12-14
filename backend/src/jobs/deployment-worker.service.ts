@@ -117,9 +117,9 @@ export class DeploymentWorkerService implements OnModuleInit, OnModuleDestroy {
 
       // Deploy escrow contracts using platform wallet
       await job.updateProgress(30);
-      this.logger.log(`📋 Starting contract deployment...`);
+      this.logger.log(`📋 Starting contract deployment with PLATFORM wallet...`);
 
-      const result = await this.escrowService.deployEscrowContracts(
+      const result = await this.escrowService.deployEscrowContractsWithPlatformWallet(
         deploymentData.userId,
         deploymentData.wishlistItemId,
         deploymentData.companyWalletAddress,
