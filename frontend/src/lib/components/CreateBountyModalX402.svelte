@@ -149,11 +149,9 @@
 
       // For now, skip balance check and proceed to payment
       usdcBalance = {
-        balance: '0',
-        balanceWei: '0',
+        raw: '0',
         formatted: '0.00 USDC',
-        address: '',
-        chain: selectedPaymentChain
+        decimals: 6
       };
 
       // Also load platform receiver address

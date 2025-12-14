@@ -17,7 +17,7 @@ import { devLog } from '$lib/env';
     companyId: string;
     companyWallet?: string;
     masterWallet?: any;
-    onItemAdded?: () => void;
+    onItemAdded?: (result?: any) => void;
     onCreateBounty?: ((item: any) => void) | null;
   } = $props();
 
@@ -476,7 +476,7 @@ import { devLog } from '$lib/env';
       }
 
       const deployedAddresses = escrowData.data || {};
-      const addresses = [];
+      const addresses: Array<{ chain: string; address: string; txHash: string | null }> = [];
       if (deployedAddresses.ethereumAddress) {
         addresses.push({
           chain: 'ethereum',

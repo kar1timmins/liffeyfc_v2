@@ -153,7 +153,7 @@
             class="btn btn-sm btn-primary gap-2"
             onclick={() => {
               isEditing = true;
-              walletAddress = usdcWallet;
+              walletAddress = usdcWallet || '';
             }}
             disabled={isLoading}
           >
@@ -185,11 +185,9 @@
             class="input input-bordered focus:ring-2 focus:ring-primary"
             disabled={isLoading}
           />
-          <label class="label">
-            <span class="label-text-alt text-xs opacity-60">
-              Must be a valid Ethereum or Avalanche address format
-            </span>
-          </label>
+          <p class="text-xs opacity-60 mt-1">
+            Must be a valid Ethereum or Avalanche address format
+          </p>
         </div>
 
         <div class="flex gap-2">
