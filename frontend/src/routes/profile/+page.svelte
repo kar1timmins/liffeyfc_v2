@@ -533,7 +533,7 @@
           <p class="font-semibold">{usdcHint}</p>
           <p class="text-xs opacity-70">You can manage your USDC wallet below or copy the address to your clipboard.</p>
         </div>
-        <button class="btn btn-ghost btn-xs" onclick={() => { navigator.clipboard.writeText(usdcHint.split(':').pop()?.trim() || ''); }} title="Copy">
+        <button class="btn btn-ghost btn-xs" onclick={() => { if (usdcHint) navigator.clipboard.writeText(usdcHint.split(':').pop()?.trim() || ''); }} title="Copy">
           📋
         </button>
       </div>
