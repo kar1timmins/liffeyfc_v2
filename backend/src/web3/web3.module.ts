@@ -1,5 +1,6 @@
 import { Module, Provider } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule } from '@nestjs/config';
 import { Web3Controller } from './web3.controller';
 import { WalletController } from './wallet.controller';
 import { EscrowController } from './escrow.controller';
@@ -40,6 +41,7 @@ const nonceProvider: Provider = {
 @Module({
   imports: [
     TypeOrmModule.forFeature([UserWallet, CompanyWallet, WishlistItem, User, Company, EscrowDeployment, Contribution, ContractDeploymentHistory]),
+    ConfigModule,
     UsersModule,
     CommonModule,
   ],

@@ -30,7 +30,7 @@
     wishlistItem: WishlistItem;
     companyName: string;
     companyWallet?: string;
-    onSuccess?: () => void;
+    onSuccess?: (result?: any) => void;
   } = $props();
 
   // Form state
