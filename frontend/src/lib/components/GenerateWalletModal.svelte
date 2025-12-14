@@ -6,10 +6,10 @@
 
   let { 
     isOpen = $bindable(false),
-    onWalletGenerated = () => {}
+    onWalletGenerated = (data: any) => {}
   }: { 
     isOpen: boolean;
-    onWalletGenerated?: () => void;
+    onWalletGenerated?: (data: any) => void;
   } = $props();
 
   let isGenerating = $state(false);
