@@ -52,8 +52,12 @@ export class PlatformWalletService {
 
   constructor(private configService: ConfigService) {
     // Load platform private keys from environment
-    this.ethereumPrivateKey = this.configService.get<string>('PLATFORM_ETH_PRIVATE_KEY') || '';
-    this.avalanchePrivateKey = this.configService.get<string>('PLATFORM_AVAX_PRIVATE_KEY') || '';
+    let ethKey = this.configService.get<string>('PLATFORM_ETH_PRIVATE_KEY') || '';
+    let avaxKey = this.configService.get<string>('PLATFORM_AVAX_PRIVATE_KEY') || '';
+
+    // Normalize private keys (add 0x prefix if missing, as MetaMask exports without it)
+    this.ethereumPrivateKey = this.normalizePrivateKey(ethKey);
+    this.avalanchePrivateKey = this.normalizePrivateKey(avaxKey);
 
     // Validate that keys are configured
     if (!this.ethereumPrivateKey || !this.avalanchePrivateKey) {
@@ -65,12 +69,12 @@ export class PlatformWalletService {
       this.logger.warn('   X402 payment deployments will not work until keys are configured.');
     }
 
-    // Validate key formats (should start with 0x and be 66 chars long)
+    // Validate key formats (must be 64 hex characters with or without 0x prefix)
     if (this.ethereumPrivateKey && !this.isValidPrivateKey(this.ethereumPrivateKey)) {
-      throw new Error('PLATFORM_ETH_PRIVATE_KEY has invalid format (should start with 0x and be 66 characters)');
+      throw new Error('PLATFORM_ETH_PRIVATE_KEY has invalid format (must be 64 hex characters)');
     }
     if (this.avalanchePrivateKey && !this.isValidPrivateKey(this.avalanchePrivateKey)) {
-      throw new Error('PLATFORM_AVAX_PRIVATE_KEY has invalid format (should start with 0x and be 66 characters)');
+      throw new Error('PLATFORM_AVAX_PRIVATE_KEY has invalid format (must be 64 hex characters)');
     }
 
     // Derive wallet addresses from private keys
@@ -98,9 +102,20 @@ export class PlatformWalletService {
   }
 
   /**
-   * Validate private key format
+   * Normalize private key format (add 0x prefix if missing)
+   * MetaMask exports private keys without 0x, but ethers.js accepts both formats
+   */
+  private normalizePrivateKey(key: string): string {
+    if (!key) return '';
+    const trimmed = key.trim();
+    return trimmed.startsWith('0x') ? trimmed : `0x${trimmed}`;
+  }
+
+  /**
+   * Validate private key format (must be 64 hex characters with or without 0x)
    */
   private isValidPrivateKey(key: string): boolean {
+    // After normalization, should be 0x + 64 hex chars = 66 total
     return key.startsWith('0x') && key.length === 66 && /^0x[0-9a-fA-F]{64}$/.test(key);
   }
 
