@@ -7,6 +7,7 @@ import { Payment } from '../entities/payment.entity';
 import { WishlistItem } from '../entities/wishlist-item.entity';
 import { Company } from '../entities/company.entity';
 import { JobsModule } from '../jobs/jobs.module';
+import { Web3Module } from '../web3/web3.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { JobsModule } from '../jobs/jobs.module';
       Company,
     ]),
     JobsModule, // Import JobsModule to access DeploymentQueueService
+    Web3Module, // Import Web3Module to access PlatformWalletService
   ],
   controllers: [PaymentsController],
   providers: [PaymentsService, USDCValidatorService],
