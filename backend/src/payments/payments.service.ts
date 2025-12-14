@@ -6,6 +6,7 @@ import { WishlistItem } from '../entities/wishlist-item.entity';
 import { Company } from '../entities/company.entity';
 import { USDCValidatorService } from './usdc-validator.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
+import { PlatformWalletService } from '../web3/platform-wallet.service';
 
 @Injectable()
 export class PaymentsService {
@@ -19,6 +20,7 @@ export class PaymentsService {
     @InjectRepository(Company)
     private companyRepo: Repository<Company>,
     private usdcValidator: USDCValidatorService,
+    private platformWalletService: PlatformWalletService,
   ) {}
 
   /**
@@ -195,5 +197,58 @@ export class PaymentsService {
       relations: ['user', 'wishlistItem'],
       order: { confirmedAt: 'ASC' },
     });
+  }
+
+  /**
+   * Estimate deployment costs in USDC
+   * Returns gas cost estimates with conversion to USDC
+   * Uses historical averages since exact gas estimation requires contract parameters
+   */
+  async estimateDeploymentCosts(chains: ('ethereum' | 'avalanche')[]): Promise<{
+    breakdown: { chain: string; gasCostETH: string; gasCostUSD: number }[];
+    totalUSD: number;
+    platformFeeUSD: number;
+    grandTotalUSD: number;
+  }> {
+    this.logger.log(`📊 Estimating deployment costs for chains: ${chains.join(', ')}`);
+
+    const ETH_TO_USD = 3800; // Approximate rate (in production, fetch from price oracle like Chainlink)
+    const AVAX_TO_USD = 40;  // Approximate rate (in production, fetch from price oracle)
+    const PLATFORM_FEE_USD = 0; // No platform fee currently
+
+    // Historical gas cost estimates for contract deployment
+    // Based on CompanyWishlistEscrow.sol deployment costs
+    const GAS_ESTIMATES = {
+      ethereum: '0.002', // ~2M gas * 50 gwei = 0.001 ETH + buffer
+      avalanche: '0.01', // Avalanche is cheaper per gas but deployment cost is similar
+    };
+
+    const breakdown: { chain: string; gasCostETH: string; gasCostUSD: number }[] = [];
+
+    for (const chain of chains) {
+      const gasCostETH = GAS_ESTIMATES[chain];
+      const rate = chain === 'ethereum' ? ETH_TO_USD : AVAX_TO_USD;
+      const gasCostUSD = parseFloat(gasCostETH) * rate;
+
+      breakdown.push({
+        chain: chain.charAt(0).toUpperCase() + chain.slice(1),
+        gasCostETH,
+        gasCostUSD: Math.round(gasCostUSD * 100) / 100,
+      });
+
+      this.logger.log(`   ${chain}: ${gasCostETH} ${chain === 'ethereum' ? 'ETH' : 'AVAX'} (~$${gasCostUSD.toFixed(2)})`);
+    }
+
+    const totalUSD = breakdown.reduce((sum, item) => sum + item.gasCostUSD, 0);
+    const grandTotalUSD = Math.round((totalUSD + PLATFORM_FEE_USD) * 100) / 100;
+
+    this.logger.log(`💰 Total estimated cost: $${grandTotalUSD.toFixed(2)} USDC`);
+
+    return {
+      breakdown,
+      totalUSD: Math.round(totalUSD * 100) / 100,
+      platformFeeUSD: PLATFORM_FEE_USD,
+      grandTotalUSD,
+    };
   }
 }

@@ -188,6 +188,59 @@ export class PaymentsController {
   }
 
   /**
+   * Estimate deployment costs in USDC
+   * Provides real-time gas cost estimates
+   */
+  @Post('estimate')
+  async estimateDeploymentCosts(@Body() body: { chains: ('ethereum' | 'avalanche')[] }) {
+    try {
+      const { chains } = body;
+
+      if (!chains || chains.length === 0) {
+        throw new HttpException(
+          'At least one chain must be specified',
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      const estimate = await this.paymentsService.estimateDeploymentCosts(chains);
+
+      return {
+        success: true,
+        data: estimate,
+      };
+    } catch (error) {
+      this.logger.error('Failed to estimate deployment costs:', error.message);
+      throw new HttpException(
+        error.message || 'Failed to estimate costs',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * Get deployment job status
+   * Poll this endpoint to track deployment progress
+   */
+  @Get('job/:jobId')
+  async getJobStatus(@Param('jobId') jobId: string) {
+    try {
+      const jobStatus = await this.deploymentQueue.getJobStatus(jobId);
+
+      return {
+        success: true,
+        data: jobStatus,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get job status for ${jobId}:`, error.message);
+      throw new HttpException(
+        error.message || 'Failed to get job status',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
    * Get USDC contract address and platform receiver for a chain
    */
   @Get('info/:chain')
