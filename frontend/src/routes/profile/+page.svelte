@@ -8,6 +8,7 @@
   import RestoreWalletModal from '$lib/components/RestoreWalletModal.svelte';
   import UsdcWalletManager from '$lib/components/UsdcWalletManager.svelte';
   import CompanyManager from '$lib/components/CompanyManager.svelte';
+  import { toastStore } from '$lib/stores/toast';
 
   let user: any = $state(null);
   let isLoading = $state(true);
@@ -111,13 +112,23 @@
     }
   });
 
-  function handleWalletGenerated() {
+  let usdcHint = $state<string | null>(null);
+
+  function handleWalletGenerated(data?: any) {
     // Increment trigger to refresh wallet status in CompanyManager
     walletRefreshTrigger++;
     // Fetch the master wallet to display addresses
     fetchMasterWallet();
     // Fetch companies to display newly generated wallet addresses
     fetchMyCompanies();
+
+    // If wallet data is provided, show a transient hint and toast
+    if (data && data.ethAddress) {
+      usdcHint = `Your USDC wallet has been set to: ${data.ethAddress}`;
+      toastStore.add({ message: `✅ ${usdcHint}`, type: 'success', ttl: 8000 });
+      // Clear hint after 12 seconds
+      setTimeout(() => usdcHint = null, 12000);
+    }
   }
 
   async function handleFileSelect(event: Event) {
@@ -516,6 +527,18 @@
     </div>
 
     <!-- USDC Wallet Manager -->
+    {#if usdcHint}
+      <div class="alert alert-success mb-4">
+        <div class="flex-1">
+          <p class="font-semibold">{usdcHint}</p>
+          <p class="text-xs opacity-70">You can manage your USDC wallet below or copy the address to your clipboard.</p>
+        </div>
+        <button class="btn btn-ghost btn-xs" onclick={() => { navigator.clipboard.writeText(usdcHint.split(':').pop()?.trim() || ''); }} title="Copy">
+          📋
+        </button>
+      </div>
+    {/if}
+
     <UsdcWalletManager 
       usdcWallet={user?.usdcWalletAddress}
       onUpdate={fetchMyCompanies}

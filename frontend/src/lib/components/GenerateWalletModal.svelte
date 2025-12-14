@@ -77,7 +77,7 @@
 
       if (result.success) {
         walletData = result.data;
-        onWalletGenerated(); // Notify parent component
+        onWalletGenerated(walletData); // Notify parent component with generated data
       } else {
         error = result.message || 'Failed to generate wallet';
       }
@@ -266,11 +266,37 @@ SECURITY REMINDERS:
           <h4 class="font-semibold">Your Wallet Addresses:</h4>
           <div class="bg-base-200 p-3 rounded">
             <p class="text-xs opacity-70 mb-1">Ethereum (ETH)</p>
-            <code class="text-sm break-all">{walletData.ethAddress}</code>
+            <div class="flex items-center justify-between">
+              <code class="text-sm break-all">{walletData.ethAddress}</code>
+              <button class="btn btn-ghost btn-xs" onclick={() => { navigator.clipboard.writeText(walletData.ethAddress); }} title="Copy">
+                <Copy class="w-4 h-4" />
+              </button>
+            </div>
           </div>
           <div class="bg-base-200 p-3 rounded">
             <p class="text-xs opacity-70 mb-1">Avalanche (AVAX)</p>
-            <code class="text-sm break-all">{walletData.avaxAddress}</code>
+            <div class="flex items-center justify-between">
+              <code class="text-sm break-all">{walletData.avaxAddress}</code>
+              <button class="btn btn-ghost btn-xs" onclick={() => { navigator.clipboard.writeText(walletData.avaxAddress); }} title="Copy">
+                <Copy class="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          <!-- USDC Wallet Hint -->
+          <div class="alert alert-success mt-3">
+            <div class="flex-1">
+              <p class="font-semibold">Your USDC wallet has been set</p>
+              <p class="text-sm">Your USDC payment address has been set to your new Ethereum address: <code class="font-mono">{walletData.ethAddress}</code></p>
+            </div>
+            <div class="flex flex-col gap-2">
+              <button class="btn btn-ghost btn-xs" onclick={() => { navigator.clipboard.writeText(walletData.ethAddress); }} title="Copy">
+                <Copy class="w-4 h-4" />
+              </button>
+              <a class="btn btn-sm btn-outline" href="/profile#usdc" onclick={() => { /* no-op, same page */ }}>
+                Manage USDC
+              </a>
+            </div>
           </div>
         </div>
 
