@@ -57,6 +57,33 @@ import { devLog } from '$lib/env';
   let x402ModalOpen = $state(false);
   let pendingWishlistItem = $state<any>(null);
   let selectedPaymentMethod = $state<'traditional' | 'usdc'>('traditional');
+  let userUsdcWallet = $state<string | null>(null);
+  let isLoadingUserWallet = $state(false);
+
+  async function loadUserUsdcWallet() {
+    isLoadingUserWallet = true;
+    try {
+      const token = $authStore.accessToken;
+      if (!token) {
+        userUsdcWallet = null;
+        return;
+      }
+      const res = await fetch(`${PUBLIC_API_URL}/users/usdc-wallet`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        userUsdcWallet = data.data?.usdcWalletAddress || null;
+      } else {
+        userUsdcWallet = null;
+      }
+    } catch (err) {
+      console.error('Failed to load user USDC wallet', err);
+      userUsdcWallet = null;
+    } finally {
+      isLoadingUserWallet = false;
+    }
+  }
 
   const DURATION_PRESETS = [
     { days: 7, label: '1 Week' },
@@ -399,6 +426,8 @@ import { devLog } from '$lib/env';
         
         // Use tick to ensure state updates are rendered before showing modal
         await tick();
+        // Load user's USDC wallet (if any) so we can enable/disable USDC option
+        await loadUserUsdcWallet();
         showPaymentMethodChoice = true;
         return; // Don't continue further
       } else {
@@ -1017,13 +1046,16 @@ import { devLog } from '$lib/env';
               selectedPaymentMethod = 'usdc';
               x402ModalOpen = true;
             }}
-            disabled={isSubmitting}
+            disabled={isSubmitting || (!userUsdcWallet && !isLoadingUserWallet)}
           >
             <div class="font-semibold flex items-center gap-2">
               💳 Pay with USDC
             </div>
             <div class="text-sm opacity-70 mt-1">Use testnet USDC for deployment</div>
             <div class="text-xs opacity-60 mt-2">We handle the blockchain deployment</div>
+            {#if !userUsdcWallet}
+              <p class="text-xs text-error mt-2">You don't have a USDC wallet set up. <a href="/profile" class="link link-primary">Add one in your profile</a> to use this option.</p>
+            {/if}
           </button>
         </div>
 
