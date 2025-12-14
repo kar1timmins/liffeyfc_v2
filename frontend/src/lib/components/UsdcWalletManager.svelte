@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { AlertCircle, Copy, Trash2, Plus, Loader } from 'lucide-svelte';
+  import { AlertCircle, Copy, Trash2, Plus, Loader, ExternalLink } from 'lucide-svelte';
   import { PUBLIC_API_URL } from '$env/static/public';
   import { authStore } from '$lib/stores/auth';
   import { toastStore } from '$lib/stores/toast';
@@ -16,6 +16,9 @@
   let isLoading = $state(false);
   let walletAddress = $state(usdcWallet || '');
   let showRemoveConfirm = $state(false);
+  let selectedChain = $state<'ethereum' | 'avalanche'>('ethereum');
+  let balance = $state<string | null>(null);
+  let isLoadingBalance = $state(false);
 
   async function handleSaveWallet() {
     if (!walletAddress.trim()) {
@@ -111,6 +114,29 @@
     }
   }
 
+  async function fetchBalance() {
+    if (!usdcWallet) return;
+    
+    isLoadingBalance = true;
+    try {
+      const response = await fetch(`${PUBLIC_API_URL}/wallet-balance?address=${usdcWallet}&chain=${selectedChain}`);
+      const data = await response.json();
+      
+      if (data.balanceEth !== undefined) {
+        balance = `${parseFloat(data.balanceEth).toFixed(4)} ${selectedChain === 'ethereum' ? 'ETH' : 'AVAX'}`;
+      } else if (data.balanceAvax !== undefined) {
+        balance = `${parseFloat(data.balanceAvax).toFixed(4)} AVAX`;
+      } else {
+        balance = 'Unable to fetch balance';
+      }
+    } catch (err) {
+      console.error('Error fetching balance:', err);
+      balance = 'Error fetching balance';
+    } finally {
+      isLoadingBalance = false;
+    }
+  }
+
   function copyToClipboard() {
     if (usdcWallet) {
       navigator.clipboard.writeText(usdcWallet);
@@ -119,6 +145,29 @@
         type: 'success',
         ttl: 2000
       });
+    }
+  }
+
+  function getBlockExplorerUrl(address: string, chain: string) {
+    if (chain === 'ethereum') {
+      return `https://sepolia.etherscan.io/address/${address}`;
+    } else {
+      return `https://testnet.snowtrace.io/address/${address}`;
+    }
+  }
+
+  function getTestnetFaucetUrls(chain: string) {
+    if (chain === 'ethereum') {
+      return [
+        { name: 'Sepolia Faucet', url: 'https://faucets.chain.link/sepolia' },
+        { name: 'Alchemy Faucet', url: 'https://www.alchemy.com/faucets/ethereum-sepolia' },
+        { name: 'QuickNode Faucet', url: 'https://faucet.quicknode.com/ethereum/sepolia' },
+      ];
+    } else {
+      return [
+        { name: 'Avalanche Faucet', url: 'https://faucets.avax.network/' },
+        { name: 'QuickNode Faucet', url: 'https://faucet.quicknode.com/avalanche/fuji' },
+      ];
     }
   }
 </script>
@@ -133,7 +182,7 @@
     </p>
 
     {#if !isEditing && usdcWallet}
-      <div class="bg-base-200 rounded-lg p-4 space-y-3">
+      <div class="bg-base-200 rounded-lg p-4 space-y-4">
         <div class="flex items-center justify-between">
           <div>
             <p class="text-xs opacity-60 mb-1">Wallet Address</p>
@@ -148,9 +197,76 @@
           </button>
         </div>
         
+        <!-- Chain Selection & Balance -->
+        <div class="space-y-2">
+          <div class="flex gap-2 items-center">
+            <select 
+              bind:value={selectedChain}
+              class="select select-sm select-bordered flex-1"
+              onchange={() => {
+                balance = null;
+                fetchBalance();
+              }}
+            >
+              <option value="ethereum">🔷 Ethereum Sepolia</option>
+              <option value="avalanche">🔺 Avalanche Fuji</option>
+            </select>
+            <button
+              class="btn btn-sm btn-outline gap-1"
+              onclick={fetchBalance}
+              disabled={isLoadingBalance}
+            >
+              {#if isLoadingBalance}
+                <Loader class="w-4 h-4 animate-spin" />
+              {/if}
+              Refresh
+            </button>
+          </div>
+          
+          {#if balance !== null}
+            <div class="bg-base-100 rounded p-3 border border-base-300">
+              <p class="text-xs opacity-60">Balance</p>
+              <p class="text-lg font-semibold">{balance}</p>
+            </div>
+          {/if}
+        </div>
+
+        <!-- Block Explorer Link -->
+        <a 
+          href={getBlockExplorerUrl(usdcWallet, selectedChain)}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="btn btn-sm btn-outline gap-2 w-full"
+        >
+          <ExternalLink class="w-4 h-4" />
+          View on Block Explorer
+        </a>
+
+        <!-- Testnet Faucet Links -->
+        <div class="bg-info/10 border border-info rounded-lg p-3">
+          <p class="text-xs font-semibold mb-2 text-info">Get Testnet Tokens</p>
+          <div class="space-y-1">
+            {#each getTestnetFaucetUrls(selectedChain) as faucet}
+              <a 
+                href={faucet.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-xs link link-primary flex items-center gap-1 hover:underline"
+              >
+                {faucet.name}
+                <ExternalLink class="w-3 h-3" />
+              </a>
+            {/each}
+          </div>
+          <p class="text-xs opacity-70 mt-2">
+            Use these faucets to get free testnet {selectedChain === 'ethereum' ? 'Sepolia ETH' : 'Fuji AVAX'} tokens for gas fees
+          </p>
+        </div>
+
+        <!-- Action Buttons -->
         <div class="flex gap-2">
           <button
-            class="btn btn-sm btn-primary gap-2"
+            class="btn btn-sm btn-primary gap-2 flex-1"
             onclick={() => {
               isEditing = true;
               walletAddress = usdcWallet || '';
@@ -225,13 +341,40 @@
       </div>
       
       <button
-        class="btn btn-primary btn-sm gap-2 w-full"
+        class="btn btn-primary btn-sm gap-2 w-full mb-4"
         onclick={() => isEditing = true}
         disabled={isLoading}
       >
         <Plus class="w-4 h-4" />
         Add USDC Wallet
       </button>
+
+      <!-- Getting Started Info -->
+      <div class="bg-warning/10 border border-warning rounded-lg p-3">
+        <p class="text-xs font-semibold mb-3 text-warning">Getting Started with Testnet USDC</p>
+        <div class="space-y-2 text-xs">
+          <div>
+            <p class="font-semibold mb-1">Step 1: Choose Your Network</p>
+            <p class="opacity-70">We support Ethereum Sepolia and Avalanche Fuji testnets</p>
+          </div>
+          <div>
+            <p class="font-semibold mb-1">Step 2: Get Test Tokens</p>
+            <p class="opacity-70 mb-2">Visit a faucet to receive free testnet ETH or AVAX:</p>
+            <div class="pl-2 space-y-1">
+              <a href="https://faucets.chain.link/sepolia" target="_blank" rel="noopener noreferrer" class="text-primary link flex items-center gap-1 hover:underline text-xs">
+                Ethereum Sepolia Faucet <ExternalLink class="w-3 h-3" />
+              </a>
+              <a href="https://faucets.avax.network/" target="_blank" rel="noopener noreferrer" class="text-primary link flex items-center gap-1 hover:underline text-xs">
+                Avalanche Fuji Faucet <ExternalLink class="w-3 h-3" />
+              </a>
+            </div>
+          </div>
+          <div>
+            <p class="font-semibold mb-1">Step 3: Add Your Wallet</p>
+            <p class="opacity-70">Click "Add USDC Wallet" above to register your wallet address</p>
+          </div>
+        </div>
+      </div>
     {/if}
 
     {#if showRemoveConfirm}
