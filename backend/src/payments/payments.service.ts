@@ -171,6 +171,22 @@ export class PaymentsService {
   }
 
   /**
+   * Get wishlist item by ID (with company relation)
+   */
+  async getWishlistItemById(wishlistItemId: string): Promise<WishlistItem> {
+    const wishlistItem = await this.wishlistRepo.findOne({
+      where: { id: wishlistItemId },
+      relations: ['company'],
+    });
+
+    if (!wishlistItem) {
+      throw new NotFoundException('Wishlist item not found');
+    }
+
+    return wishlistItem;
+  }
+
+  /**
    * Get pending payments (confirmed but not yet deployed)
    */
   async getPendingPayments(): Promise<Payment[]> {

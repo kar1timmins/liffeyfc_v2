@@ -12,6 +12,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { PaymentsService } from './payments.service';
 import { USDCValidatorService } from './usdc-validator.service';
+import { DeploymentQueueService } from '../jobs/deployment-queue.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { VerifyPaymentDto } from './dto/verify-payment.dto';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -23,6 +24,7 @@ export class PaymentsController {
   constructor(
     private readonly paymentsService: PaymentsService,
     private readonly usdcValidator: USDCValidatorService,
+    private readonly deploymentQueue: DeploymentQueueService,
   ) {}
 
   /**
@@ -39,13 +41,36 @@ export class PaymentsController {
     try {
       this.logger.log(`💳 Payment creation request from user ${user.sub}`);
 
+      // 1. Validate and create payment
       const payment = await this.paymentsService.createPayment(user.sub, dto);
+
+      // 2. Queue deployment job
+      this.logger.log(`📋 Queuing deployment job for payment ${payment.id}`);
+      
+      // Get wishlist item to extract company wallet info
+      const wishlistItem = await this.paymentsService.getWishlistItemById(dto.wishlistItemId);
+      
+      const jobId = await this.deploymentQueue.queueDeployment({
+        paymentId: payment.id,
+        userId: user.sub,
+        wishlistItemId: dto.wishlistItemId,
+        companyWalletAddress: wishlistItem.company.ethAddress || '', // Company child wallet
+        masterWalletAddress: user.wallet?.ethAddress || '', // User master wallet (if available)
+        targetAmountEth: dto.targetAmountEth,
+        durationInDays: dto.durationInDays,
+        chains: dto.deploymentChains,
+        campaignName: dto.campaignName,
+        campaignDescription: dto.campaignDescription,
+      });
+
+      this.logger.log(`✅ Deployment queued with job ID: ${jobId}`);
 
       return {
         success: true,
         message: 'Payment validated successfully. Deployment queued.',
         data: {
           paymentId: payment.id,
+          jobId,
           status: payment.status,
           usdcAmount: payment.usdcAmount,
           chain: payment.chain,

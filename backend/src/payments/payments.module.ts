@@ -6,6 +6,7 @@ import { USDCValidatorService } from './usdc-validator.service';
 import { Payment } from '../entities/payment.entity';
 import { WishlistItem } from '../entities/wishlist-item.entity';
 import { Company } from '../entities/company.entity';
+import { JobsModule } from '../jobs/jobs.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { Company } from '../entities/company.entity';
       WishlistItem,
       Company,
     ]),
+    JobsModule, // Import JobsModule to access DeploymentQueueService
   ],
   controllers: [PaymentsController],
   providers: [PaymentsService, USDCValidatorService],
