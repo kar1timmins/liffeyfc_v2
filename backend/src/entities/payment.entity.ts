@@ -49,8 +49,8 @@ export class Payment {
   /**
    * USDC payment transaction hash from user
    */
-  @Column({ type: 'varchar', length: 66 })
-  usdcTxHash: string;
+  @Column({ type: 'varchar', length: 66, nullable: true })
+  usdcTxHash: string | null;
 
   /**
    * Amount paid in USDC (6 decimals)
@@ -70,14 +70,24 @@ export class Payment {
   /**
    * User's wallet address that sent USDC
    */
-  @Column({ type: 'varchar', length: 42 })
-  fromAddress: string;
+  @Column({ type: 'varchar', length: 42, nullable: true })
+  fromAddress: string | null;
 
   /**
    * Platform's wallet address that received USDC
    */
-  @Column({ type: 'varchar', length: 42 })
-  toAddress: string;
+  @Column({ type: 'varchar', length: 42, nullable: true })
+  toAddress: string | null;
+
+  /**
+   * Payment method used
+   */
+  @Column({
+    type: 'varchar',
+    length: 32,
+    default: 'usdc',
+  })
+  paymentMethod: 'usdc' | 'master-wallet' | 'traditional';
 
   /**
    * Payment and deployment status

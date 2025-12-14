@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { IsString, IsNumber, IsOptional, IsArray, IsNotEmpty, IsIn } from 'class-validator';
 import { AuthGuard } from '@nestjs/passport';
+import { ethers } from 'ethers';
 import { EscrowContractService } from './escrow-contract.service';
 import { WalletGenerationService } from './wallet-generation.service';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -24,8 +25,12 @@ import { backfillEscrowAddresses } from './backfill-escrow-addresses';
 
 class CreateEscrowDto {
   @IsString()
-  @IsNotEmpty()
-  wishlistItemId: string;
+  @IsOptional()
+  wishlistItemId?: string;
+
+  @IsString()
+  @IsOptional()
+  companyId?: string;
 
   @IsNumber()
   targetAmountEth: number;
@@ -119,6 +124,38 @@ export class EscrowController {
 
       this.logger.log(`📋 Company wallet addresses - ETH: ${company.ethAddress || 'none'}, AVAX: ${company.avaxAddress || 'none'}`);
 
+      // Validate company wallet addresses are properly formatted
+      if (company.ethAddress && !ethers.isAddress(company.ethAddress)) {
+        this.logger.error(`❌ Invalid ETH address format for company ${company.id}`);
+        throw new HttpException(
+          `Company ETH wallet address is malformed. Expected 42 characters (0x + 40 hex). Please regenerate the company wallet.`,
+          HttpStatus.BAD_REQUEST
+        );
+      }
+      if (company.avaxAddress && !ethers.isAddress(company.avaxAddress)) {
+        this.logger.error(`❌ Invalid AVAX address format for company ${company.id}`);
+        throw new HttpException(
+          `Company AVAX wallet address is malformed. Expected 42 characters (0x + 40 hex). Please regenerate the company wallet.`,
+          HttpStatus.BAD_REQUEST
+        );
+      }
+      
+      // Extra validation - ensure addresses are exactly 42 characters
+      if (company.ethAddress && company.ethAddress.length !== 42) {
+        this.logger.error(`❌ ETH address has wrong length: ${company.ethAddress.length} chars for company ${company.id}`);
+        throw new HttpException(
+          `Company ETH wallet address has incorrect length (${company.ethAddress.length} chars instead of 42). This indicates data corruption. Please regenerate the company wallet.`,
+          HttpStatus.BAD_REQUEST
+        );
+      }
+      if (company.avaxAddress && company.avaxAddress.length !== 42) {
+        this.logger.error(`❌ AVAX address has wrong length: ${company.avaxAddress.length} chars for company ${company.id}`);
+        throw new HttpException(
+          `Company AVAX wallet address has incorrect length (${company.avaxAddress.length} chars instead of 42). This indicates data corruption. Please regenerate the company wallet.`,
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
       // Get user's master wallet for fund forwarding
       const user_ = await this.userRepo.findOne({
         where: { id: user.sub },
@@ -133,6 +170,22 @@ export class EscrowController {
       }
 
       this.logger.log(`👤 Master wallet addresses - ETH: ${user_.userWallet.ethAddress || 'none'}, AVAX: ${user_.userWallet.avaxAddress || 'none'}`);
+
+      // Validate master wallet addresses too
+      if (user_.userWallet.ethAddress && !ethers.isAddress(user_.userWallet.ethAddress)) {
+        this.logger.error(`❌ Invalid master ETH address`);
+        throw new HttpException(
+          `Your master wallet ETH address is malformed. Please regenerate your master wallet.`,
+          HttpStatus.BAD_REQUEST
+        );
+      }
+      if (user_.userWallet.avaxAddress && !ethers.isAddress(user_.userWallet.avaxAddress)) {
+        this.logger.error(`❌ Invalid master AVAX address`);
+        throw new HttpException(
+          `Your master wallet AVAX address is malformed. Please regenerate your master wallet.`,
+          HttpStatus.BAD_REQUEST
+        );
+      }
 
       // Use user's master wallet (prefer ETH, fallback to AVAX) for fund forwarding
       const masterWalletAddress = user_.userWallet.ethAddress || user_.userWallet.avaxAddress!;
@@ -184,7 +237,7 @@ export class EscrowController {
       // Deploy escrow contracts using user's private key from database
       const result = await this.escrowService.deployEscrowContracts(
         user.sub, // Pass userId to fetch user's wallet from database
-        dto.wishlistItemId,
+        dto.wishlistItemId!,
         walletAddress,
         masterWalletAddress,
         dto.targetAmountEth,
@@ -282,6 +335,9 @@ export class EscrowController {
         userMessage = 'Blockchain service temporarily unavailable. Please try again in a few moments.';
       } else if (error.message?.includes('Insufficient funds') || error.message?.includes('insufficient funds') || error.message?.includes('zero balance')) {
         userMessage = 'Insufficient funds in wallet. Please ensure you have enough balance for gas fees.';
+      } else if (error.message?.includes('Factory contract rejected') || error.message?.includes('rejected the deployment')) {
+        userMessage = 'Factory rejected the deployment during validation. Please check the parameters and try again.';
+        statusCode = HttpStatus.BAD_REQUEST;
       } else if (error.message?.includes('Invalid') || error.message?.includes('invalid address')) {
         userMessage = 'Invalid wallet address. Please check your wallet configuration.';
       } else if (error.message?.includes('Simulation failed') || error.message?.includes('reverted')) {
@@ -320,25 +376,39 @@ export class EscrowController {
     this.logger.debug(`DTO: ${JSON.stringify(dto)}`);
 
     try {
-      // Verify wishlist item exists and user has permission
-      const wishlistItem = await this.wishlistRepo.findOne({
-        where: { id: dto.wishlistItemId },
-        relations: ['company'],
-      });
+      // Allow estimating either for an existing wishlist item or for a new (unsaved) wishlist via companyId
+      let wishlistItem = null as WishlistItem | null;
+      let company = null as Company | null;
 
-      if (!wishlistItem) {
-        throw new HttpException('Wishlist item not found', HttpStatus.NOT_FOUND);
-      }
+      if (dto.wishlistItemId) {
+        wishlistItem = await this.wishlistRepo.findOne({
+          where: { id: dto.wishlistItemId },
+          relations: ['company'],
+        });
 
-      const company = await this.companyRepo.findOne({
-        where: { id: wishlistItem.companyId },
-      });
+        if (!wishlistItem) {
+          throw new HttpException('Wishlist item not found', HttpStatus.NOT_FOUND);
+        }
 
-      if (!company || company.ownerId !== user.sub) {
-        throw new HttpException(
-          'You do not have permission to estimate gas for this company',
-          HttpStatus.FORBIDDEN
-        );
+        company = await this.companyRepo.findOne({ where: { id: wishlistItem.companyId } });
+
+        if (!company || company.ownerId !== user.sub) {
+          throw new HttpException(
+            'You do not have permission to estimate gas for this company',
+            HttpStatus.FORBIDDEN
+          );
+        }
+      } else if (dto.companyId) {
+        // Estimating for a new wishlist item; use provided companyId
+        company = await this.companyRepo.findOne({ where: { id: dto.companyId } });
+        if (!company) {
+          throw new HttpException('Company not found', HttpStatus.NOT_FOUND);
+        }
+        if (company.ownerId !== user.sub) {
+          throw new HttpException('You do not have permission to estimate gas for this company', HttpStatus.FORBIDDEN);
+        }
+      } else {
+        throw new HttpException('Either wishlistItemId or companyId must be provided', HttpStatus.BAD_REQUEST);
       }
 
       // Get user's master wallet
@@ -355,7 +425,7 @@ export class EscrowController {
       }
 
       // Check if company has wallet addresses
-      if (!company.ethAddress && !company.avaxAddress) {
+      if (!company!.ethAddress && !company!.avaxAddress) {
         throw new HttpException(
           'Company must have at least one wallet address configured',
           HttpStatus.BAD_REQUEST
@@ -365,13 +435,13 @@ export class EscrowController {
       // Estimate gas costs
       const gasEstimate = await this.escrowService.estimateDeploymentGas(
         user.sub,
-        dto.wishlistItemId,
-        company.ethAddress || company.avaxAddress!,
+        dto.wishlistItemId || 'N/A',
+        company!.ethAddress || company!.avaxAddress!,
         dto.targetAmountEth,
         dto.durationInDays,
         dto.chains,
-        dto.campaignName || wishlistItem.title,
-        dto.campaignDescription || wishlistItem.description || ''
+        dto.campaignName || (wishlistItem ? wishlistItem.title : dto.campaignName || ''),
+        dto.campaignDescription || (wishlistItem ? wishlistItem.description || '' : dto.campaignDescription || '')
       );
 
       return {

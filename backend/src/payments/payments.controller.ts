@@ -14,6 +14,7 @@ import { PaymentsService } from './payments.service';
 import { USDCValidatorService } from './usdc-validator.service';
 import { DeploymentQueueService } from '../jobs/deployment-queue.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
+import { CreateMasterWalletPaymentDto } from './dto/create-master-wallet-payment.dto';
 import { VerifyPaymentDto } from './dto/verify-payment.dto';
 import { CurrentUser } from '../auth/current-user.decorator';
 
@@ -81,6 +82,60 @@ export class PaymentsController {
       this.logger.error(`❌ Payment creation failed: ${error.message}`);
       throw new HttpException(
         error.message || 'Failed to create payment',
+        error.status || HttpStatus.BAD_REQUEST
+      );
+    }
+  }
+
+  /**
+   * Create a payment using the user's master wallet (off-chain acknowledgement)
+   * This does not require an on-chain USDC transaction from the user's MetaMask
+   */
+  @Post('create-master-wallet')
+  @UseGuards(AuthGuard('jwt'))
+  async createMasterWalletPayment(
+    @Body() dto: CreateMasterWalletPaymentDto,
+    @CurrentUser() user: any
+  ) {
+    try {
+      this.logger.log(`💳 Master wallet payment request from user ${user.sub}`);
+
+      // Ensure user has a master wallet configured
+      if (!user?.wallet?.ethAddress) {
+        throw new Error('Master wallet not configured for user');
+      }
+
+      const payment = await this.paymentsService.createMasterWalletPayment(user.sub, dto);
+
+      // Queue deployment job
+      const wishlistItem = await this.paymentsService.getWishlistItemById(dto.wishlistItemId);
+
+      const jobId = await this.deploymentQueue.queueDeployment({
+        paymentId: payment.id,
+        userId: user.sub,
+        wishlistItemId: dto.wishlistItemId,
+        companyWalletAddress: wishlistItem.company.ethAddress || '',
+        masterWalletAddress: user.wallet?.ethAddress || '',
+        targetAmountEth: dto.targetAmountEth,
+        durationInDays: dto.durationInDays,
+        chains: dto.deploymentChains,
+        campaignName: dto.campaignName,
+        campaignDescription: dto.campaignDescription,
+      });
+
+      return {
+        success: true,
+        message: 'Master wallet payment accepted. Deployment queued.',
+        data: {
+          paymentId: payment.id,
+          jobId,
+          status: payment.status,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`❌ Master wallet payment failed: ${error.message}`);
+      throw new HttpException(
+        error.message || 'Failed to process master wallet payment',
         error.status || HttpStatus.BAD_REQUEST
       );
     }

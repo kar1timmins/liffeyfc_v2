@@ -229,6 +229,16 @@ let currentStep = $state<'form' | 'payment' | 'deploying' | 'success'>('form');
 
 ### USDC Transfer Flow
 
+### Master Wallet Flow
+
+- Allows company owners to pay using their registered master wallet address without connecting MetaMask.
+- Frontend posts to `/payments/create-master-wallet` and backend validates ownership and records an off-chain payment (no `usdcTxHash`).
+- This option is only available to users with a configured master wallet (`user.wallet.ethAddress`).
+- Deployment is queued immediately after payment is accepted.
+
+
+### USDC Transfer Flow
+
 ```typescript
 async function handleUSDCPayment() {
   // 1. Transfer USDC to platform

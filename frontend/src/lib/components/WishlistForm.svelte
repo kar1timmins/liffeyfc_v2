@@ -5,6 +5,7 @@ import { devLog } from '$lib/env';
   import { authStore } from '$lib/stores/auth';
   import { toastStore } from '$lib/stores/toast';
   import { tick } from 'svelte';
+  import CreateBountyModalX402 from './CreateBountyModalX402.svelte';
 
   let {
     companyId,
@@ -50,6 +51,12 @@ import { devLog } from '$lib/env';
   let ethEurRate = $state(3200); // Default fallback
   let avaxEurRate = $state(35);  // Default fallback
   let isLoadingPrices = $state(false);
+
+  // X402 payment modal state
+  let showPaymentMethodChoice = $state(false);
+  let x402ModalOpen = $state(false);
+  let pendingWishlistItem = $state<any>(null);
+  let selectedPaymentMethod = $state<'traditional' | 'usdc'>('traditional');
 
   const DURATION_PRESETS = [
     { days: 7, label: '1 Week' },
@@ -154,8 +161,8 @@ import { devLog } from '$lib/env';
       await tick();
       // Fetch latest crypto prices from Chainlink
       await fetchCryptoPrices();
-      updateBalances();
-      estimateGasCosts();
+      await updateBalances();
+      await estimateGasCosts();
     }
   }
 
@@ -217,7 +224,8 @@ import { devLog } from '$lib/env';
           Authorization: `Bearer ${$authStore.accessToken}`
         },
         body: JSON.stringify({
-          wishlistItemId: formData.id || '',
+          wishlistItemId: formData.id || undefined,
+          companyId: companyId || undefined,
           targetAmountEth: formData.targetAmountEth,
           durationInDays: formData.durationDays,
           chains: [
@@ -250,8 +258,17 @@ import { devLog } from '$lib/env';
         
         estimatedGasCost = costs;
       }
-    } catch (err) {
+    } catch (err: any) {
       devLog('Failed to estimate gas:', err);
+      // Try to show server error message
+      try {
+        const parsed = typeof err === 'string' ? JSON.parse(err) : err;
+        const msg = parsed?.message || (parsed?.message?.[0]) || err?.toString();
+        toastStore.add({ message: `Failed to estimate gas: ${msg}`, type: 'error', ttl: 5000 });
+      } catch (parseErr) {
+        toastStore.add({ message: `Failed to estimate gas: ${err?.toString()}`, type: 'error', ttl: 5000 });
+      }
+
       // Use conservative fallback estimates
       estimatedGasCost = {
         ethereum: formData.deployToEthereum ? '0.005' : undefined,
@@ -364,115 +381,35 @@ import { devLog } from '$lib/env';
 
       const createdItem = result.data;
 
-      // Step 2: If escrow enabled, deploy contracts
+      // Step 2: If escrow enabled, show payment method choice
       if (formData.enableEscrow) {
-        const chains = [];
-        if (formData.deployToEthereum) chains.push('ethereum');
-        if (formData.deployToAvalanche) chains.push('avalanche');
+        // Store the data for later use when user chooses payment method
+        pendingWishlistItem = {
+          id: createdItem.id,
+          title: formData.title,
+          description: formData.description,
+          value: parseFloat(formData.value || '0'),
+          targetAmountEth: Math.round(formData.targetAmountEth * 10000) / 10000,
+          durationDays: Math.round(formData.durationDays),
+          deployToEthereum: formData.deployToEthereum,
+          deployToAvalanche: formData.deployToAvalanche
+        };
 
-        const roundedEurAmount = Math.round(parseFloat(formData.value || '0') * 100) / 100;
-        const roundedEthAmount = Math.round(formData.targetAmountEth * 10000) / 10000;
-        const roundedDurationDays = Math.round(formData.durationDays);
-
-        // Create bounty record
-        const bountyResponse = await fetch(`${PUBLIC_API_URL}/bounties`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            wishlistItemId: createdItem.id,
-            targetAmountEur: roundedEurAmount,
-            durationInDays: roundedDurationDays,
-          }),
-        });
-
-        const bountyData = await bountyResponse.json();
-        if (!bountyData.success) {
-          throw new Error(bountyData.message || 'Failed to create bounty record');
-        }
-
-        // Deploy escrow contracts
-        const escrowResponse = await fetch(`${PUBLIC_API_URL}/escrow/create`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            wishlistItemId: createdItem.id,
-            targetAmountEth: roundedEthAmount,
-            durationInDays: roundedDurationDays,
-            chains,
-            campaignName: formData.title,
-            campaignDescription: formData.description || '',
-          }),
-        });
-
-        const escrowData = await escrowResponse.json();
-        if (!escrowData.success) {
-          throw new Error(escrowData.message || 'Failed to deploy escrow contracts');
-        }
-
-        // Rich toast with contract metadata (replace any prior contract toasts)
-        const deployedAddresses = escrowData.data || {};
-        const addresses = [];
-        if (deployedAddresses.ethereumAddress) {
-          addresses.push({
-            chain: 'ethereum',
-            address: deployedAddresses.ethereumAddress,
-            txHash: deployedAddresses.ethereumTxHash || deployedAddresses.deploymentTxHash || null,
-          });
-        }
-        if (deployedAddresses.avalancheAddress) {
-          addresses.push({
-            chain: 'avalanche',
-            address: deployedAddresses.avalancheAddress,
-            txHash: deployedAddresses.avalancheTxHash || deployedAddresses.deploymentTxHash || null,
-          });
-        }
-
-        if (addresses.length > 0) {
-          toastStore.add({
-            message: `🎉 Escrow contract${addresses.length > 1 ? 's' : ''} deployed`,
-            type: 'success',
-            ttl: 12000,
-            group: 'contract_deploy',
-            data: {
-              campaignName: formData.title,
-              campaignDescription: formData.description || '',
-              addresses,
-            },
-          });
-
-          // Notify parent with richer deployed payload (addresses + optional tx hashes)
-          const deployedPayload = {
-            addresses,
-            campaignName: formData.title,
-            campaignDescription: formData.description || '',
-          };
-
-          setTimeout(() => onItemAdded(deployedPayload), 1000);
-        } else {
-          toastStore.add({ message: '🎉 Wishlist item created and escrow contracts deployed!', type: 'success', ttl: 5000 });
-          setTimeout(() => onItemAdded(), 1000);
-        }
+        isSubmitting = false; // Reset submitting state since we're not done yet
+        
+        // Use tick to ensure state updates are rendered before showing modal
+        await tick();
+        showPaymentMethodChoice = true;
+        return; // Don't continue further
       } else {
         toastStore.add({ 
           message: '✨ Wishlist item added successfully!', 
           type: 'success',
           ttl: 3000 
         });
-      }
 
-      resetForm();
-      isFormOpen = false;
-      
-      // Delay refresh slightly to ensure backend has saved the contract addresses
-      if (formData.enableEscrow) {
-        setTimeout(() => onItemAdded(addresses), 1000);
-      } else {
+        resetForm();
+        isFormOpen = false;
         onItemAdded();
       }
     } catch (err: any) {
@@ -483,6 +420,125 @@ import { devLog } from '$lib/env';
     } finally {
       isSubmitting = false;
     }
+  }
+
+  async function handleDeployTraditional() {
+    if (!pendingWishlistItem) return;
+    
+    isSubmitting = true;
+    try {
+      const token = $authStore.accessToken;
+      if (!token) throw new Error('Not authenticated');
+
+      const chains = [];
+      if (pendingWishlistItem.deployToEthereum) chains.push('ethereum');
+      if (pendingWishlistItem.deployToAvalanche) chains.push('avalanche');
+
+      // Create bounty record
+      const bountyResponse = await fetch(`${PUBLIC_API_URL}/bounties`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          wishlistItemId: pendingWishlistItem.id,
+          targetAmountEur: pendingWishlistItem.value,
+          durationInDays: pendingWishlistItem.durationDays,
+        }),
+      });
+
+      const bountyData = await bountyResponse.json();
+      if (!bountyData.success) {
+        throw new Error(bountyData.message || 'Failed to create bounty record');
+      }
+
+      // Deploy escrow contracts
+      const escrowResponse = await fetch(`${PUBLIC_API_URL}/escrow/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          wishlistItemId: pendingWishlistItem.id,
+          targetAmountEth: pendingWishlistItem.targetAmountEth,
+          durationInDays: pendingWishlistItem.durationDays,
+          chains,
+          campaignName: pendingWishlistItem.title,
+          campaignDescription: pendingWishlistItem.description || '',
+        }),
+      });
+
+      const escrowData = await escrowResponse.json();
+      if (!escrowData.success) {
+        throw new Error(escrowData.message || 'Failed to deploy escrow contracts');
+      }
+
+      const deployedAddresses = escrowData.data || {};
+      const addresses = [];
+      if (deployedAddresses.ethereumAddress) {
+        addresses.push({
+          chain: 'ethereum',
+          address: deployedAddresses.ethereumAddress,
+          txHash: deployedAddresses.ethereumTxHash || deployedAddresses.deploymentTxHash || null,
+        });
+      }
+      if (deployedAddresses.avalancheAddress) {
+        addresses.push({
+          chain: 'avalanche',
+          address: deployedAddresses.avalancheAddress,
+          txHash: deployedAddresses.avalancheTxHash || deployedAddresses.deploymentTxHash || null,
+        });
+      }
+
+      if (addresses.length > 0) {
+        toastStore.add({
+          message: `🎉 Escrow contract${addresses.length > 1 ? 's' : ''} deployed`,
+          type: 'success',
+          ttl: 12000,
+          group: 'contract_deploy',
+          data: {
+            campaignName: pendingWishlistItem.title,
+            campaignDescription: pendingWishlistItem.description || '',
+            addresses,
+          },
+        });
+
+        setTimeout(() => onItemAdded({ addresses, campaignName: pendingWishlistItem.title, campaignDescription: pendingWishlistItem.description || '' }), 1000);
+      } else {
+        toastStore.add({ message: '🎉 Wishlist item created and escrow contracts deployed!', type: 'success', ttl: 5000 });
+        setTimeout(() => onItemAdded(), 1000);
+      }
+
+      resetForm();
+      isFormOpen = false;
+      showPaymentMethodChoice = false;
+      pendingWishlistItem = null;
+    } catch (err: any) {
+      toastStore.add({
+        message: err.message || 'Failed to deploy contracts',
+        type: 'error'
+      });
+    } finally {
+      isSubmitting = false;
+    }
+  }
+
+  function handleX402Success(result: any) {
+    toastStore.add({
+      message: '🎉 Contracts deployed via X402 payment!',
+      type: 'success',
+      ttl: 8000
+    });
+
+    resetForm();
+    isFormOpen = false;
+    showPaymentMethodChoice = false;
+    x402ModalOpen = false;
+    pendingWishlistItem = null;
+
+    setTimeout(() => onItemAdded(result), 1000);
   }
 
   function getCategoryLabel(value: string) {
@@ -926,5 +982,78 @@ import { devLog } from '$lib/env';
         </div>
       </form>
     </div>
+  {/if}
+
+  <!-- Payment Method Choice Modal -->
+  {#if showPaymentMethodChoice && pendingWishlistItem}
+    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-base-100 rounded-lg shadow-2xl max-w-md w-full mx-4 border border-base-300">
+        <!-- Modal Header -->
+        <div class="border-b border-base-300 p-6">
+          <h2 class="text-xl font-bold">Choose Deployment Method</h2>
+          <p class="text-sm opacity-70 mt-1">How would you like to pay for contract deployment?</p>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="p-6 space-y-4">
+          <!-- Traditional Method -->
+          <button
+            class="w-full p-4 border-2 border-base-300 rounded-lg hover:border-primary hover:bg-primary/5 transition text-left"
+            onclick={() => {
+              selectedPaymentMethod = 'traditional';
+              handleDeployTraditional();
+            }}
+            disabled={isSubmitting}
+          >
+            <div class="font-semibold">Direct Deployment</div>
+            <div class="text-sm opacity-70 mt-1">Pay gas fees directly from your wallet</div>
+            <div class="text-xs opacity-60 mt-2">Requires {pendingWishlistItem.deployToEthereum && pendingWishlistItem.deployToAvalanche ? 'ETH & AVAX' : pendingWishlistItem.deployToEthereum ? 'ETH' : 'AVAX'} for gas</div>
+          </button>
+
+          <!-- X402 Method -->
+          <button
+            class="w-full p-4 border-2 border-accent rounded-lg bg-accent/5 hover:border-accent/70 transition text-left"
+            onclick={() => {
+              selectedPaymentMethod = 'usdc';
+              x402ModalOpen = true;
+            }}
+            disabled={isSubmitting}
+          >
+            <div class="font-semibold flex items-center gap-2">
+              💳 Pay with USDC
+            </div>
+            <div class="text-sm opacity-70 mt-1">Use testnet USDC for deployment</div>
+            <div class="text-xs opacity-60 mt-2">We handle the blockchain deployment</div>
+          </button>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="border-t border-base-300 p-6">
+          <button
+            class="btn btn-ghost btn-sm w-full"
+            onclick={() => {
+              showPaymentMethodChoice = false;
+              pendingWishlistItem = null;
+              isFormOpen = false;
+              resetForm();
+            }}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  <!-- X402 Modal -->
+  {#if pendingWishlistItem && selectedPaymentMethod === 'usdc'}
+    <CreateBountyModalX402
+      bind:isOpen={x402ModalOpen}
+      wishlistItem={pendingWishlistItem}
+      companyName={pendingWishlistItem.companyName || 'Company'}
+      companyWallet={companyWallet}
+      onSuccess={handleX402Success}
+    />
   {/if}
 </div>

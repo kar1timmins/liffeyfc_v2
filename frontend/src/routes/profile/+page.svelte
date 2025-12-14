@@ -6,6 +6,7 @@
   import { User, Mail, Briefcase, Building, Globe, Linkedin, CheckCircle, ArrowUpCircle, ArrowLeft, Camera, Wallet } from 'lucide-svelte';
   import GenerateWalletModal from '$lib/components/GenerateWalletModal.svelte';
   import RestoreWalletModal from '$lib/components/RestoreWalletModal.svelte';
+  import UsdcWalletManager from '$lib/components/UsdcWalletManager.svelte';
   import CompanyManager from '$lib/components/CompanyManager.svelte';
 
   let user: any = $state(null);
@@ -513,6 +514,12 @@
         {/if}
       </div>
     </div>
+
+    <!-- USDC Wallet Manager -->
+    <UsdcWalletManager 
+      usdcWallet={user?.usdcWalletAddress}
+      onUpdate={fetchMyCompanies}
+    />
 
     <!-- Companies Section -->
     <CompanyManager 

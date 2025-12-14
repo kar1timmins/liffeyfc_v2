@@ -104,6 +104,62 @@ export class PaymentsService {
   }
 
   /**
+   * Create a payment record for a master-wallet payment (off-chain acknowledgement)
+   * No on-chain tx is required from the user MetaMask wallet.
+   */
+  async createMasterWalletPayment(
+    userId: string,
+    dto: import('./dto/create-master-wallet-payment.dto').CreateMasterWalletPaymentDto,
+  ): Promise<Payment> {
+    this.logger.log(`💳 Creating master-wallet payment for user ${userId}`);
+
+    // Verify wishlist item exists and user owns the company
+    const wishlistItem = await this.wishlistRepo.findOne({
+      where: { id: dto.wishlistItemId },
+      relations: ['company'],
+    });
+
+    if (!wishlistItem) {
+      throw new NotFoundException('Wishlist item not found');
+    }
+
+    const company = await this.companyRepo.findOne({ where: { id: wishlistItem.companyId } });
+
+    if (!company || company.ownerId !== userId) {
+      throw new BadRequestException('You do not have permission to create deployments for this company');
+    }
+
+    // Prevent duplicate confirmed payments for same wishlist item
+    const existing = await this.paymentRepo.findOne({ where: { wishlistItemId: dto.wishlistItemId, status: PaymentStatus.CONFIRMED } });
+    if (existing) {
+      throw new BadRequestException('A confirmed payment already exists for this wishlist item');
+    }
+
+    // Platform receiver address for record keeping
+    const platformAddress = this.usdcValidator.getPlatformUSDCAddress(dto.chain);
+
+    const payment = this.paymentRepo.create({
+      userId,
+      wishlistItemId: dto.wishlistItemId,
+      usdcTxHash: null,
+      usdcAmount: dto.usdcAmount,
+      chain: dto.chain as any,
+      fromAddress: null,
+      toAddress: platformAddress,
+      status: PaymentStatus.CONFIRMED,
+      confirmedAt: new Date(),
+      deploymentChains: dto.deploymentChains,
+      paymentMethod: 'master-wallet',
+    });
+
+    const saved = await this.paymentRepo.save(payment);
+
+    this.logger.log(`✅ Master-wallet payment created: ${saved.id}`);
+
+    return saved;
+  }
+
+  /**
    * Get payment by ID
    */
   async getPaymentById(paymentId: string): Promise<Payment> {

@@ -239,4 +239,47 @@ export class UsersService {
   async findAll(): Promise<User[]> {
     return this.usersRepo.find();
   }
+
+  /**
+   * Set or update USDC wallet address for a user
+   */
+  async setUsdcWallet(userId: string, walletAddress: string): Promise<User> {
+    // Validate wallet address format (basic check for Ethereum/Avalanche addresses)
+    if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
+      throw new Error('Invalid wallet address. Must be a valid Ethereum/Avalanche address.');
+    }
+
+    const user = await this.usersRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    user.usdcWalletAddress = walletAddress.toLowerCase();
+    return this.usersRepo.save(user);
+  }
+
+  /**
+   * Get USDC wallet address for a user
+   */
+  async getUsdcWallet(userId: string): Promise<string | null> {
+    const user = await this.usersRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new Error('User not found');
+    }
+    return user.usdcWalletAddress || null;
+  }
+
+  /**
+   * Remove USDC wallet address for a user
+   */
+  async removeUsdcWallet(userId: string): Promise<void> {
+    const user = await this.usersRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    user.usdcWalletAddress = undefined;
+    await this.usersRepo.save(user);
+  }
 }
+

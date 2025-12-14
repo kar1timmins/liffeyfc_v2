@@ -43,12 +43,13 @@
   let deployToAvalanche = $state(true);
   
   // Payment state
-  let paymentMethod = $state<'traditional' | 'usdc'>('usdc'); // Default to USDC
+  let paymentMethod = $state<'traditional' | 'usdc' | 'master-wallet'>('usdc'); // Default to USDC
   let selectedPaymentChain = $state<'ethereum' | 'avalanche'>('ethereum');
   let usdcBalance = $state<USDCBalance | null>(null);
   let isLoadingBalance = $state(false);
   let platformReceiverAddress = $state<string>('');
   let estimatedCostUSDC = $state<number>(15); // Placeholder, will be calculated
+  let masterWalletAddress = $state<string>(''); // User's master wallet address
   
   // UI state
   let isSubmitting = $state(false);
@@ -98,6 +99,7 @@
     usdcBalance = null;
     platformReceiverAddress = '';
     estimatedCostUSDC = 15;
+    masterWalletAddress = '';
     isSubmitting = false;
     error = null;
     success = false;
@@ -122,15 +124,18 @@
   }
 
   async function loadUSDCBalance() {
-    if (!window.ethereum) {
-      error = 'MetaMask not installed. Please install MetaMask to use USDC payments.';
-      return;
-    }
-
     isLoadingBalance = true;
     error = null;
 
     try {
+      // Note: MetaMask connection check removed for now
+      // In production, uncomment the section below to require MetaMask connection
+      /*
+      if (!window.ethereum) {
+        error = 'MetaMask not installed. Please install MetaMask to use USDC payments.';
+        return;
+      }
+
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       if (!accounts || accounts.length === 0) {
         error = 'Please connect your MetaMask wallet';
@@ -140,6 +145,16 @@
       const userAddress = accounts[0];
       const balance = await getUSDCBalance(selectedPaymentChain, userAddress);
       usdcBalance = balance;
+      */
+
+      // For now, skip balance check and proceed to payment
+      usdcBalance = {
+        balance: '0',
+        balanceWei: '0',
+        formatted: '0.00 USDC',
+        address: '',
+        chain: selectedPaymentChain
+      };
 
       // Also load platform receiver address
       await loadPlatformInfo();
@@ -175,8 +190,12 @@
       return;
     }
 
+    // If using master wallet payment, proceed directly
+    if (paymentMethod === 'master-wallet') {
+      await handleMasterWalletPayment();
+    }
     // If using USDC payment, proceed to payment step
-    if (paymentMethod === 'usdc') {
+    else if (paymentMethod === 'usdc') {
       currentStep = 'payment';
       await loadUSDCBalance();
     } else {
@@ -259,6 +278,77 @@
     } catch (err: any) {
       error = err.message || 'Payment failed';
       currentStep = 'payment';
+      toastStore.add({
+        message: `❌ ${error}`,
+        type: 'error',
+        ttl: 8000,
+      });
+    } finally {
+      isSubmitting = false;
+    }
+  }
+
+  async function handleMasterWalletPayment() {
+    error = null;
+    isSubmitting = true;
+
+    try {
+      toastStore.add({
+        message: 'Processing master wallet payment...',
+        type: 'info',
+        ttl: 5000,
+      });
+
+      // Create payment record directly without on-chain transaction
+      const chains = [];
+      if (deployToEthereum) chains.push('ethereum');
+      if (deployToAvalanche) chains.push('avalanche');
+
+      const roundedEurAmount = Math.round(targetAmountEur * 100) / 100;
+      const roundedEthAmount = Math.round(targetAmountEth * 10000) / 10000;
+      const roundedDurationDays = Math.round(durationDays);
+
+      const paymentResponse = await fetch(`${PUBLIC_API_URL}/payments/create-master-wallet`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${$authStore.accessToken}`,
+        },
+        body: JSON.stringify({
+          wishlistItemId: wishlistItem.id,
+          usdcAmount: estimatedCostUSDC,
+          chain: selectedPaymentChain,
+          deploymentChains: chains,
+          targetAmountEth: roundedEthAmount,
+          durationInDays: roundedDurationDays,
+          campaignName,
+          campaignDescription,
+          paymentMethod: 'master-wallet',
+        }),
+      });
+
+      const paymentData = await paymentResponse.json();
+
+      if (!paymentData.success) {
+        throw new Error(paymentData.message || 'Failed to create payment record');
+      }
+
+      jobId = paymentData.data.jobId;
+      deploymentStatus = 'deploying';
+      currentStep = 'deploying';
+
+      toastStore.add({
+        message: '✅ Payment processed! Deploying contracts...',
+        type: 'success',
+        ttl: 5000,
+      });
+
+      // Poll for deployment status
+      await pollDeploymentStatus();
+
+    } catch (err: any) {
+      error = err.message || 'Payment failed';
+      currentStep = 'form';
       toastStore.add({
         message: `❌ ${error}`,
         type: 'error',
@@ -449,12 +539,26 @@
             </div>
           </div>
 
+            {#if paymentMethod === 'master-wallet'}
+              <div class="card bg-base-200 mb-4">
+                <div class="card-body p-4">
+                  <div class="font-semibold">Master Wallet</div>
+                  {#if $authStore.user?.wallet?.ethAddress}
+                    <div class="text-sm opacity-70 mt-1">Using master key address:</div>
+                    <code class="text-xs">{$authStore.user.wallet.ethAddress}</code>
+                  {:else}
+                    <div class="text-sm text-warning mt-1">No master wallet configured. Please add your master wallet in your profile before using this payment method.</div>
+                  {/if}
+                  <div class="text-xs opacity-60 mt-2">Note: This payment method does not require MetaMask or an on-chain transaction from your browser.</div>
+                </div>
+              </div>
+            {/if}
           <!-- Payment Method Selection -->
           <div class="form-control mb-4">
             <div class="label">
               <span class="label-text font-semibold">Payment Method</span>
             </div>
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <label class="cursor-pointer">
                 <div class="card {paymentMethod === 'usdc' ? 'border-2 border-primary' : 'border border-base-300'} hover:border-primary transition-colors">
                   <div class="card-body p-4">
@@ -470,9 +574,32 @@
                         <div class="font-semibold flex items-center gap-2">
                           <CreditCard class="w-4 h-4" />
                           USDC Payment
-                          <span class="badge badge-primary badge-sm">Recommended</span>
                         </div>
-                        <p class="text-xs opacity-70 mt-1">Pay in stablecoin, we handle gas fees</p>
+                        <p class="text-xs opacity-70 mt-1">Pay via MetaMask wallet</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </label>
+
+              <label class="cursor-pointer">
+                <div class="card {paymentMethod === 'master-wallet' ? 'border-2 border-primary' : 'border border-base-300'} hover:border-primary transition-colors">
+                  <div class="card-body p-4">
+                    <div class="flex items-start gap-3">
+                      <input
+                        type="radio"
+                        name="payment-method"
+                        class="radio radio-primary"
+                        bind:group={paymentMethod}
+                        value="master-wallet"
+                      />
+                      <div class="flex-1">
+                        <div class="font-semibold flex items-center gap-2">
+                          <Wallet class="w-4 h-4" />
+                          Master Wallet
+                          <span class="badge badge-success badge-sm">No MetaMask</span>
+                        </div>
+                        <p class="text-xs opacity-70 mt-1">Pay with your master key</p>
                       </div>
                     </div>
                   </div>
@@ -495,7 +622,7 @@
                           <Wallet class="w-4 h-4" />
                           Direct Deployment
                         </div>
-                        <p class="text-xs opacity-70 mt-1">You pay gas fees directly</p>
+                        <p class="text-xs opacity-70 mt-1">You pay gas fees</p>
                       </div>
                     </div>
                   </div>
@@ -651,7 +778,7 @@
               class="btn btn-primary"
               disabled={isSubmitting}
             >
-              {paymentMethod === 'usdc' ? 'Continue to Payment' : 'Deploy Contracts'}
+              {paymentMethod === 'usdc' ? 'Continue to Payment' : paymentMethod === 'master-wallet' ? 'Process with Master Wallet' : 'Deploy Contracts'}
             </button>
           </div>
         </form>
