@@ -341,17 +341,17 @@
   <!-- Footer - now within flex container, will push to bottom -->
   <footer class="bg-base-200 text-base-content py-10 mt-auto">
     <div class="container mx-auto px-4">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-6 justify-items-center md:justify-items-stretch">
         <!-- About -->
-        <div>
+        <div class="text-center md:text-left">
           <h3 class="text-lg font-semibold mb-3">About Liffey Founders Club</h3>
           <p class="text-sm text-base-content/70">Dublin's premier startup community for founders, entrepreneurs, and investors.</p>
         </div>
         
         <!-- Quick Links -->
-        <div class="text-center md:text-left">
+        <div class="text-center">
           <h3 class="text-lg font-semibold mb-3">Quick Links</h3>
-          <ul class="space-y-2 flex flex-col items-center md:items-start">
+          <ul class="space-y-2 flex flex-col items-center">
             <li><a href="/" class="hover:text-primary transition-colors" data-sveltekit-prefetch aria-label="Home">Home</a></li>
             <li><a href="/pitch" class="hover:text-primary transition-colors" data-sveltekit-prefetch aria-label="Pitch">Pitch</a></li>
             <li><a href="/learnMore" class="hover:text-primary transition-colors" data-sveltekit-prefetch aria-label="Learn More">Learn More</a></li>
