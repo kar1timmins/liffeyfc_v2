@@ -938,7 +938,7 @@
 												class="glass-subtle rounded-xl p-4 flex items-center gap-3 backdrop-blur-sm"
 											>
 												<CalendarDays class="text-accent h-6 w-6 flex-shrink-0" />
-												<div><span class="font-semibold">Date:</span> {nextEvent.nextEventDate}</div>
+												<div><span class="font-semibold">Date:</span> Tuesday 10th March</div>
 											</div>
 											<div
 												class="glass-subtle rounded-xl p-4 flex items-center gap-3 backdrop-blur-sm"
