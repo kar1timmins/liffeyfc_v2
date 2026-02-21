@@ -4,7 +4,7 @@
   import '../app.css';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
-  import { Home, Mic, Info, Sun, Moon, X, Menu, Wallet, User, Grid, Building2, Target, CreditCard } from 'lucide-svelte';
+  import { Home, Mic, Info, Sun, Moon, X, Menu, Wallet, User, Grid, Building2, Target, CreditCard, Trophy } from 'lucide-svelte';
   import Web3Modal from '$lib/components/Web3Modal.svelte';
   import { walletStore, formattedAddress } from '$lib/stores/walletStore';
   import { authStore } from '$lib/stores/auth';
@@ -394,6 +394,10 @@
           <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/companies')}>
             <Building2 size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/> 
             <span class="flex-1 text-center">Companies</span>
+          </button>
+          <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/leaderboard')}>
+            <Trophy size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/> 
+            <span class="flex-1 text-center">Leaderboard</span>
           </button>
           {#if userCompanies.length > 0}
             <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/bounties')}>

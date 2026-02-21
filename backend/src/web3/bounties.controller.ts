@@ -112,6 +112,27 @@ export class BountiesController {
   }
 
   /**
+   * Get leaderboard: all public companies ranked by total raised ETH (public)
+   */
+  @Get('leaderboard')
+  async getLeaderboard() {
+    try {
+      const entries = await this.bountiesService.getLeaderboard();
+      return {
+        success: true,
+        data: entries,
+        message: `Leaderboard with ${entries.length} companies`,
+      };
+    } catch (error) {
+      this.logger.error('❌ Failed to fetch leaderboard:', error);
+      throw new HttpException(
+        error.message || 'Failed to fetch leaderboard',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
    * Get a specific bounty by ID (public)
    */
   @Get(':id')

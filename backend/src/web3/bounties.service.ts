@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { WishlistItem } from '../entities/wishlist-item.entity';
 import { User } from '../entities/user.entity';
+import { Company } from '../entities/company.entity';
 import { Contribution } from '../entities/contribution.entity';
 import { EscrowDeployment } from '../entities/escrow-deployment.entity';
 import { EscrowContractService, ContributorInfo } from './escrow-contract.service';
@@ -51,6 +52,19 @@ export interface BountyResponse {
   createdAt: string;
 }
 
+export interface LeaderboardEntry {
+  rank: number;
+  id: string;
+  name: string;
+  description?: string;
+  industry?: string;
+  logoUrl?: string;
+  completedBounties: number;
+  activeBounties: number;
+  totalBounties: number;
+  totalRaisedEth: number;
+}
+
 @Injectable()
 export class BountiesService {
   private readonly logger = new Logger(BountiesService.name);
@@ -60,6 +74,8 @@ export class BountiesService {
     private readonly wishlistRepository: Repository<WishlistItem>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Company)
+    private readonly companyRepository: Repository<Company>,
     @InjectRepository(Contribution)
     private readonly contributionRepository: Repository<Contribution>,
     @InjectRepository(EscrowDeployment)
@@ -573,6 +589,60 @@ export class BountiesService {
       deployments,
       createdAt: wishlistItem.createdAt.toISOString(),
     };
+  }
+
+  /**
+   * Get the leaderboard: all public companies ranked by total raised ETH,
+   * then by number of completed (funded) bounties.
+   */
+  async getLeaderboard(): Promise<LeaderboardEntry[]> {
+    const raw = await this.companyRepository
+      .createQueryBuilder('company')
+      .leftJoin('company.wishlistItems', 'wi')
+      .leftJoin('wi.escrowDeployments', 'ed')
+      .leftJoin('wi.contributions', 'con', 'con."isRefunded" = false')
+      .where('company.isPublic = :isPublic', { isPublic: true })
+      .select('company.id', 'id')
+      .addSelect('company.name', 'name')
+      .addSelect('company.description', 'description')
+      .addSelect('company.industry', 'industry')
+      .addSelect('company.logoUrl', 'logoUrl')
+      .addSelect(
+        `COUNT(DISTINCT CASE WHEN ed.status = 'funded' THEN ed.id END)`,
+        'completedBounties',
+      )
+      .addSelect(
+        `COUNT(DISTINCT CASE WHEN ed.status = 'active' THEN ed.id END)`,
+        'activeBounties',
+      )
+      .addSelect('COUNT(DISTINCT ed.id)', 'totalBounties')
+      .addSelect('COALESCE(SUM(con."amountEth"), 0)', 'totalRaisedEth')
+      .groupBy('company.id')
+      .getRawMany();
+
+    return raw
+      .map((r) => ({
+        rank: 0, // set after sort
+        id: r.id,
+        name: r.name,
+        description: r.description ?? undefined,
+        industry: r.industry ?? undefined,
+        logoUrl: r.logoUrl ?? undefined,
+        completedBounties: parseInt(r.completedBounties, 10) || 0,
+        activeBounties: parseInt(r.activeBounties, 10) || 0,
+        totalBounties: parseInt(r.totalBounties, 10) || 0,
+        totalRaisedEth: parseFloat(r.totalRaisedEth) || 0,
+      }))
+      .sort((a, b) => {
+        if (b.totalRaisedEth !== a.totalRaisedEth)
+          return b.totalRaisedEth - a.totalRaisedEth;
+        if (b.completedBounties !== a.completedBounties)
+          return b.completedBounties - a.completedBounties;
+        if (b.totalBounties !== a.totalBounties)
+          return b.totalBounties - a.totalBounties;
+        return a.name.localeCompare(b.name);
+      })
+      .map((entry, idx) => ({ ...entry, rank: idx + 1 }));
   }
 
   /**
