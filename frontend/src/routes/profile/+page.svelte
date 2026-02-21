@@ -541,7 +541,7 @@
 
     <UsdcWalletManager 
       usdcWallet={user?.usdcWalletAddress}
-      onUpdate={fetchMyCompanies}
+      onUpdate={() => { fetchMyCompanies(); /* optionally refresh auth store */ authStore.verify(); }}
     />
 
     <!-- Companies Section -->

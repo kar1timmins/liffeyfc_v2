@@ -15,6 +15,7 @@ export interface SanitizedUser {
   role: UserRole;
   linkedinUrl?: string;
   createdAt: Date;
+  usdcWalletAddress?: string | null; // including wallet is harmless for sanitized view
 }
 
 /**
@@ -27,6 +28,7 @@ export interface FullUserProfile extends SanitizedUser {
   isAccredited: boolean | null;
   phoneNumber?: string;
   wallets: any[];
+  usdcWalletAddress?: string | null; // added so frontend knows about USDC wallet
   updatedAt: Date;
   userType: string;
 }
@@ -72,6 +74,7 @@ export class UsersService {
       isAccredited: user.isAccredited ?? null,
       phoneNumber: user.phoneNumber,
       wallets: user.wallets || [],
+      usdcWalletAddress: user.usdcWalletAddress || null,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       userType: user.role === UserRole.INVESTOR ? 'investor' : user.role === UserRole.STAFF ? 'staff' : 'user',

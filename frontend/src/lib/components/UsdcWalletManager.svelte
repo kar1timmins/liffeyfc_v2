@@ -56,6 +56,8 @@
         });
         isEditing = false;
         usdcWallet = data.data.usdcWalletAddress;
+        // refresh auth store so user object is re-fetched with new wallet address
+        authStore.verify();
         onUpdate();
       } else {
         toastStore.add({ 
