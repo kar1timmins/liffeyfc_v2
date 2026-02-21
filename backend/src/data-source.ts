@@ -10,6 +10,7 @@ import { CompanyWallet } from './entities/company-wallet.entity';
 import { EscrowDeployment } from './entities/escrow-deployment.entity';
 import { Contribution } from './entities/contribution.entity';
 import { ContractDeploymentHistory } from './entities/contract-deployment-history.entity';
+import { Payment } from './entities/payment.entity';
 
 /**
  * Parse DATABASE_URL if present (format: postgres://user:password@host:port/database)
@@ -51,7 +52,7 @@ const dbConfig = parseDatabaseConfig();
 const AppDataSource = new DataSource({
   type: 'postgres',
   ...dbConfig,
-  entities: [User, Wallet, RefreshToken, Company, WishlistItem, UserWallet, CompanyWallet, EscrowDeployment, Contribution, ContractDeploymentHistory],
+  entities: [User, Wallet, RefreshToken, Company, WishlistItem, UserWallet, CompanyWallet, EscrowDeployment, Contribution, ContractDeploymentHistory, Payment],
   migrations: [__dirname + '/migrations/**/*{.ts,.js}'],
   migrationsRun: false, // Don't auto-run migrations - use CLI explicitly
   synchronize: process.env.TYPEORM_SYNCHRONIZE === 'true',

@@ -6,6 +6,7 @@
   import { toastStore } from '$lib/stores/toast';
   import WishlistForm from './WishlistForm.svelte';
   import CreateBountyModal from './CreateBountyModal.svelte';
+  import CreateBountyModalX402 from './CreateBountyModalX402.svelte';
 
   interface Company {
     id: string;
@@ -49,6 +50,7 @@
   let walletAddresses = $state<{ eth: string; avax: string } | null>(null);
   let expandedWishlistId = $state<string | null>(null);
   let bountyModalOpen = $state(false);
+  let bountyModalX402Open = $state(false);
   let selectedWishlistItem = $state<any | null>(null);
   let selectedCompany = $state<Company | null>(null);
   
@@ -244,8 +246,15 @@
     bountyModalOpen = true;
   }
 
+  function openBountyModalX402(item: any, company: Company) {
+    selectedWishlistItem = item;
+    selectedCompany = company;
+    bountyModalX402Open = true;
+  }
+
   function handleBountySuccess(deployed?: any) {
     bountyModalOpen = false;
+    bountyModalX402Open = false;
     // If deployed addresses provided, update local companies state immediately to avoid 'deploying' UI
     if (deployed && selectedCompany && selectedWishlistItem) {
       const companyIndex = companies.findIndex((c) => c.id === selectedCompany.id);
@@ -1279,15 +1288,24 @@
                             {#if !item.isEscrowActive}
                               <div class="mt-3 pt-3 border-t border-base-300">
                                 {#if item.value && (company.ethAddress || company.avaxAddress)}
-                                  <button
-                                    class="btn btn-sm btn-primary w-full gap-2"
-                                    onclick={() => openBountyModal(item, company)}
-                                  >
-                                    <Target class="w-4 h-4" />
-                                    Create Bounty Campaign
-                                  </button>
+                                  <div class="space-y-2">
+                                    <button
+                                      class="btn btn-sm btn-primary w-full gap-2"
+                                      onclick={() => openBountyModal(item, company)}
+                                    >
+                                      <Target class="w-4 h-4" />
+                                      Create Bounty (Traditional)
+                                    </button>
+                                    <button
+                                      class="btn btn-sm btn-accent w-full gap-2"
+                                      onclick={() => openBountyModalX402(item, company)}
+                                    >
+                                      <Wallet class="w-4 h-4" />
+                                      Create Bounty (Pay with USDC)
+                                    </button>
+                                  </div>
                                   <p class="text-xs opacity-60 mt-1 text-center">
-                                    Enable blockchain crowdfunding for this item
+                                    Choose payment method for deployment
                                   </p>
                                 {:else}
                                   <div class="alert alert-warning py-2">
@@ -1446,6 +1464,17 @@
 {#if selectedWishlistItem && selectedCompany}
   <CreateBountyModal
     bind:isOpen={bountyModalOpen}
+    wishlistItem={selectedWishlistItem}
+    companyName={selectedCompany.name}
+    companyWallet={selectedCompany.ethAddress || selectedCompany.avaxAddress || ''}
+    onSuccess={handleBountySuccess}
+  />
+{/if}
+
+<!-- Create Bounty Modal X402 (USDC Payment) -->
+{#if selectedWishlistItem && selectedCompany}
+  <CreateBountyModalX402
+    bind:isOpen={bountyModalX402Open}
     wishlistItem={selectedWishlistItem}
     companyName={selectedCompany.name}
     companyWallet={selectedCompany.ethAddress || selectedCompany.avaxAddress || ''}

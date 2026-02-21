@@ -169,6 +169,14 @@ export class WalletGenerationService {
 
     await this.userWalletRepo.save(userWallet);
 
+    // Also record the USDC wallet address on the user (same as ETH address)
+    try {
+      await this.userRepo.update(userId, { usdcWalletAddress: ethWallet.address });
+      devLog.log('Saved usdcWalletAddress for user:', userId, ethWallet.address);
+    } catch (err) {
+      devLog.error('Failed to save usdcWalletAddress on user:', err.message);
+    }
+
     // Return data for download (unencrypted for user to save)
     return {
       address: ethWallet.address,
@@ -249,6 +257,14 @@ export class WalletGenerationService {
     });
 
     await this.userWalletRepo.save(userWallet);
+
+    // Also record the USDC wallet address on the user (same as ETH address)
+    try {
+      await this.userRepo.update(userId, { usdcWalletAddress: ethWallet.address });
+      devLog.log('Saved usdcWalletAddress for user (restore):', userId, ethWallet.address);
+    } catch (err) {
+      devLog.error('Failed to save usdcWalletAddress on user (restore):', err.message);
+    }
 
     // Auto-generate wallets for all existing companies that don't have addresses
     try {

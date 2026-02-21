@@ -8,6 +8,7 @@ import { Company } from '../entities/company.entity';
 import { UserWallet } from '../entities/user-wallet.entity';
 import { CompanyWallet } from '../entities/company-wallet.entity';
 import { ContractHistoryService } from './contract-history.service';
+import { PlatformWalletService } from './platform-wallet.service';
 import { ContractAction } from '../entities/contract-deployment-history.entity';
 
 // ABI for EscrowFactory contract
@@ -99,12 +100,13 @@ export class EscrowContractService {
   private lastAvalancheRpcWarn: number;
 
   // RPC Endpoint fallbacks
+  // Prefer publicnode and infura first; leave drpc as last-resort to avoid free-tier batching errors
   private ethereumRPCEndpoints = [
-    'https://sepolia.drpc.org',
     'https://sepolia-rpc.publicnode.com',
     'https://ethereum-sepolia.publicnode.com',
     'https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
-    'https://rpc.sepolia.org'
+    'https://rpc.sepolia.org',
+    'https://sepolia.drpc.org'
   ];
 
   private avalancheRPCEndpoints = [
@@ -123,6 +125,7 @@ export class EscrowContractService {
     @InjectRepository(CompanyWallet)
     private companyWalletRepo: Repository<CompanyWallet>,
     private readonly contractHistoryService: ContractHistoryService,
+    private readonly platformWalletService: PlatformWalletService,
   ) {
     // Get encryption key from environment variable (for decrypting stored wallets)
     const key = process.env.WALLET_ENCRYPTION_KEY;
@@ -355,12 +358,28 @@ export class EscrowContractService {
       transactionHashes: {}
     };
 
-    // Validate addresses
+    // Validate addresses - critical for contract deployment
     if (!ethers.isAddress(companyWalletAddress)) {
-      throw new BadRequestException(`Invalid company wallet address: ${companyWalletAddress}`);
+      const detail = `Invalid format: expected 42 characters (0x + 40 hex). Please regenerate company wallet.`;
+      this.logger.error(`❌ Invalid company wallet address: ${detail}`);
+      throw new BadRequestException(`Invalid company wallet address. ${detail}`);
     }
     if (!ethers.isAddress(masterWalletAddress)) {
-      throw new BadRequestException(`Invalid master wallet address: ${masterWalletAddress}`);
+      const detail = `Invalid format: expected 42 characters (0x + 40 hex). Please regenerate master wallet.`;
+      this.logger.error(`❌ Invalid master wallet address: ${detail}`);
+      throw new BadRequestException(`Invalid master wallet address. ${detail}`);
+    }
+    
+    // Extra validation - ensure addresses are exactly 42 characters
+    if (companyWalletAddress.length !== 42) {
+      const detail = `Address has ${companyWalletAddress.length} characters instead of 42 - data corruption suspected`;
+      this.logger.error(`❌ Company wallet address length issue: ${detail}`);
+      throw new BadRequestException(`Company wallet address validation failed. ${detail}. Please regenerate company wallet.`);
+    }
+    if (masterWalletAddress.length !== 42) {
+      const detail = `Address has ${masterWalletAddress.length} characters instead of 42 - data corruption suspected`;
+      this.logger.error(`❌ Master wallet address length issue: ${detail}`);
+      throw new BadRequestException(`Master wallet address validation failed. ${detail}. Please regenerate master wallet.`);
     }
     
     // Ensure company and master wallet addresses are different
@@ -396,7 +415,22 @@ export class EscrowContractService {
             `Please verify the ETHEREUM_FACTORY_ADDRESS configuration.`
           );
         }
-        this.logger.log(`✅ Factory contract verified at ${this.ethereumFactoryAddress} (code length: ${factoryCode.length} bytes)`);
+        this.logger.log(`✅ Factory contract code exists at ${this.ethereumFactoryAddress} (code length: ${factoryCode.length} bytes)`);
+        
+        // Try to verify it's actually the EscrowFactory by calling a view function
+        try {
+          const testFactory = new ethers.Contract(
+            this.ethereumFactoryAddress,
+            ESCROW_FACTORY_ABI,
+            signer.provider!
+          );
+          const escrowCount = await testFactory.getEscrowCount();
+          this.logger.log(`✅ Verified as EscrowFactory (current escrow count: ${escrowCount.toString()})`);
+        } catch (verifyErr: any) {
+          this.logger.warn(`⚠️  Could not verify contract is EscrowFactory. Error: ${verifyErr?.message}`);
+          this.logger.warn(`⚠️  The contract at ${this.ethereumFactoryAddress} may not be the EscrowFactory.`);
+          this.logger.warn(`⚠️  Proceeding anyway - if this fails, factory contract may not be deployed.`);
+        }
 
         // Validate addresses FIRST
         if (!ethers.isAddress(companyWalletAddress)) {
@@ -456,6 +490,7 @@ export class EscrowContractService {
 
           // Try to estimate gas first - this will give us better error messages
           this.logger.log(`⛽ Estimating gas for contract deployment...`);
+          let shouldProceedWithoutEstimate = false;
           try {
             const gasEstimate = await factory.createEscrow.estimateGas(
               companyWalletAddress,
@@ -467,7 +502,9 @@ export class EscrowContractService {
             );
             this.logger.log(`✅ Gas estimation successful: ${gasEstimate.toString()} gas units`);
           } catch (gasErr: any) {
-            this.logger.error(`❌ Gas estimation failed: ${gasErr?.message || gasErr}`);
+            const gasErrMsg = gasErr?.message || gasErr?.toString() || '';
+            this.logger.error(`❌ Gas estimation failed: ${gasErrMsg}`);
+            
             // Extract revert reason if available
             if (gasErr?.data) {
               this.logger.error(`   Revert data: ${gasErr.data}`);
@@ -487,22 +524,42 @@ export class EscrowContractService {
             this.logger.error(`   ✓ Target amount > 0: ${targetAmountWei > 0n} (value: ${targetAmountWei.toString()})`);
             this.logger.error(`   ✓ Duration > 0: ${durationInDays > 0} (value: ${durationInDays})`);
             
-            throw new Error(
-              `Factory contract rejected the deployment. This could be due to: ` +
-              `1) Invalid parameters, 2) Contract is paused, 3) Insufficient permissions. ` +
-              `Error: ${gasErr?.reason || gasErr?.message || 'Unknown error'}`
-            );
+            // If RPC simply has no revert data (provider limitation), try proceeding anyway with high gas
+            if (gasErrMsg.includes('missing revert data') || gasErrMsg.includes('revert=null')) {
+              this.logger.warn(`⚠️  RPC provider returned no revert data. This is a provider limitation, not a contract error.`);
+              this.logger.warn(`⚠️  Proceeding with transaction using fallback gas amount (2,000,000 units)...`);
+              shouldProceedWithoutEstimate = true;
+            } else {
+              throw new Error(
+                `Factory contract rejected the deployment. This could be due to: ` +
+                `1) Invalid parameters, 2) Contract is paused, 3) Insufficient permissions. ` +
+                `Error: ${gasErr?.reason || gasErr?.message || 'Unknown error'}`
+              );
+            }
           }
 
           // Send the transaction
-          tx = await factory.createEscrow(
-            companyWalletAddress,
-            masterWalletAddress,
-            targetAmountWei,
-            durationInDays,
-            campaignName || '',
-            campaignDescription || ''
-          );
+          if (shouldProceedWithoutEstimate) {
+            this.logger.log(`📤 Sending transaction with fallback gas limit (2,000,000 units)...`);
+            tx = await factory.createEscrow(
+              companyWalletAddress,
+              masterWalletAddress,
+              targetAmountWei,
+              durationInDays,
+              campaignName || '',
+              campaignDescription || '',
+              { gasLimit: 2000000 }
+            );
+          } else {
+            tx = await factory.createEscrow(
+              companyWalletAddress,
+              masterWalletAddress,
+              targetAmountWei,
+              durationInDays,
+              campaignName || '',
+              campaignDescription || ''
+            );
+          }
           
           this.logger.log(`📤 Transaction sent: ${tx.hash}`);
         } catch (err: any) {
@@ -510,7 +567,49 @@ export class EscrowContractService {
           throw err;
         }
 
-        const receipt = await tx.wait();
+        let receipt;
+        try {
+          receipt = await tx.wait();
+        } catch (waitErr: any) {
+          // Transaction reverted on-chain
+          this.logger.error(`⛔ Transaction reverted on-chain (Ethereum)`);
+          if (waitErr?.receipt) {
+            this.logger.error(`   Transaction hash: ${waitErr.receipt.hash}`);
+            this.logger.error(`   Block: ${waitErr.receipt.blockNumber}`);
+            this.logger.error(`   Gas used: ${waitErr.receipt.gasUsed?.toString() || 'unknown'}`);
+            this.logger.error(`   Status: ${waitErr.receipt.status}`);
+            
+            // If only minimal gas was used, factory contract might not exist or is paused
+            if (waitErr.receipt.gasUsed && waitErr.receipt.gasUsed < 50000n) {
+              this.logger.error(`\n⚠️  Very low gas used (${waitErr.receipt.gasUsed}). Possible issues:`);
+              this.logger.error(`    1) Factory contract doesn't exist at ${this.ethereumFactoryAddress}`);
+              this.logger.error(`    2) Factory contract is paused or has authorization checks`);
+              this.logger.error(`    3) Network mismatch (contract deployed on different chain)`);
+              
+              // Check if factory exists
+              try {
+                const provider = await this.getWorkingEthereumProvider();
+                const code = await provider.getCode(this.ethereumFactoryAddress);
+                if (!code || code === '0x') {
+                  this.logger.error(`\n❌ CRITICAL: No contract code at factory address ${this.ethereumFactoryAddress}!`);
+                  this.logger.error(`    The factory contract is not deployed at this address on Ethereum Sepolia.`);
+                  this.logger.error(`    This address must be updated or the contract must be redeployed.`);
+                } else {
+                  this.logger.log(`✓ Factory contract code exists at ${this.ethereumFactoryAddress} (${code.length} bytes)`);
+                }
+              } catch (codeErr) {
+                this.logger.debug('Could not check factory code:', codeErr?.message);
+              }
+            }
+          }
+          throw new Error(
+            `Factory contract rejected the transaction on Ethereum Sepolia. ` +
+            `Status code: 0 (reverted). The factory contract may not be deployed at the configured address, ` +
+            `may be paused, or may have failed internal validation. ` +
+            `Check backend logs for factory contract details.`
+          );
+        }
+        
         result.transactionHashes.ethereum = receipt.hash;
 
         // Get escrow address from event
@@ -576,7 +675,22 @@ export class EscrowContractService {
             `Please verify the AVALANCHE_FACTORY_ADDRESS configuration.`
           );
         }
-        this.logger.log(`✅ Factory contract verified at ${this.avalancheFactoryAddress} (code length: ${avalancheFactoryCode.length} bytes)`);
+        this.logger.log(`✅ Factory contract code exists at ${this.avalancheFactoryAddress} (code length: ${avalancheFactoryCode.length} bytes)`);
+        
+        // Try to verify it's actually the EscrowFactory by calling a view function
+        try {
+          const testFactory = new ethers.Contract(
+            this.avalancheFactoryAddress,
+            ESCROW_FACTORY_ABI,
+            signer.provider!
+          );
+          const escrowCount = await testFactory.getEscrowCount();
+          this.logger.log(`✅ Verified as EscrowFactory (current escrow count: ${escrowCount.toString()})`);
+        } catch (verifyErr: any) {
+          this.logger.warn(`⚠️  Could not verify contract is EscrowFactory. Error: ${verifyErr?.message}`);
+          this.logger.warn(`⚠️  The contract at ${this.avalancheFactoryAddress} may not be the EscrowFactory.`);
+          this.logger.warn(`⚠️  Proceeding anyway - if this fails, factory contract may not be deployed.`);
+        }
 
         const signerBalanceAvax = await signer.provider!.getBalance(signer.address);
         this.logger.log(`💰 Signer balance: ${ethers.formatEther(signerBalanceAvax)} AVAX`);
@@ -606,6 +720,7 @@ export class EscrowContractService {
           this.logger.log(`   Signer Balance: ${ethers.formatEther(signerBalanceAvax)} AVAX`);
 
           // Try to estimate gas first - this will give us better error messages
+          let shouldProceedWithoutEstimateAvax = false;
           try {
             const gasEstimate = await factory.createEscrow.estimateGas(
               companyWalletAddress,
@@ -617,27 +732,49 @@ export class EscrowContractService {
             );
             this.logger.log(`⛽ Estimated gas: ${gasEstimate.toString()}`);
           } catch (gasErr: any) {
-            this.logger.error(`❌ Gas estimation failed: ${gasErr?.message || gasErr}`);
+            const gasErrMsg = gasErr?.message || gasErr?.toString() || '';
+            this.logger.error(`❌ Gas estimation failed: ${gasErrMsg}`);
             if (gasErr?.data) {
               this.logger.error(`   Revert data: ${gasErr.data}`);
             }
             if (gasErr?.reason) {
               this.logger.error(`   Revert reason: ${gasErr.reason}`);
             }
-            throw new Error(
-              `Factory contract rejected the deployment. Error: ${gasErr?.reason || gasErr?.message || 'Unknown error'}`
-            );
+            
+            // If RPC simply has no revert data (provider limitation), try proceeding anyway with high gas
+            if (gasErrMsg.includes('missing revert data') || gasErrMsg.includes('revert=null')) {
+              this.logger.warn(`⚠️  RPC provider returned no revert data. This is a provider limitation, not a contract error.`);
+              this.logger.warn(`⚠️  Proceeding with transaction using fallback gas amount (2,000,000 units)...`);
+              shouldProceedWithoutEstimateAvax = true;
+            } else {
+              throw new Error(
+                `Factory contract rejected the deployment. Error: ${gasErr?.reason || gasErr?.message || 'Unknown error'}`
+              );
+            }
           }
 
           // Send the transaction
-          tx = await factory.createEscrow(
-            companyWalletAddress,
-            masterWalletAddress,
-            targetAmountWei,
-            durationInDays,
-            campaignName || '',
-            campaignDescription || ''
-          );
+          if (shouldProceedWithoutEstimateAvax) {
+            this.logger.log(`📤 Sending transaction with fallback gas limit (2,000,000 units)...`);
+            tx = await factory.createEscrow(
+              companyWalletAddress,
+              masterWalletAddress,
+              targetAmountWei,
+              durationInDays,
+              campaignName || '',
+              campaignDescription || '',
+              { gasLimit: 2000000 }
+            );
+          } else {
+            tx = await factory.createEscrow(
+              companyWalletAddress,
+              masterWalletAddress,
+              targetAmountWei,
+              durationInDays,
+              campaignName || '',
+              campaignDescription || ''
+            );
+          }
           
           this.logger.log(`📤 Transaction sent: ${tx.hash}`);
         } catch (err: any) {
@@ -645,7 +782,49 @@ export class EscrowContractService {
           throw err;
         }
 
-        const receipt = await tx.wait();
+        let receipt;
+        try {
+          receipt = await tx.wait();
+        } catch (waitErr: any) {
+          // Transaction reverted on-chain
+          this.logger.error(`⛔ Transaction reverted on-chain (Avalanche)`);
+          if (waitErr?.receipt) {
+            this.logger.error(`   Transaction hash: ${waitErr.receipt.hash}`);
+            this.logger.error(`   Block: ${waitErr.receipt.blockNumber}`);
+            this.logger.error(`   Gas used: ${waitErr.receipt.gasUsed?.toString() || 'unknown'}`);
+            this.logger.error(`   Status: ${waitErr.receipt.status}`);
+            
+            // If only minimal gas was used, factory contract might not exist or is paused
+            if (waitErr.receipt.gasUsed && waitErr.receipt.gasUsed < 50000n) {
+              this.logger.error(`\n⚠️  Very low gas used (${waitErr.receipt.gasUsed}). Possible issues:`);
+              this.logger.error(`    1) Factory contract doesn't exist at ${this.avalancheFactoryAddress}`);
+              this.logger.error(`    2) Factory contract is paused or has authorization checks`);
+              this.logger.error(`    3) Network mismatch (contract deployed on different chain)`);
+              
+              // Check if factory exists
+              try {
+                const provider = await this.getWorkingAvalancheProvider();
+                const code = await provider.getCode(this.avalancheFactoryAddress);
+                if (!code || code === '0x') {
+                  this.logger.error(`\n❌ CRITICAL: No contract code at factory address ${this.avalancheFactoryAddress}!`);
+                  this.logger.error(`    The factory contract is not deployed at this address on Avalanche Fuji.`);
+                  this.logger.error(`    This address must be updated or the contract must be redeployed.`);
+                } else {
+                  this.logger.log(`✓ Factory contract code exists at ${this.avalancheFactoryAddress} (${code.length} bytes)`);
+                }
+              } catch (codeErr) {
+                this.logger.debug('Could not check factory code:', codeErr?.message);
+              }
+            }
+          }
+          throw new Error(
+            `Factory contract rejected the transaction on Avalanche Fuji. ` +
+            `Status code: 0 (reverted). The factory contract may not be deployed at the configured address, ` +
+            `may be paused, or may have failed internal validation. ` +
+            `Check backend logs for factory contract details.`
+          );
+        }
+        
         result.transactionHashes.avalanche = receipt.hash;
 
         // Get escrow address from event
@@ -693,6 +872,333 @@ export class EscrowContractService {
   }
 
   /**
+   * Deploy escrow contracts using PLATFORM wallet (X402 payment flow)
+   * 
+   * This method is called after user pays in USDC via X402 payment system.
+   * The platform wallet pays for gas instead of the user's wallet.
+   * 
+   * Key differences from deployEscrowContracts:
+   * - Uses platform wallet signer (not user's wallet)
+   * - Platform pays all gas fees (user paid in USDC)
+   * - No user private key needed
+   * 
+   * @param userId - User ID (for logging/tracking, not for wallet access)
+   * @param wishlistItemId - Wishlist item to deploy for
+   * @param companyWalletAddress - Company child wallet (funds recipient)
+   * @param masterWalletAddress - User's master wallet (tracking purposes)
+   * @param targetAmountEth - Campaign goal in ETH
+   * @param durationInDays - Campaign duration
+   * @param chains - Chains to deploy on
+   * @param campaignName - Optional campaign name
+   * @param campaignDescription - Optional campaign description
+   */
+  async deployEscrowContractsWithPlatformWallet(
+    userId: string,
+    wishlistItemId: string,
+    companyWalletAddress: string,
+    masterWalletAddress: string,
+    targetAmountEth: number,
+    durationInDays: number,
+    chains: ('ethereum' | 'avalanche')[] = ['ethereum', 'avalanche'],
+    campaignName: string | null = null,
+    campaignDescription: string | null = null,
+  ): Promise<EscrowDeploymentResult> {
+    this.logger.log(`📝 [PLATFORM WALLET] Deploying escrow contracts for wishlist item: ${wishlistItemId}`);
+    this.logger.log(`   User ID: ${userId}`);
+    this.logger.log(`   Company Wallet: ${companyWalletAddress}`);
+    this.logger.log(`   Master Wallet: ${masterWalletAddress}`);
+    this.logger.log(`   Payment Method: X402 USDC (Platform wallet pays gas)`);
+
+    // Get wishlist item to extract company ID for history logging
+    const wishlistItem = await this.wishlistRepo.findOne({
+      where: { id: wishlistItemId },
+      relations: ['company'],
+    });
+
+    if (!wishlistItem) {
+      throw new BadRequestException(`Wishlist item ${wishlistItemId} not found`);
+    }
+
+    const companyId = wishlistItem.companyId;
+
+    // Validate that factory addresses are configured
+    if (!this.ethereumFactoryAddress && !this.avalancheFactoryAddress) {
+      throw new Error(
+        'Smart contract factories are not configured. Please configure ETHEREUM_FACTORY_ADDRESS and/or AVALANCHE_FACTORY_ADDRESS environment variables.'
+      );
+    }
+
+    // Check if requested chains have factories configured
+    const unavailableChains = chains.filter(chain => {
+      if (chain === 'ethereum') return !this.ethereumFactoryAddress;
+      if (chain === 'avalanche') return !this.avalancheFactoryAddress;
+      return false;
+    });
+
+    if (unavailableChains.length === chains.length) {
+      throw new Error(
+        `None of the requested chains (${chains.join(', ')}) have factory contracts configured. ` +
+        `Available: ${this.ethereumFactoryAddress ? 'ethereum' : ''}${this.avalancheFactoryAddress ? ' avalanche' : ''}`.trim()
+      );
+    }
+
+    if (unavailableChains.length > 0) {
+      this.logger.warn(`⚠️  Skipping deployment on unavailable chains: ${unavailableChains.join(', ')}`);
+    }
+
+    const result: EscrowDeploymentResult = {
+      transactionHashes: {}
+    };
+
+    // Validate addresses
+    if (!ethers.isAddress(companyWalletAddress)) {
+      throw new BadRequestException(`Invalid company wallet address: ${companyWalletAddress}`);
+    }
+    if (!ethers.isAddress(masterWalletAddress)) {
+      throw new BadRequestException(`Invalid master wallet address: ${masterWalletAddress}`);
+    }
+    
+    // Ensure company and master wallet addresses are different
+    if (companyWalletAddress.toLowerCase() === masterWalletAddress.toLowerCase()) {
+      throw new BadRequestException(
+        'Company wallet and master wallet must be different addresses. ' +
+        'Company wallet should be the company child wallet, not your personal master wallet.'
+      );
+    }
+
+    // Convert target amount to wei
+    const targetAmountWei = ethers.parseEther(targetAmountEth.toString());
+
+    // Deploy to Ethereum using PLATFORM wallet
+    if (chains.includes('ethereum') && this.ethereumFactoryAddress) {
+      try {
+        // Use platform wallet signer instead of user's wallet
+        const signer = await this.platformWalletService.getEthereumSigner();
+
+        const factory = new ethers.Contract(
+          this.ethereumFactoryAddress,
+          ESCROW_FACTORY_ABI,
+          signer
+        );
+
+        this.logger.log(`🔑 [PLATFORM] Using platform wallet: ${signer.address} for Ethereum deployment`);
+
+        // Check platform wallet balance
+        const balance = await this.platformWalletService.getPlatformBalance('ethereum');
+        this.logger.log(`💰 [PLATFORM] Platform Ethereum balance: ${balance.balanceEth} ETH`);
+
+        // Estimate gas cost
+        const data = factory.interface.encodeFunctionData('createEscrow', [
+          ethers.getAddress(companyWalletAddress),
+          ethers.getAddress(masterWalletAddress),
+          targetAmountWei,
+          durationInDays,
+          campaignName || '',
+          campaignDescription || ''
+        ]);
+
+        const gasEstimate = await this.platformWalletService.estimateGasCost(
+          'ethereum',
+          this.ethereumFactoryAddress,
+          data
+        );
+
+        this.logger.log(`⛽ [PLATFORM] Estimated gas cost: ${gasEstimate.estimatedCostEth} ETH (${gasEstimate.gasLimit.toString()} gas units)`);
+
+        // Check sufficient balance
+        if (!await this.platformWalletService.hasSufficientGas('ethereum', gasEstimate.estimatedCostWei)) {
+          throw new Error(
+            `Platform wallet has insufficient balance for gas. ` +
+            `Required: ${gasEstimate.estimatedCostEth} ETH, ` +
+            `Available: ${balance.balanceEth} ETH`
+          );
+        }
+
+        // Send transaction using platform wallet
+        this.logger.log(`🚀 [PLATFORM] Deploying Ethereum escrow contract...`);
+        const tx = await factory.createEscrow(
+          ethers.getAddress(companyWalletAddress),
+          ethers.getAddress(masterWalletAddress),
+          targetAmountWei,
+          durationInDays,
+          campaignName || '',
+          campaignDescription || ''
+        );
+
+        this.logger.log(`⏳ [PLATFORM] Waiting for Ethereum transaction: ${tx.hash}`);
+        const receipt = await tx.wait();
+
+        if (!receipt || receipt.status !== 1) {
+          throw new Error('Ethereum transaction failed');
+        }
+
+        // Parse event to get escrow address
+        const iface = new ethers.Interface(ESCROW_FACTORY_ABI);
+        const log = receipt.logs.find(log => {
+          try {
+            const parsed = iface.parseLog({ topics: log.topics as string[], data: log.data });
+            return parsed?.name === 'EscrowCreated';
+          } catch {
+            return false;
+          }
+        });
+
+        if (log) {
+          const parsedLog = iface.parseLog({ topics: log.topics as string[], data: log.data });
+          result.ethereumAddress = parsedLog?.args[0];
+        }
+
+        result.transactionHashes.ethereum = tx.hash;
+
+        this.logger.log(`✅ [PLATFORM] Ethereum escrow deployed: ${result.ethereumAddress}`);
+        this.logger.log(`   Transaction: ${tx.hash}`);
+        this.logger.log(`   Gas Used: ${receipt.gasUsed.toString()}`);
+
+        // Log to contract history
+        await this.contractHistoryService.logAction({
+          userId,
+          companyId,
+          wishlistItemId,
+          contractAddress: result.ethereumAddress || '',
+          fromAddress: signer.address,
+          chain: 'ethereum',
+          network: 'sepolia',
+          action: ContractAction.DEPLOYED,
+          transactionHash: tx.hash,
+          metadata: {
+            deploymentMethod: 'platform_wallet',
+            paymentMethod: 'x402_usdc',
+            targetAmountEth,
+            durationInDays,
+            campaignName: campaignName || '',
+            campaignDescription: campaignDescription || '',
+            factoryAddress: this.ethereumFactoryAddress,
+          },
+          notes: `Platform wallet deployment via X402 USDC payment`,
+        });
+      } catch (error) {
+        this.logger.error(`❌ [PLATFORM] Failed to deploy Ethereum escrow: ${error.message}`);
+        throw error;
+      }
+    }
+
+    // Deploy to Avalanche using PLATFORM wallet
+    if (chains.includes('avalanche') && this.avalancheFactoryAddress) {
+      try {
+        // Use platform wallet signer instead of user's wallet
+        const signer = await this.platformWalletService.getAvalancheSigner();
+
+        const factory = new ethers.Contract(
+          this.avalancheFactoryAddress,
+          ESCROW_FACTORY_ABI,
+          signer
+        );
+
+        this.logger.log(`🔑 [PLATFORM] Using platform wallet: ${signer.address} for Avalanche deployment`);
+
+        // Check platform wallet balance
+        const balance = await this.platformWalletService.getPlatformBalance('avalanche');
+        this.logger.log(`💰 [PLATFORM] Platform Avalanche balance: ${balance.balanceEth} AVAX`);
+
+        // Estimate gas cost
+        const data = factory.interface.encodeFunctionData('createEscrow', [
+          ethers.getAddress(companyWalletAddress),
+          ethers.getAddress(masterWalletAddress),
+          targetAmountWei,
+          durationInDays,
+          campaignName || '',
+          campaignDescription || ''
+        ]);
+
+        const gasEstimate = await this.platformWalletService.estimateGasCost(
+          'avalanche',
+          this.avalancheFactoryAddress,
+          data
+        );
+
+        this.logger.log(`⛽ [PLATFORM] Estimated gas cost: ${gasEstimate.estimatedCostEth} AVAX (${gasEstimate.gasLimit.toString()} gas units)`);
+
+        // Check sufficient balance
+        if (!await this.platformWalletService.hasSufficientGas('avalanche', gasEstimate.estimatedCostWei)) {
+          throw new Error(
+            `Platform wallet has insufficient balance for gas. ` +
+            `Required: ${gasEstimate.estimatedCostEth} AVAX, ` +
+            `Available: ${balance.balanceEth} AVAX`
+          );
+        }
+
+        // Send transaction using platform wallet
+        this.logger.log(`🚀 [PLATFORM] Deploying Avalanche escrow contract...`);
+        const tx = await factory.createEscrow(
+          ethers.getAddress(companyWalletAddress),
+          ethers.getAddress(masterWalletAddress),
+          targetAmountWei,
+          durationInDays,
+          campaignName || '',
+          campaignDescription || ''
+        );
+
+        this.logger.log(`⏳ [PLATFORM] Waiting for Avalanche transaction: ${tx.hash}`);
+        const receipt = await tx.wait();
+
+        if (!receipt || receipt.status !== 1) {
+          throw new Error('Avalanche transaction failed');
+        }
+
+        // Parse event to get escrow address
+        const iface = new ethers.Interface(ESCROW_FACTORY_ABI);
+        const log = receipt.logs.find(log => {
+          try {
+            const parsed = iface.parseLog({ topics: log.topics as string[], data: log.data });
+            return parsed?.name === 'EscrowCreated';
+          } catch {
+            return false;
+          }
+        });
+
+        if (log) {
+          const parsedLog = iface.parseLog({ topics: log.topics as string[], data: log.data });
+          result.avalancheAddress = parsedLog?.args[0];
+        }
+
+        result.transactionHashes.avalanche = tx.hash;
+
+        this.logger.log(`✅ [PLATFORM] Avalanche escrow deployed: ${result.avalancheAddress}`);
+        this.logger.log(`   Transaction: ${tx.hash}`);
+        this.logger.log(`   Gas Used: ${receipt.gasUsed.toString()}`);
+
+        // Log to contract history
+        await this.contractHistoryService.logAction({
+          userId,
+          companyId,
+          wishlistItemId,
+          contractAddress: result.avalancheAddress || '',
+          fromAddress: signer.address,
+          chain: 'avalanche',
+          network: 'fuji',
+          action: ContractAction.DEPLOYED,
+          transactionHash: tx.hash,
+          metadata: {
+            deploymentMethod: 'platform_wallet',
+            paymentMethod: 'x402_usdc',
+            targetAmountEth,
+            durationInDays,
+            campaignName: campaignName || '',
+            campaignDescription: campaignDescription || '',
+            factoryAddress: this.avalancheFactoryAddress,
+          },
+          notes: `Platform wallet deployment via X402 USDC payment`,
+        });
+      } catch (error) {
+        this.logger.error(`❌ [PLATFORM] Failed to deploy Avalanche escrow: ${error.message}`);
+        throw error;
+      }
+    }
+
+    return result;
+  }
+
+  /**
    * Estimate gas costs for deploying escrow contracts
    */
   async estimateDeploymentGas(
@@ -732,42 +1238,132 @@ export class EscrowContractService {
         const targetAmountWei = ethers.parseEther(targetAmountEth.toString());
 
         // Estimate gas
-        const estimatedGas = await factory.createEscrow.estimateGas(
-          companyWalletAddress,
-          signer.address, // masterWallet for fund forwarding
-          targetAmountWei,
-          durationInDays,
-          campaignName || '',
-          campaignDescription || ''
-        );
+        // Run estimate with retry for providers that reject batched requests
+        let estimatedGas: bigint | null = null;
+        let lastError: any = null;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            estimatedGas = await factory.createEscrow.estimateGas(
+              companyWalletAddress,
+              signer.address, // masterWallet for fund forwarding
+              targetAmountWei,
+              durationInDays,
+              campaignName || '',
+              campaignDescription || ''
+            );
+            // success
+            break;
+          } catch (gasErr: any) {
+            lastError = gasErr;
+            const msg = gasErr?.message || gasErr?.toString() || '';
+            // Detect drpc.org free-tier batching error and attempt to switch provider and retry once
+            if (msg.includes('Batch of more than') || msg.includes('Batch of more than 3 requests') || (gasErr?.data && String(gasErr.data).includes('Batch of more'))) {
+              this.logger.warn('⚠️  Provider rejected batched requests. Switching to next RPC endpoint and retrying gas estimate...');
+              try {
+                await this.getWorkingEthereumProvider();
+                continue; // retry
+              } catch (swapErr) {
+                this.logger.debug('Failed to switch provider during gas estimate retry', swapErr?.message || swapErr);
+                break;
+              }
+            }
 
-        const gasCostWei = estimatedGas * ethereumGasPrice;
-        const gasCostEth = ethers.formatEther(gasCostWei);
-
-        gasEstimate.ethereum = {
-          estimatedGasWei: estimatedGas.toString(),
-          estimatedGasEth: gasCostEth,
-          estimatedGasUsd: (parseFloat(gasCostEth) * 2500).toFixed(2), // Rough USD estimate (1 ETH ≈ $2500)
-        };
-
-        this.logger.log(`✅ Ethereum gas estimate: ${gasCostEth} ETH (~$${gasEstimate.ethereum.estimatedGasUsd})`);
-      } catch (error: any) {
-        this.logger.warn(`⚠️  Failed to estimate Ethereum gas: ${error?.message || error}`);
-        try {
-          const provider = await this.getWorkingEthereumProvider();
-          const factory = new ethers.Contract(this.ethereumFactoryAddress, ESCROW_FACTORY_ABI, provider);
-          const code = await provider.getCode(this.ethereumFactoryAddress);
-          if (!code || code === '0x') {
-            this.logger.warn(`⚠️  No contract code found at Ethereum factory address ${factory.address} during gas estimate`);
+            // For other errors, break and handle below
+            break;
           }
-        } catch (e) {
-          this.logger.debug('Could not check factory code during gas estimate');
         }
+
+        if (estimatedGas) {
+          const gasCostWei = estimatedGas * ethereumGasPrice;
+          const gasCostEth = ethers.formatEther(gasCostWei);
+
+          gasEstimate.ethereum = {
+            estimatedGasWei: estimatedGas.toString(),
+            estimatedGasEth: gasCostEth,
+            estimatedGasUsd: (parseFloat(gasCostEth) * 2500).toFixed(2), // Rough USD estimate (1 ETH ≈ $2500)
+          };
+
+          this.logger.log(`✅ Ethereum gas estimate: ${gasCostEth} ETH (~$${gasEstimate.ethereum.estimatedGasUsd})`);
+        } else {
+          this.logger.warn(`⚠️  Failed to estimate Ethereum gas: ${lastError?.message || lastError}`);
+          if (lastError) {
+            try {
+              this.logger.debug('Detailed Ethereum gas estimate error:', JSON.stringify({
+                message: lastError.message,
+                reason: lastError.reason,
+                data: lastError.data,
+                error: lastError.error,
+              }));
+            } catch (jsonErr) {
+              this.logger.debug('Could not stringify lastError for Ethereum gas estimate');
+            }
+
+            // Attempt a direct provider.call to retrieve revert data (if any)
+            try {
+              const provider = await this.getWorkingEthereumProvider();
+              const iface = new ethers.Interface(ESCROW_FACTORY_ABI);
+              const data = iface.encodeFunctionData('createEscrow', [
+                companyWalletAddress,
+                signer.address,
+                targetAmountWei,
+                durationInDays,
+                campaignName || '',
+                campaignDescription || ''
+              ]);
+
+              try {
+                await provider.call({ to: this.ethereumFactoryAddress, data, from: signer.address });
+              } catch (callErr: any) {
+                const hex = callErr?.data || callErr?.error?.data || null;
+                if (hex) {
+                  this.logger.debug('Raw revert data from provider.call (hex):', hex);
+                  try {
+                    const h = hex.startsWith('0x') ? hex.slice(2) : hex;
+                    const selector = h.slice(0, 8);
+                    if (selector === '08c379a0') {
+                      // Error(string) - parse length and string
+                      const lenHex = h.slice(8 + 64, 8 + 64 + 64);
+                      const len = parseInt(lenHex, 16);
+                      const strHex = h.slice(8 + 64 + 64, 8 + 64 + 64 + len * 2);
+                      const reason = Buffer.from(strHex, 'hex').toString('utf8');
+                      this.logger.warn(`⚠️  Revert reason from factory call: ${reason}`);
+                    } else {
+                      this.logger.debug('Factory revert had non-standard selector:', selector);
+                    }
+                  } catch (decodeErr) {
+                    this.logger.debug('Failed to decode revert data:', decodeErr?.message || decodeErr);
+                  }
+                }
+              }
+            } catch (providerCallErr) {
+              this.logger.debug('Provider.call attempt failed during error diagnosis:', providerCallErr?.message || providerCallErr);
+            }
+          }
+
+          try {
+            const provider = await this.getWorkingEthereumProvider();
+            const factory = new ethers.Contract(this.ethereumFactoryAddress, ESCROW_FACTORY_ABI, provider);
+            const code = await provider.getCode(this.ethereumFactoryAddress);
+            if (!code || code === '0x') {
+              this.logger.warn(`⚠️  No contract code found at Ethereum factory address ${factory.address} during gas estimate`);
+            }
+          } catch (e) {
+            this.logger.debug('Could not check factory code during gas estimate');
+          }
+          // Use conservative estimate if actual estimate fails
+          gasEstimate.ethereum = {
+            estimatedGasWei: '500000',
+            estimatedGasEth: ethers.formatEther(BigInt(500000) * ethereumGasPrice!),
+            estimatedGasUsd: '12.50', // Rough estimate
+          };
+        }
+      } catch (error: any) {
+        this.logger.warn(`⚠️  Failed to estimate Ethereum gas (outer): ${error?.message || error}`);
         // Use conservative estimate if actual estimate fails
         gasEstimate.ethereum = {
           estimatedGasWei: '500000',
           estimatedGasEth: ethers.formatEther(BigInt(500000) * ethereumGasPrice!),
-          estimatedGasUsd: '12.50', // Rough estimate
+          estimatedGasUsd: '12.50',
         };
       }
     }
@@ -785,42 +1381,87 @@ export class EscrowContractService {
         const targetAmountWei = ethers.parseEther(targetAmountEth.toString());
 
         // Estimate gas
-        const estimatedGas = await factory.createEscrow.estimateGas(
-          companyWalletAddress,
-          signer.address, // masterWallet for fund forwarding
-          targetAmountWei,
-          durationInDays,
-          campaignName || '',
-          campaignDescription || ''
-        );
-
-        const gasCostWei = estimatedGas * avalancheGasPrice;
-        const gasCostAvax = ethers.formatEther(gasCostWei);
-
-        gasEstimate.avalanche = {
-          estimatedGasWei: estimatedGas.toString(),
-          estimatedGasEth: gasCostAvax,
-          estimatedGasUsd: (parseFloat(gasCostAvax) * 80).toFixed(2), // Rough USD estimate (1 AVAX ≈ $80)
-        };
-
-        this.logger.log(`✅ Avalanche gas estimate: ${gasCostAvax} AVAX (~$${gasEstimate.avalanche.estimatedGasUsd})`);
-      } catch (error: any) {
-        this.logger.warn(`⚠️  Failed to estimate Avalanche gas: ${error?.message || error}`);
-        try {
-          const provider = await this.getWorkingAvalancheProvider();
-          const factory = new ethers.Contract(this.avalancheFactoryAddress, ESCROW_FACTORY_ABI, provider);
-          const code = await provider.getCode(this.avalancheFactoryAddress);
-          if (!code || code === '0x') {
-            this.logger.warn(`⚠️  No contract code found at Avalanche factory address ${factory.address} during gas estimate`);
+        // Run estimate with retry for providers that reject batched requests
+        let estimatedGasAvax: bigint | null = null;
+        let lastAvaxError: any = null;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            estimatedGasAvax = await factory.createEscrow.estimateGas(
+              companyWalletAddress,
+              signer.address, // masterWallet for fund forwarding
+              targetAmountWei,
+              durationInDays,
+              campaignName || '',
+              campaignDescription || ''
+            );
+            break;
+          } catch (gasErr: any) {
+            lastAvaxError = gasErr;
+            const msg = gasErr?.message || gasErr?.toString() || '';
+            if (msg.includes('Batch of more than') || (gasErr?.data && String(gasErr.data).includes('Batch of more'))) {
+              this.logger.warn('⚠️  Provider rejected batched requests on Avalanche endpoint. Switching RPC and retrying...');
+              try {
+                await this.getWorkingAvalancheProvider();
+                continue;
+              } catch (swapErr) {
+                this.logger.debug('Failed to switch avalanche provider during gas estimate retry', swapErr?.message || swapErr);
+                break;
+              }
+            }
+            break;
           }
-        } catch (e) {
-          this.logger.debug('Could not check factory code during avalanche gas estimate');
         }
+
+        if (estimatedGasAvax) {
+          const gasCostWei = estimatedGasAvax * avalancheGasPrice;
+          const gasCostAvax = ethers.formatEther(gasCostWei);
+
+          gasEstimate.avalanche = {
+            estimatedGasWei: estimatedGasAvax.toString(),
+            estimatedGasEth: gasCostAvax,
+            estimatedGasUsd: (parseFloat(gasCostAvax) * 80).toFixed(2), // Rough USD estimate (1 AVAX ≈ $80)
+          };
+
+          this.logger.log(`✅ Avalanche gas estimate: ${gasCostAvax} AVAX (~$${gasEstimate.avalanche.estimatedGasUsd})`);
+        } else {
+          this.logger.warn(`⚠️  Failed to estimate Avalanche gas: ${lastAvaxError?.message || lastAvaxError}`);
+          if (lastAvaxError) {
+            try {
+              this.logger.debug('Detailed Avalanche gas estimate error:', JSON.stringify({
+                message: lastAvaxError.message,
+                reason: lastAvaxError.reason,
+                data: lastAvaxError.data,
+                error: lastAvaxError.error,
+              }));
+            } catch (jsonErr) {
+              this.logger.debug('Could not stringify lastAvaxError for Avalanche gas estimate');
+            }
+          }
+
+          try {
+            const provider = await this.getWorkingAvalancheProvider();
+            const factory = new ethers.Contract(this.avalancheFactoryAddress, ESCROW_FACTORY_ABI, provider);
+            const code = await provider.getCode(this.avalancheFactoryAddress);
+            if (!code || code === '0x') {
+              this.logger.warn(`⚠️  No contract code found at Avalanche factory address ${factory.address} during gas estimate`);
+            }
+          } catch (e) {
+            this.logger.debug('Could not check factory code during avalanche gas estimate');
+          }
+          // Use conservative estimate if actual estimate fails
+          gasEstimate.avalanche = {
+            estimatedGasWei: '500000',
+            estimatedGasEth: ethers.formatEther(BigInt(500000) * avalancheGasPrice!),
+            estimatedGasUsd: '4.00', // Rough estimate
+          };
+        }
+      } catch (error: any) {
+        this.logger.warn(`⚠️  Failed to estimate Avalanche gas (outer): ${error?.message || error}`);
         // Use conservative estimate if actual estimate fails
         gasEstimate.avalanche = {
           estimatedGasWei: '500000',
           estimatedGasEth: ethers.formatEther(BigInt(500000) * avalancheGasPrice!),
-          estimatedGasUsd: '4.00', // Rough estimate
+          estimatedGasUsd: '4.00',
         };
       }
     }

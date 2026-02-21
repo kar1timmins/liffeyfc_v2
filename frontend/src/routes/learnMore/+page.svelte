@@ -938,7 +938,7 @@
 												class="glass-subtle rounded-xl p-4 flex items-center gap-3 backdrop-blur-sm"
 											>
 												<CalendarDays class="text-accent h-6 w-6 flex-shrink-0" />
-												<div><span class="font-semibold">Date:</span> {nextEvent.nextEventDate}</div>
+												<div><span class="font-semibold">Date:</span> Tuesday 10th March</div>
 											</div>
 											<div
 												class="glass-subtle rounded-xl p-4 flex items-center gap-3 backdrop-blur-sm"
@@ -963,7 +963,7 @@
 
 									<div class="flex justify-center">
 										<a
-											href="https://luma.com/9vefsesm"
+											href="https://luma.com/xd6tye51"
 											target="_blank"
 											rel="noopener noreferrer"
 											class="luma-checkout--button luma-cta btn glass-subtle btn-neon-adaptive btn-lg focus:ring-accent/50 flex transform items-center gap-3 rounded-full px-8 py-4 text-base shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-accent/20 focus:outline-none focus:ring-4 md:px-10 md:text-lg"

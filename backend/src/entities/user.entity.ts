@@ -83,6 +83,10 @@ export class User {
   @Column({ type: 'timestamp', nullable: true })
   resetPasswordExpires?: Date;
 
+  // USDC Payment wallet address
+  @Column({ type: 'varchar', nullable: true })
+  usdcWalletAddress?: string;
+
   @OneToMany(() => Wallet, (w: Wallet) => w.user, { cascade: true })
   wallets?: Wallet[];
 

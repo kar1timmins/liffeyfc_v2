@@ -221,4 +221,62 @@ export class UsersController {
       };
     }
   }
+
+  @Post('usdc-wallet')
+  @UseGuards(AuthGuard('jwt'))
+  async setUsdcWallet(
+    @CurrentUser() currentUser: any,
+    @Body('walletAddress') walletAddress: string
+  ) {
+    try {
+      const updated = await this.usersService.setUsdcWallet(currentUser.sub, walletAddress);
+      return { 
+        success: true, 
+        data: { 
+          usdcWalletAddress: updated.usdcWalletAddress 
+        } 
+      };
+    } catch (error) {
+      return { 
+        success: false, 
+        message: error.message || 'Failed to set USDC wallet' 
+      };
+    }
+  }
+
+  @Get('usdc-wallet')
+  @UseGuards(AuthGuard('jwt'))
+  async getUsdcWallet(@CurrentUser() currentUser: any) {
+    try {
+      const walletAddress = await this.usersService.getUsdcWallet(currentUser.sub);
+      return { 
+        success: true, 
+        data: { 
+          usdcWalletAddress: walletAddress 
+        } 
+      };
+    } catch (error) {
+      return { 
+        success: false, 
+        message: error.message || 'Failed to get USDC wallet' 
+      };
+    }
+  }
+
+  @Post('usdc-wallet/remove')
+  @UseGuards(AuthGuard('jwt'))
+  async removeUsdcWallet(@CurrentUser() currentUser: any) {
+    try {
+      await this.usersService.removeUsdcWallet(currentUser.sub);
+      return { 
+        success: true, 
+        message: 'USDC wallet removed' 
+      };
+    } catch (error) {
+      return { 
+        success: false, 
+        message: error.message || 'Failed to remove USDC wallet' 
+      };
+    }
+  }
 }

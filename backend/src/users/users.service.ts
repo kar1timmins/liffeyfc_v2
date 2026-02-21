@@ -15,6 +15,7 @@ export interface SanitizedUser {
   role: UserRole;
   linkedinUrl?: string;
   createdAt: Date;
+  usdcWalletAddress?: string | null; // including wallet is harmless for sanitized view
 }
 
 /**
@@ -27,6 +28,7 @@ export interface FullUserProfile extends SanitizedUser {
   isAccredited: boolean | null;
   phoneNumber?: string;
   wallets: any[];
+  usdcWalletAddress?: string | null; // added so frontend knows about USDC wallet
   updatedAt: Date;
   userType: string;
 }
@@ -72,6 +74,7 @@ export class UsersService {
       isAccredited: user.isAccredited ?? null,
       phoneNumber: user.phoneNumber,
       wallets: user.wallets || [],
+      usdcWalletAddress: user.usdcWalletAddress || null,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       userType: user.role === UserRole.INVESTOR ? 'investor' : user.role === UserRole.STAFF ? 'staff' : 'user',
@@ -239,4 +242,47 @@ export class UsersService {
   async findAll(): Promise<User[]> {
     return this.usersRepo.find();
   }
+
+  /**
+   * Set or update USDC wallet address for a user
+   */
+  async setUsdcWallet(userId: string, walletAddress: string): Promise<User> {
+    // Validate wallet address format (basic check for Ethereum/Avalanche addresses)
+    if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
+      throw new Error('Invalid wallet address. Must be a valid Ethereum/Avalanche address.');
+    }
+
+    const user = await this.usersRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    user.usdcWalletAddress = walletAddress.toLowerCase();
+    return this.usersRepo.save(user);
+  }
+
+  /**
+   * Get USDC wallet address for a user
+   */
+  async getUsdcWallet(userId: string): Promise<string | null> {
+    const user = await this.usersRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new Error('User not found');
+    }
+    return user.usdcWalletAddress || null;
+  }
+
+  /**
+   * Remove USDC wallet address for a user
+   */
+  async removeUsdcWallet(userId: string): Promise<void> {
+    const user = await this.usersRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    user.usdcWalletAddress = undefined;
+    await this.usersRepo.save(user);
+  }
 }
+

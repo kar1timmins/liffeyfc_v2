@@ -11,6 +11,8 @@ import { Web3Module } from './web3/web3.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { CompaniesModule } from './companies/companies.module';
+import { PaymentsModule } from './payments/payments.module';
+import { JobsModule } from './jobs/jobs.module';
 import { throttlerConfig } from './config/throttler.config';
 import { GcpStorageService } from './common/gcp-storage.service';
 import * as entities from './entities';
@@ -120,6 +122,8 @@ function validateDatabaseConfig() {
     UsersModule,
     AuthModule,
     CompaniesModule,
+    PaymentsModule,
+    JobsModule, // BullMQ deployment queue
   ],
   controllers: [AppController],
   providers: [

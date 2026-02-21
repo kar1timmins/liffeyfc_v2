@@ -1,5 +1,6 @@
 import { Module, Provider } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule } from '@nestjs/config';
 import { Web3Controller } from './web3.controller';
 import { WalletController } from './wallet.controller';
 import { EscrowController } from './escrow.controller';
@@ -11,6 +12,7 @@ import { WalletGenerationService } from './wallet-generation.service';
 import { EscrowContractService } from './escrow-contract.service';
 import { BountiesService } from './bounties.service';
 import { CryptoPricesService } from './crypto-prices.service';
+import { PlatformWalletService } from './platform-wallet.service';
 import { NonceService } from './nonce.service';
 import { RedisNonceService } from './nonce.redis.service';
 import { UserWallet } from '../entities/user-wallet.entity';
@@ -39,11 +41,12 @@ const nonceProvider: Provider = {
 @Module({
   imports: [
     TypeOrmModule.forFeature([UserWallet, CompanyWallet, WishlistItem, User, Company, EscrowDeployment, Contribution, ContractDeploymentHistory]),
+    ConfigModule,
     UsersModule,
     CommonModule,
   ],
   controllers: [Web3Controller, WalletController, EscrowController, BountiesController, WalletBalanceController, CryptoPricesController],
-  providers: [Web3Service, WalletGenerationService, EscrowContractService, BountiesService, CryptoPricesService, ContractHistoryService, nonceProvider],
-  exports: [Web3Service, WalletGenerationService, EscrowContractService, BountiesService, CryptoPricesService, ContractHistoryService, NonceService],
+  providers: [Web3Service, WalletGenerationService, EscrowContractService, BountiesService, CryptoPricesService, PlatformWalletService, ContractHistoryService, nonceProvider],
+  exports: [Web3Service, WalletGenerationService, EscrowContractService, BountiesService, CryptoPricesService, PlatformWalletService, ContractHistoryService, NonceService],
 })
 export class Web3Module {}
