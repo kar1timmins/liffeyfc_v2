@@ -33,6 +33,15 @@
 		chain: 'ethereum' | 'avalanche';
 		status: 'active' | 'funded' | 'expired';
 		contractAddress: string; // Escrow contract for this bounty
+		deployments?: Array<{
+			campaignName?: string | null;
+			campaignDescription?: string | null;
+			chain?: string;
+			network?: string;
+			deploymentTxHash?: string | null;
+			deployedAt?: string;
+			[key: string]: unknown;
+		}>;
 	}
 
 	interface WalletLookupResult {

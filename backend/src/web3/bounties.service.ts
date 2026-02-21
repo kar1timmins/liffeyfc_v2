@@ -21,6 +21,7 @@ export interface BountyDeployment {
   deployedAt: string;
   campaignName?: string | null;
   campaignDescription?: string | null;
+  targetAmountEth?: number | null;
 }
 
 export interface BountyResponse {
@@ -29,6 +30,7 @@ export interface BountyResponse {
   description: string;
   category: string;
   targetAmount: string;
+  targetAmountEth: number | null;
   raisedAmount: string;
   progressPercentage: number;
   contributorCount: number;
@@ -481,6 +483,7 @@ export class BountiesService {
         deployedAt: deployment.createdAt.toISOString(),
         campaignName: deployment.campaignName || null,
         campaignDescription: deployment.campaignDescription || null,
+        targetAmountEth: deployment.targetAmountEth ?? null,
       }));
     } catch (error) {
       this.logger.warn(`⚠️  Failed to fetch deployments for ${wishlistItem.id}:`, error.message);
@@ -526,9 +529,13 @@ export class BountiesService {
     }
 
     // Calculate progress percentage
-    const targetAmount = parseFloat(wishlistItem.value?.toString() || '0');
+    // Use ETH-denominated target from the deployment record when available
+    // (avoids comparing ETH raised against EUR target which gives nonsensical %)
+    const ethTargetFromDeployment = deployments.find(d => d.targetAmountEth != null)?.targetAmountEth ?? null;
+    const targetAmountEur = parseFloat(wishlistItem.value?.toString() || '0');
     const raised = parseFloat(raisedAmount);
-    const progressPercentage = targetAmount > 0 ? Math.min((raised / targetAmount) * 100, 100) : 0;
+    const effectiveTarget = ethTargetFromDeployment ?? targetAmountEur;
+    const progressPercentage = effectiveTarget > 0 ? Math.min((raised / effectiveTarget) * 100, 100) : 0;
 
     // Determine final status
     const now = new Date();
@@ -547,6 +554,7 @@ export class BountiesService {
       description: wishlistItem.description || '',
       category: wishlistItem.category,
       targetAmount: wishlistItem.value?.toString() || '0',
+      targetAmountEth: ethTargetFromDeployment,
       raisedAmount,
       progressPercentage: Math.round(progressPercentage),
       contributorCount,

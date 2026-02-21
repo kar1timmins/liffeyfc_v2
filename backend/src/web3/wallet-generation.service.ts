@@ -1,8 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Wallet, HDNodeWallet } from 'ethers';
+import { Wallet, HDNodeWallet, Mnemonic } from 'ethers';
 import * as crypto from 'crypto';
+import { derivePath } from 'ed25519-hd-key';
+import * as nacl from 'tweetnacl';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const bs58: { encode: (buf: Buffer | Uint8Array) => string } = require('bs58');
+import { Keypair as StellarKeypair } from '@stellar/stellar-base';
+import { bech32 } from 'bech32';
 import { UserWallet } from '../entities/user-wallet.entity';
 import { CompanyWallet } from '../entities/company-wallet.entity';
 import { User } from '../entities/user.entity';
@@ -29,6 +35,9 @@ export interface WalletDownloadData {
   address: string;
   ethAddress: string;
   avaxAddress: string;
+  solanaAddress?: string;
+  stellarAddress?: string;
+  bitcoinAddress?: string;
   mnemonic: string;
   privateKey: string;
   derivationPath: string;
@@ -42,6 +51,9 @@ export class WalletGenerationService {
   private readonly ENCRYPTION_KEY: Buffer;
   private readonly ETH_DERIVATION_BASE = "m/44'/60'/0'/0"; // Ethereum HD path
   private readonly AVAX_DERIVATION_BASE = "m/44'/9000'/0'/0"; // Avalanche HD path (placeholder)
+  private readonly SOL_DERIVATION_PATH = "m/44'/501'/0'/0'"; // Solana SLIP-0010 path
+  private readonly XLM_DERIVATION_PATH = "m/44'/148'/0'"; // Stellar SLIP-0010 path
+  private readonly BTC_DERIVATION_BASE = "m/84'/0'/0'/0"; // Bitcoin native SegWit (P2WPKH)
 
   constructor(
     @InjectRepository(UserWallet)
@@ -119,9 +131,50 @@ export class WalletGenerationService {
 
       return decrypted;
     } catch (error) {
-      devLog.error('Decryption error:', error.message);
-      throw new Error(`Failed to decrypt data: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      devLog.error('Decryption error:', errorMessage);
+      throw new Error(`Failed to decrypt data: ${errorMessage}`);
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Multi-chain address derivation helpers
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Derive Solana, Stellar and Bitcoin addresses from a BIP39 mnemonic.
+   * Called during wallet generation / restore so all addresses are stored
+   * in a single DB row alongside the existing EVM addresses.
+   */
+  private deriveNonEvmAddresses(mnemonic: string): {
+    solanaAddress: string;
+    stellarAddress: string;
+    bitcoinAddress: string;
+  } {
+    // Compute the 64-byte BIP39 seed (no passphrase) from the mnemonic
+    const mnemonicObj = Mnemonic.fromPhrase(mnemonic);
+    const seedHex = mnemonicObj.computeSeed(); // hex string
+
+    // ---- Solana (ed25519, path m/44'/501'/0'/0') ---------------------------
+    const { key: solKey } = derivePath(this.SOL_DERIVATION_PATH, seedHex);
+    const solKeypair = nacl.sign.keyPair.fromSeed(new Uint8Array(solKey));
+    const solanaAddress = bs58.encode(Buffer.from(solKeypair.publicKey));
+
+    // ---- Stellar (ed25519, path m/44'/148'/0') ------------------------------
+    const { key: xlmKey } = derivePath(this.XLM_DERIVATION_PATH, seedHex);
+    const stellarKeypair = StellarKeypair.fromRawEd25519Seed(Buffer.from(xlmKey));
+    const stellarAddress = stellarKeypair.publicKey(); // G...
+
+    // ---- Bitcoin P2WPKH native SegWit (secp256k1, path m/84'/0'/0'/0/0) ----
+    const btcWallet = HDNodeWallet.fromPhrase(mnemonic, undefined, `${this.BTC_DERIVATION_BASE}/0`);
+    const pubkeyBytes = Buffer.from(btcWallet.signingKey.compressedPublicKey.slice(2), 'hex'); // strip 0x
+    const sha256Hash = crypto.createHash('sha256').update(pubkeyBytes).digest();
+    const hash160 = crypto.createHash('ripemd160').update(sha256Hash).digest();
+    const words = bech32.toWords(hash160);
+    words.unshift(0x00); // witness version 0
+    const bitcoinAddress = bech32.encode('bc', words); // mainnet bc1q...
+
+    return { solanaAddress, stellarAddress, bitcoinAddress };
   }
 
   /**
@@ -152,6 +205,9 @@ export class WalletGenerationService {
     // In production, you might want to use different derivation paths
     const avaxAddress = ethWallet.address;
 
+    // Derive non-EVM addresses (Solana, Stellar, Bitcoin) from the same mnemonic
+    const { solanaAddress, stellarAddress, bitcoinAddress } = this.deriveNonEvmAddresses(mnemonic);
+
     // Encrypt sensitive data
     const encryptedMnemonic = this.encrypt(mnemonic);
     const encryptedPrivateKey = this.encrypt(ethWallet.privateKey);
@@ -161,6 +217,9 @@ export class WalletGenerationService {
       userId,
       ethAddress: ethWallet.address,
       avaxAddress: avaxAddress,
+      solanaAddress,
+      stellarAddress,
+      bitcoinAddress,
       encryptedMnemonic,
       encryptedPrivateKey,
       derivationPath: `${this.ETH_DERIVATION_BASE}/0`,
@@ -174,7 +233,8 @@ export class WalletGenerationService {
       await this.userRepo.update(userId, { usdcWalletAddress: ethWallet.address });
       devLog.log('Saved usdcWalletAddress for user:', userId, ethWallet.address);
     } catch (err) {
-      devLog.error('Failed to save usdcWalletAddress on user:', err.message);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      devLog.error('Failed to save usdcWalletAddress on user:', errorMessage);
     }
 
     // Return data for download (unencrypted for user to save)
@@ -182,6 +242,9 @@ export class WalletGenerationService {
       address: ethWallet.address,
       ethAddress: ethWallet.address,
       avaxAddress: avaxAddress,
+      solanaAddress,
+      stellarAddress,
+      bitcoinAddress,
       mnemonic,
       privateKey: ethWallet.privateKey,
       derivationPath: `${this.ETH_DERIVATION_BASE}/0`,
@@ -241,6 +304,19 @@ export class WalletGenerationService {
     // For Avalanche, we use the same address format (EVM compatible)
     const avaxAddress = ethWallet.address;
 
+    // Derive non-EVM addresses only when restoring from mnemonic (private key restore cannot derive them)
+    let solanaAddress: string | null = null;
+    let stellarAddress: string | null = null;
+    let bitcoinAddress: string | null = null;
+    if (mnemonic) {
+      try {
+        ({ solanaAddress, stellarAddress, bitcoinAddress } = this.deriveNonEvmAddresses(mnemonic));
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        devLog.warn('Could not derive non-EVM addresses during restore:', errorMessage);
+      }
+    }
+
     // Encrypt sensitive data
     const encryptedMnemonic = mnemonic ? this.encrypt(mnemonic) : '';
     const encryptedPrivateKey = this.encrypt(ethWallet.privateKey);
@@ -250,6 +326,9 @@ export class WalletGenerationService {
       userId,
       ethAddress: ethWallet.address,
       avaxAddress: avaxAddress,
+      solanaAddress,
+      stellarAddress,
+      bitcoinAddress,
       encryptedMnemonic,
       encryptedPrivateKey,
       derivationPath: `${this.ETH_DERIVATION_BASE}/0`,
@@ -263,7 +342,8 @@ export class WalletGenerationService {
       await this.userRepo.update(userId, { usdcWalletAddress: ethWallet.address });
       devLog.log('Saved usdcWalletAddress for user (restore):', userId, ethWallet.address);
     } catch (err) {
-      devLog.error('Failed to save usdcWalletAddress on user (restore):', err.message);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      devLog.error('Failed to save usdcWalletAddress on user (restore):', errorMessage);
     }
 
     // Auto-generate wallets for all existing companies that don't have addresses
@@ -334,6 +414,9 @@ export class WalletGenerationService {
       address: ethWallet.address,
       ethAddress: ethWallet.address,
       avaxAddress: avaxAddress,
+      ...(solanaAddress && { solanaAddress }),
+      ...(stellarAddress && { stellarAddress }),
+      ...(bitcoinAddress && { bitcoinAddress }),
       mnemonic: mnemonic || '[Private Key - No Mnemonic]',
       privateKey: ethWallet.privateKey,
       derivationPath: `${this.ETH_DERIVATION_BASE}/0`,
@@ -401,7 +484,8 @@ export class WalletGenerationService {
           childWallet = HDNodeWallet.fromPhrase(mnemonic, undefined, derivationPath);
           devLog.log('Derived child wallet address via HD:', childWallet.address);
         } catch (decryptError) {
-          console.error('[WalletGeneration] Failed to decrypt or use mnemonic:', decryptError.message);
+          const errorMessage = decryptError instanceof Error ? decryptError.message : String(decryptError);
+          console.error('[WalletGeneration] Failed to decrypt or use mnemonic:', errorMessage);
           throw new Error(
             'Master wallet mnemonic is corrupted. ' +
             'Please regenerate your master wallet from your backup. ' +
@@ -463,7 +547,9 @@ export class WalletGenerationService {
         avaxAddress: avaxAddress,
       };
     } catch (error) {
-      console.error('[WalletGeneration] Error during wallet generation:', error.message, error.stack);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : '';
+      console.error('[WalletGeneration] Error during wallet generation:', errorMessage, errorStack);
       throw error;
     }
   }
@@ -481,10 +567,16 @@ export class WalletGenerationService {
   /**
    * Get user's master wallet addresses (public info only)
    */
-  async getMasterWalletAddresses(userId: string): Promise<{ ethAddress: string; avaxAddress: string } | null> {
+  async getMasterWalletAddresses(userId: string): Promise<{
+    ethAddress: string;
+    avaxAddress: string;
+    solanaAddress: string | null;
+    stellarAddress: string | null;
+    bitcoinAddress: string | null;
+  } | null> {
     const wallet = await this.userWalletRepo.findOne({
       where: { userId },
-      select: ['ethAddress', 'avaxAddress'],
+      select: ['ethAddress', 'avaxAddress', 'solanaAddress', 'stellarAddress', 'bitcoinAddress'],
     });
 
     if (!wallet) {
@@ -494,7 +586,44 @@ export class WalletGenerationService {
     return {
       ethAddress: wallet.ethAddress,
       avaxAddress: wallet.avaxAddress,
+      solanaAddress: wallet.solanaAddress ?? null,
+      stellarAddress: wallet.stellarAddress ?? null,
+      bitcoinAddress: wallet.bitcoinAddress ?? null,
     };
+  }
+
+  /**
+   * Derive and persist Solana, Stellar and Bitcoin addresses for an existing
+   * wallet that was generated before multi-chain support was added.
+   * Safe to call if addresses already exist (will skip derivation).
+   */
+  async addMultichainAddresses(userId: string): Promise<{
+    solanaAddress: string;
+    stellarAddress: string;
+    bitcoinAddress: string;
+  }> {
+    const userWallet = await this.userWalletRepo.findOne({ where: { userId } });
+    if (!userWallet) throw new Error('No master wallet found');
+
+    // Already have all addresses — return them without touching the DB
+    if (userWallet.solanaAddress && userWallet.stellarAddress && userWallet.bitcoinAddress) {
+      return {
+        solanaAddress: userWallet.solanaAddress,
+        stellarAddress: userWallet.stellarAddress,
+        bitcoinAddress: userWallet.bitcoinAddress,
+      };
+    }
+
+    if (!userWallet.encryptedMnemonic || userWallet.encryptedMnemonic.trim() === '') {
+      throw new Error('Wallet was restored from a private key only — multi-chain derivation requires the mnemonic phrase.');
+    }
+
+    const mnemonic = this.decrypt(userWallet.encryptedMnemonic);
+    const { solanaAddress, stellarAddress, bitcoinAddress } = this.deriveNonEvmAddresses(mnemonic);
+
+    await this.userWalletRepo.update(userWallet.id, { solanaAddress, stellarAddress, bitcoinAddress });
+
+    return { solanaAddress, stellarAddress, bitcoinAddress };
   }
 
   /**

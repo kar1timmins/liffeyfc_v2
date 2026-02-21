@@ -506,12 +506,25 @@
               <div class="space-y-3">
                 <div class="flex justify-between">
                   <span class="opacity-70">Raised</span>
-                  <span class="font-bold">{formatCurrency(bounty.raisedAmount || 0)}</span>
+                  <span class="font-bold text-success">
+                    {#if bounty.targetAmountEth}
+                      {formatCrypto(bounty.raisedAmount || 0)} ETH
+                    {:else}
+                      {formatCurrency(bounty.raisedAmount || 0)}
+                    {/if}
+                  </span>
                 </div>
                 <div class="divider my-0"></div>
                 <div class="flex justify-between">
                   <span class="opacity-70">Target</span>
-                  <span class="font-bold text-primary">{formatCurrency(bounty.targetAmount || 0)}</span>
+                  <div class="text-right">
+                    {#if bounty.targetAmountEth}
+                      <span class="font-bold text-primary">{formatCrypto(bounty.targetAmountEth)} ETH</span>
+                      <div class="text-xs opacity-60">≈ {formatCurrency(bounty.targetAmount || 0)}</div>
+                    {:else}
+                      <span class="font-bold text-primary">{formatCurrency(bounty.targetAmount || 0)}</span>
+                    {/if}
+                  </div>
                 </div>
               </div>
 

@@ -17,13 +17,13 @@
     wishlistItem,
     companyName,
     companyWallet,
-    onSuccess = () => {},
+    onSuccess = (..._args: unknown[]) => {},
   }: {
     isOpen: boolean;
     wishlistItem: WishlistItem;
     companyName: string;
     companyWallet?: string;
-    onSuccess?: () => void;
+    onSuccess?: (...args: unknown[]) => void;
   } = $props();
 
   // Form state

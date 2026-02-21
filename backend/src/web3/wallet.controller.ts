@@ -142,6 +142,29 @@ export class WalletController {
   }
 
   /**
+   * Derive and persist multi-chain addresses (Solana, Stellar, Bitcoin)
+   * for wallets generated before multi-chain support was added.
+   * POST /wallet/derive-multichain
+   */
+  @Post('derive-multichain')
+  @UseGuards(AuthGuard('jwt'))
+  async deriveMultichainAddresses(@CurrentUser() user: any) {
+    try {
+      const addresses = await this.walletService.addMultichainAddresses(user.sub);
+      return {
+        success: true,
+        message: 'Multi-chain addresses derived and saved.',
+        data: addresses,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.message || 'Failed to derive multi-chain addresses',
+      };
+    }
+  }
+
+  /**
    * Get all company wallets for user
    * GET /wallet/companies
    */

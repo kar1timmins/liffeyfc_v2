@@ -17,6 +17,10 @@
   let isSending = $state(false);
   let sendSuccess = $state<string | null>(null);
   let sendError = $state<string | null>(null);
+
+  // Live bounty data for escrow-enabled wishlist items (keyed by wishlist item id)
+  let liveBounties = $state<Record<string, any>>({});
+  let isFetchingBounties = $state(false);
   
   // Donation state for wishlist items
   let donationAmounts = $state<Record<string, string>>({});
@@ -67,6 +71,7 @@
 
   onMount(async () => {
     await fetchCompany();
+    await fetchCompanyBounties();
   });
 
   async function fetchCompany() {
@@ -92,6 +97,26 @@
 
   function goBack() {
     goto('/companies');
+  }
+
+  async function fetchCompanyBounties() {
+    if (!companyId) return;
+    isFetchingBounties = true;
+    try {
+      const res = await fetch(`${PUBLIC_API_URL}/bounties/company/${companyId}`);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        const map: Record<string, any> = {};
+        for (const bounty of data.data) {
+          map[bounty.id] = bounty;
+        }
+        liveBounties = map;
+      }
+    } catch (e) {
+      console.error('Failed to fetch company bounties:', e);
+    } finally {
+      isFetchingBounties = false;
+    }
   }
 
   function copyAddress(address: string) {
@@ -692,8 +717,17 @@
                   high: 'badge-warning',
                   critical: 'badge-error'
                 }}
-                {@const percentage = item.value ? Math.min(100, ((item.amountRaised || 0) / item.value) * 100) : 0}
-                {@const remaining = item.value ? Math.max(0, item.value - (item.amountRaised || 0)) : 0}
+                {@const liveBounty = item.isEscrowActive ? liveBounties[item.id] : null}
+                {@const percentage = liveBounty
+                  ? (liveBounty.progressPercentage || 0)
+                  : (item.value ? Math.min(100, ((item.amountRaised || 0) / item.value) * 100) : 0)}
+                {@const raisedDisplay = liveBounty
+                  ? `${parseFloat(liveBounty.raisedAmount || '0').toFixed(4)} ETH`
+                  : `€${(item.amountRaised || 0).toLocaleString()}`}
+                {@const targetDisplay = liveBounty
+                  ? `€${parseFloat(liveBounty.targetAmount || item.value || '0').toLocaleString()}`
+                  : `€${(item.value || 0).toLocaleString()}`}
+                {@const remaining = liveBounty ? null : (item.value ? Math.max(0, item.value - (item.amountRaised || 0)) : 0)}
                 
                 <div class="glass-subtle rounded-xl p-4 {item.isFulfilled ? 'opacity-60' : ''}">
                   <div class="flex items-start gap-4">
@@ -718,26 +752,32 @@
                         <p class="opacity-80 mb-3">{item.description}</p>
                       {/if}
 
-                      {#if item.value}
-                        <div class="mt-3">
-                          <div class="flex justify-between text-sm mb-2">
-                            <span class="opacity-70">Funding Progress</span>
-                            <span class="font-semibold">{percentage.toFixed(0)}% complete</span>
-                          </div>
-                          <progress class="progress progress-primary w-full h-3 mb-2" value={percentage} max="100"></progress>
-                          <div class="flex justify-between text-sm opacity-70">
-                            <span>Raised: ${(item.amountRaised || 0).toLocaleString()}</span>
-                            <span>Goal: ${item.value.toLocaleString()}</span>
-                          </div>
-                          {#if remaining > 0}
-                            <p class="text-sm mt-2 opacity-60">
-                              ${remaining.toLocaleString()} remaining to reach goal
-                            </p>
-                          {:else}
-                            <p class="text-sm mt-2 text-success font-semibold">
-                              🎉 Goal reached!
-                            </p>
-                          {/if}
+                        {#if item.value}
+                          <div class="mt-3">
+                            <div class="flex justify-between text-sm mb-2">
+                              <span class="opacity-70">Funding Progress
+                                {#if liveBounty && isFetchingBounties}
+                                  <span class="loading loading-xs loading-spinner ml-1"></span>
+                                {:else if liveBounty}
+                                  <span class="badge badge-xs badge-success ml-1">live</span>
+                                {/if}
+                              </span>
+                              <span class="font-semibold">{percentage.toFixed(0)}% complete</span>
+                            </div>
+                            <progress class="progress {percentage >= 100 ? 'progress-success' : percentage >= 75 ? 'progress-info' : percentage >= 50 ? 'progress-warning' : 'progress-primary'} w-full h-3 mb-2" value={percentage} max="100"></progress>
+                            <div class="flex justify-between text-sm opacity-70">
+                              <span>Raised: {raisedDisplay}</span>
+                              <span>Goal: {targetDisplay}</span>
+                            </div>
+                            {#if percentage >= 100}
+                              <p class="text-sm mt-2 text-success font-semibold">
+                                🎉 Goal reached!
+                              </p>
+                            {:else if remaining !== null && remaining > 0}
+                              <p class="text-sm mt-2 opacity-60">
+                                €{remaining.toLocaleString()} remaining to reach goal
+                              </p>
+                            {/if}
 
                           <!-- Contract Info Section for Company Owner -->
                           {#if item.isEscrowActive && isOwner && (item.ethereumEscrowAddress || item.avalancheEscrowAddress)}
@@ -786,13 +826,13 @@
                               {/if}
 
                               <p class="text-xs opacity-70 mt-3">
-                                Investors can now contribute via blockchain escrow. View bounty details in the <a href="/bounties" class="link">Bounties page</a>.
+                                Investors can now contribute via blockchain escrow. View bounty details in the <a href="/bounties" class="link">Bounties page</a>{#if liveBounty} or <a href="/bounties/{item.id}" class="link link-primary">see live progress</a>{/if}.
                               </p>
                             </div>
                           {/if}
 
                           <!-- Escrow Contribution for Investors (Blockchain) -->
-                          {#if item.isEscrowActive && isInvestor && !isOwner && remaining > 0}
+                          {#if item.isEscrowActive && isInvestor && !isOwner && percentage < 100}
                             <div class="mt-4 p-4 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-lg border-2 border-primary/20">
                               <div class="flex items-center gap-2 mb-3">
                                 <span class="badge badge-primary badge-sm">🔗 Blockchain Escrow</span>
@@ -871,7 +911,7 @@
                               {/if}
                             </div>
                           <!-- Regular Donation for Investors (Non-escrow) -->
-                          {:else if !item.isEscrowActive && isInvestor && !isOwner && remaining > 0}
+                          {:else if !item.isEscrowActive && isInvestor && !isOwner && (remaining ?? 0) > 0}
                             <div class="mt-4 p-4 bg-base-200/50 rounded-lg">
                               <p class="text-sm font-semibold mb-2">Support this need:</p>
                               <div class="flex gap-2">
@@ -881,7 +921,7 @@
                                   placeholder="Amount ($)"
                                   step="1"
                                   min="1"
-                                  max={remaining}
+                                  max={remaining ?? undefined}
                                   class="input input-bordered input-sm flex-1"
                                   disabled={donatingItemId === item.id}
                                 />
@@ -904,11 +944,15 @@
                             </div>
                           {/if}
                         </div>
-                      {:else}
-                        <p class="text-sm opacity-60 mt-2">
-                          {item.amountRaised > 0 ? `Total support received: $${(item.amountRaised || 0).toLocaleString()}` : 'No monetary goal set'}
-                        </p>
-                      {/if}
+                        {:else}
+                          <p class="text-sm opacity-60 mt-2">
+                            {(liveBounty?.raisedAmount && parseFloat(liveBounty.raisedAmount) > 0)
+                              ? `Raised: ${parseFloat(liveBounty.raisedAmount).toFixed(4)} ETH`
+                              : (item.amountRaised > 0 
+                                  ? `Total support received: €${(item.amountRaised || 0).toLocaleString()}` 
+                                  : 'No monetary goal set')}
+                          </p>
+                        {/if}
 
                       {#if item.isFulfilled}
                         <span class="text-success text-sm mt-2 inline-block">✓ Fulfilled</span>
