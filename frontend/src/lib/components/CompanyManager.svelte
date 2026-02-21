@@ -257,29 +257,31 @@
     bountyModalX402Open = false;
     // If deployed addresses provided, update local companies state immediately to avoid 'deploying' UI
     if (deployed && selectedCompany && selectedWishlistItem) {
-      const companyIndex = companies.findIndex((c) => c.id === selectedCompany.id);
-      if (companyIndex !== -1) {
-        const itemIndex = companies[companyIndex].wishlistItems?.findIndex((w) => w.id === selectedWishlistItem.id);
+      const companyIndex = companies.findIndex((c) => c.id === selectedCompany?.id);
+      if (companyIndex !== -1 && companies[companyIndex].wishlistItems) {
+        const itemIndex = companies[companyIndex].wishlistItems.findIndex((w) => w.id === selectedWishlistItem?.id);
         if (typeof itemIndex === 'number' && itemIndex !== -1) {
-          const item = companies[companyIndex].wishlistItems[itemIndex];
-          if (deployed.ethereumAddress) item.ethereumEscrowAddress = deployed.ethereumAddress;
-          if (deployed.avalancheAddress) item.avalancheEscrowAddress = deployed.avalancheAddress;
-          item.isEscrowActive = true;
-          // push a deployment history entry for immediate visibility
-          item.deployments = item.deployments || [];
-          // Push per-chain deployments where txHash is available
-          deployed.addresses.forEach((a) => {
-            item.deployments.unshift({
-              chain: a.chain,
-              network: a.chain === 'ethereum' ? 'sepolia' : 'fuji',
-              deploymentTxHash: a.txHash || null,
-              deployedAt: new Date().toISOString(),
-              campaignName: deployed.campaignName || selectedWishlistItem.title || null,
-              campaignDescription: deployed.campaignDescription || selectedWishlistItem.description || null,
+          const item = companies[companyIndex].wishlistItems?.[itemIndex];
+          if (item) {
+            if (deployed.ethereumAddress) item.ethereumEscrowAddress = deployed.ethereumAddress;
+            if (deployed.avalancheAddress) item.avalancheEscrowAddress = deployed.avalancheAddress;
+            item.isEscrowActive = true;
+            // push a deployment history entry for immediate visibility
+            item.deployments = item.deployments || [];
+            // Push per-chain deployments where txHash is available
+            deployed.addresses.forEach((a: { chain: string; txHash?: string }) => {
+              item.deployments.unshift({
+                chain: a.chain,
+                network: a.chain === 'ethereum' ? 'sepolia' : 'fuji',
+                deploymentTxHash: a.txHash || null,
+                deployedAt: new Date().toISOString(),
+                campaignName: deployed.campaignName || selectedWishlistItem?.title || null,
+                campaignDescription: deployed.campaignDescription || selectedWishlistItem?.description || null,
+              });
             });
-          });
-          // force Svelte reactivity
-          companies = [...companies];
+            // force Svelte reactivity
+            companies = [...companies];
+          }
         }
       }
     }

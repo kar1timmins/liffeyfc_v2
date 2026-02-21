@@ -320,6 +320,13 @@
             </div>
           </a>
 
+          <a href="https://boldbitcoinwallet.com/" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center justify-center min-w-[100px] sm:min-w-[120px] md:min-w-[140px] hover:scale-105 transition-transform duration-200">
+            <img src="/img/logo/boldbitcoinwallet.png" alt="Bold Bitcoin Wallet Logo" class="h-6 sm:h-7 md:h-8 lg:h-10 mb-1.5 sm:mb-2 object-contain" />
+            <div class="text-center">
+              <div class="text-[10px] sm:text-xs font-bold text-secondary">Bold Bitcoin Wallet</div>
+            </div>
+          </a>
+
           <!-- Zingibeer -->
           <a href="https://zingibeer.ie/" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center justify-center min-w-[100px] sm:min-w-[120px] md:min-w-[140px] hover:scale-105 transition-transform duration-200">
             <img src="/img/logo/zingibeer_logo.webp" alt="Zingibeer Logo" class="h-6 sm:h-7 md:h-8 lg:h-10 mb-1.5 sm:mb-2 object-contain" />
