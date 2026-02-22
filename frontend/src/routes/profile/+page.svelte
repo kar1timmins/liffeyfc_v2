@@ -670,9 +670,7 @@
     {/if}
 
     <UsdcWalletManager 
-      usdcWallet={user?.usdcWalletAddress}
       masterWallet={masterWallet}
-      onUpdate={() => { fetchMyCompanies(); /* optionally refresh auth store */ authStore.verify(); }}
     />
 
     <!-- Companies Section -->
