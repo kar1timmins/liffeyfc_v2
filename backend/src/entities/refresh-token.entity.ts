@@ -1,9 +1,15 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  CreateDateColumn,
+} from 'typeorm';
 import { User } from './user.entity';
 
 /**
  * RefreshToken Entity
- * 
+ *
  * Stores refresh tokens for all users (regardless of role)
  * Simple one-to-many relationship with User entity
  */

@@ -11,11 +11,7 @@ import { Web3Module } from '../web3/web3.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      Payment,
-      WishlistItem,
-      Company,
-    ]),
+    TypeOrmModule.forFeature([Payment, WishlistItem, Company]),
     JobsModule, // Import JobsModule to access DeploymentQueueService
     Web3Module, // Import Web3Module to access PlatformWalletService
   ],

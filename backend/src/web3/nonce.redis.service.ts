@@ -1,4 +1,9 @@
-import { Injectable, OnModuleDestroy, OnModuleInit, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleDestroy,
+  OnModuleInit,
+  Logger,
+} from '@nestjs/common';
 import Redis from 'ioredis';
 
 @Injectable()
@@ -23,7 +28,10 @@ export class RedisNonceService implements OnModuleInit, OnModuleDestroy {
       await this.client.ping();
       this.logger.log('Connected to Redis for nonce storage');
     } catch (err) {
-      this.logger.warn('Failed to connect to Redis for nonce storage', String(err));
+      this.logger.warn(
+        'Failed to connect to Redis for nonce storage',
+        String(err),
+      );
     }
   }
 

@@ -1,6 +1,14 @@
-import { MigrationInterface, QueryRunner, Table, TableForeignKey, TableIndex } from 'typeorm';
+import {
+  MigrationInterface,
+  QueryRunner,
+  Table,
+  TableForeignKey,
+  TableIndex,
+} from 'typeorm';
 
-export class AddContractDeploymentHistoryTable1734060000000 implements MigrationInterface {
+export class AddContractDeploymentHistoryTable1734060000000
+  implements MigrationInterface
+{
   name = 'AddContractDeploymentHistoryTable1734060000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -57,7 +65,15 @@ export class AddContractDeploymentHistoryTable1734060000000 implements Migration
           {
             name: 'action',
             type: 'enum',
-            enum: ['deployed', 'funded', 'expired', 'finalized', 'refund_initiated', 'contributed', 'refunded'],
+            enum: [
+              'deployed',
+              'funded',
+              'expired',
+              'finalized',
+              'refund_initiated',
+              'contributed',
+              'refunded',
+            ],
           },
           {
             name: 'transactionHash',
@@ -181,17 +197,38 @@ export class AddContractDeploymentHistoryTable1734060000000 implements Migration
     if (table) {
       const foreignKeys = table.foreignKeys;
       for (const foreignKey of foreignKeys) {
-        await queryRunner.dropForeignKey('contract_deployment_history', foreignKey);
+        await queryRunner.dropForeignKey(
+          'contract_deployment_history',
+          foreignKey,
+        );
       }
     }
 
     // Drop indexes
-    await queryRunner.dropIndex('contract_deployment_history', 'IDX_contract_history_user');
-    await queryRunner.dropIndex('contract_deployment_history', 'IDX_contract_history_company');
-    await queryRunner.dropIndex('contract_deployment_history', 'IDX_contract_history_wishlist');
-    await queryRunner.dropIndex('contract_deployment_history', 'IDX_contract_history_contract');
-    await queryRunner.dropIndex('contract_deployment_history', 'IDX_contract_history_action');
-    await queryRunner.dropIndex('contract_deployment_history', 'IDX_contract_history_created');
+    await queryRunner.dropIndex(
+      'contract_deployment_history',
+      'IDX_contract_history_user',
+    );
+    await queryRunner.dropIndex(
+      'contract_deployment_history',
+      'IDX_contract_history_company',
+    );
+    await queryRunner.dropIndex(
+      'contract_deployment_history',
+      'IDX_contract_history_wishlist',
+    );
+    await queryRunner.dropIndex(
+      'contract_deployment_history',
+      'IDX_contract_history_contract',
+    );
+    await queryRunner.dropIndex(
+      'contract_deployment_history',
+      'IDX_contract_history_action',
+    );
+    await queryRunner.dropIndex(
+      'contract_deployment_history',
+      'IDX_contract_history_created',
+    );
 
     // Drop table
     await queryRunner.dropTable('contract_deployment_history');

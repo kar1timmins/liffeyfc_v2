@@ -10,9 +10,7 @@ export class AddUserIdToWallets1762294400000 implements MigrationInterface {
 
     if (!userIdColumn) {
       // Add userId column to wallets table
-      await queryRunner.query(
-        `ALTER TABLE "wallets" ADD "userId" uuid`,
-      );
+      await queryRunner.query(`ALTER TABLE "wallets" ADD "userId" uuid`);
 
       // Add foreign key constraint
       await queryRunner.query(

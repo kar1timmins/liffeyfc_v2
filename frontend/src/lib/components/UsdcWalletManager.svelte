@@ -157,11 +157,18 @@
   }
 
   async function fetchBalance() {
+    // only USDC balances exist on EVM networks; show zero for others to avoid confusion
+    if (selectedChain !== 'ethereum' && selectedChain !== 'avalanche') {
+      balance = '0.00 USDC';
+      return;
+    }
+
     // determine address based on selected chain (usdcWallet for EVM, displayWallet otherwise)
-    const addr = (selectedChain === 'ethereum' || selectedChain === 'avalanche')
-      ? usdcWallet
-      : displayWallet;
-    if (!addr) return;
+    const addr = usdcWallet || displayWallet;
+    if (!addr) {
+      balance = null;
+      return;
+    }
 
     isLoadingBalance = true;
     try {
@@ -172,10 +179,6 @@
         balance = `${parseFloat(data.balanceEth).toFixed(4)} ${selectedChain === 'ethereum' ? 'ETH' : 'AVAX'}`;
       } else if (data.balanceAvax !== undefined) {
         balance = `${parseFloat(data.balanceAvax).toFixed(4)} AVAX`;
-      } else if (data.balanceSol !== undefined) {
-        balance = `${parseFloat(data.balanceSol).toFixed(4)} SOL`;
-      } else if (data.balanceXlm !== undefined) {
-        balance = `${parseFloat(data.balanceXlm).toFixed(4)} XLM`;
       } else {
         balance = 'Unable to fetch balance';
       }
@@ -285,6 +288,13 @@
             <div class="bg-base-100 rounded p-3 border border-base-300">
               <p class="text-xs opacity-60">Balance</p>
               <p class="text-lg font-semibold">{balance}</p>
+              {#if selectedChain !== 'ethereum' && selectedChain !== 'avalanche'}
+                <p class="text-xs opacity-50 mt-1">
+                  USDC payments are only supported on Ethereum/Avalanche. This value
+                  reflects your native {selectedChain === 'solana' ? 'SOL' : 'XLM'}
+                  balance and will not be used for USDC billing.
+                </p>
+              {/if}
             </div>
           {/if}
         </div>

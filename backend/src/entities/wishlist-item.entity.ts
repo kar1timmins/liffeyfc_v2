@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn, CreateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  OneToMany,
+  JoinColumn,
+  CreateDateColumn,
+} from 'typeorm';
 import { Company } from './company.entity';
 import { EscrowDeployment } from './escrow-deployment.entity';
 import { Contribution } from './contribution.entity';
@@ -11,14 +19,14 @@ export enum WishlistCategory {
   RESOURCES = 'resources',
   TECHNOLOGY = 'technology',
   MARKETING = 'marketing',
-  OTHER = 'other'
+  OTHER = 'other',
 }
 
 export enum WishlistPriority {
   LOW = 'low',
   MEDIUM = 'medium',
   HIGH = 'high',
-  CRITICAL = 'critical'
+  CRITICAL = 'critical',
 }
 
 @Entity({ name: 'wishlist_items' })
@@ -38,10 +46,18 @@ export class WishlistItem {
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   amountRaised: number;
 
-  @Column({ type: 'enum', enum: WishlistCategory, default: WishlistCategory.OTHER })
+  @Column({
+    type: 'enum',
+    enum: WishlistCategory,
+    default: WishlistCategory.OTHER,
+  })
   category: WishlistCategory;
 
-  @Column({ type: 'enum', enum: WishlistPriority, default: WishlistPriority.MEDIUM })
+  @Column({
+    type: 'enum',
+    enum: WishlistPriority,
+    default: WishlistPriority.MEDIUM,
+  })
   priority: WishlistPriority;
 
   @Column({ type: 'boolean', default: false })
@@ -69,7 +85,9 @@ export class WishlistItem {
   @Column({ type: 'uuid' })
   companyId: string;
 
-  @ManyToOne(() => Company, (company) => company.wishlistItems, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Company, (company) => company.wishlistItems, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'companyId' })
   company: Company;
 

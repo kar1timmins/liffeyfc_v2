@@ -3,7 +3,8 @@ import { WishlistItem } from '../entities/wishlist-item.entity';
 import { EscrowDeployment } from '../entities/escrow-deployment.entity';
 
 const isDev = process.env.NODE_ENV !== 'production';
-const devLog = (msg: string, ...args: any[]) => isDev && console.log(msg, ...args);
+const devLog = (msg: string, ...args: any[]) =>
+  isDev && console.log(msg, ...args);
 
 /**
  * One-time script to backfill wishlist items with escrow contract addresses
@@ -22,12 +23,15 @@ export async function backfillEscrowAddresses(dataSource: DataSource) {
 
   devLog(`Found ${deployments.length} escrow deployments`);
 
-  const updates: Map<string, { eth?: string; avax?: string; deadline?: Date; duration?: number }> = new Map();
+  const updates: Map<
+    string,
+    { eth?: string; avax?: string; deadline?: Date; duration?: number }
+  > = new Map();
 
   // Group deployments by wishlist item
   for (const deployment of deployments) {
     const itemId = deployment.wishlistItemId;
-    
+
     if (!updates.has(itemId)) {
       updates.set(itemId, {});
     }
@@ -52,7 +56,7 @@ export async function backfillEscrowAddresses(dataSource: DataSource) {
   // Update wishlist items
   for (const [itemId, data] of updates.entries()) {
     const item = await wishlistRepo.findOne({ where: { id: itemId } });
-    
+
     if (!item) {
       console.warn(`⚠️  Wishlist item ${itemId} not found, skipping`);
       continue;
@@ -87,7 +91,9 @@ export async function backfillEscrowAddresses(dataSource: DataSource) {
     if (changed) {
       await wishlistRepo.save(item);
       updatedCount++;
-      devLog(`✅ Updated wishlist item ${itemId} (ETH: ${data.eth || 'N/A'}, AVAX: ${data.avax || 'N/A'})`);
+      devLog(
+        `✅ Updated wishlist item ${itemId} (ETH: ${data.eth || 'N/A'}, AVAX: ${data.avax || 'N/A'})`,
+      );
     }
   }
 

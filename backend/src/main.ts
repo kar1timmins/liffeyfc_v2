@@ -15,7 +15,9 @@ async function bootstrap() {
   try {
     JwtConfig.validate();
   } catch (error) {
-    console.error('\n❌ FATAL: Security validation failed. Application cannot start.\n');
+    console.error(
+      '\n❌ FATAL: Security validation failed. Application cannot start.\n',
+    );
     process.exit(1);
   }
 
@@ -30,7 +32,7 @@ async function bootstrap() {
   // app.useStaticAssets(join(__dirname, '..', 'uploads'), {
   //   prefix: '/uploads',
   // });
-  
+
   // Enable global validation pipe for all DTOs
   app.useGlobalPipes(
     new ValidationPipe({
@@ -42,30 +44,28 @@ async function bootstrap() {
       },
     }),
   );
-  
+
   // Enable custom throttler exception filter for user-friendly rate limit messages
   app.useGlobalFilters(new ThrottlerExceptionFilter());
-  
+
   // Enable cookie parsing
   app.use(cookieParser());
-  
+
   // Enable CORS for frontend requests
   // Development: localhost:5173
   // Production: liffeyfoundersclub.com
-  const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
-  
-  const corsOrigins = isDevelopment 
+  const isDevelopment =
+    process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
+
+  const corsOrigins = isDevelopment
     ? [
-        'http://localhost:5173',      // Local dev
-        'http://localhost:3000',      // Local backend (self)
-        'http://127.0.0.1:5173',      // Loopback dev
-        'http://127.0.0.1:3000',      // Loopback backend
-        'http://frontend:5173',       // Docker Compose
+        'http://localhost:5173', // Local dev
+        'http://localhost:3000', // Local backend (self)
+        'http://127.0.0.1:5173', // Loopback dev
+        'http://127.0.0.1:3000', // Loopback backend
+        'http://frontend:5173', // Docker Compose
       ]
-    : [
-        'https://liffeyfoundersclub.com',
-        'https://www.liffeyfoundersclub.com',
-      ];
+    : ['https://liffeyfoundersclub.com', 'https://www.liffeyfoundersclub.com'];
 
   // Add dynamic origin from environment variable if set
   if (process.env.FRONTEND_URL) {
@@ -79,15 +79,15 @@ async function bootstrap() {
     credentials: true,
     maxAge: 3600,
   });
-  
+
   if (isDevelopment) {
     console.log(`🌍 CORS enabled in DEVELOPMENT mode`);
     console.log(`📡 Allowed origins: ${corsOrigins.join(', ')}`);
   }
-  
+
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
-  
+
   if (isDevelopment) {
     console.log(`🚀 Backend server is running on port ${port}`);
   }

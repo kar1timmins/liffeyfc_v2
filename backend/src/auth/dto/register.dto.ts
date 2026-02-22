@@ -1,16 +1,16 @@
-import { 
-  IsEmail, 
-  IsString, 
-  MinLength, 
-  MaxLength, 
-  Matches, 
+import {
+  IsEmail,
+  IsString,
+  MinLength,
+  MaxLength,
+  Matches,
   IsOptional,
-  IsNotEmpty 
+  IsNotEmpty,
 } from 'class-validator';
 
 /**
  * Registration DTO with comprehensive validation
- * 
+ *
  * Security Requirements:
  * - Email: Valid format, normalized
  * - Password: Strong (12+ chars, uppercase, lowercase, number, special char)
@@ -36,12 +36,10 @@ export class RegisterDto {
   @IsString({ message: 'Password must be a string' })
   @MinLength(8, { message: 'Password must be at least 8 characters long' })
   @MaxLength(128, { message: 'Password must not exceed 128 characters' })
-  @Matches(
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
-    {
-      message: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)',
-    }
-  )
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, {
+    message:
+      'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)',
+  })
   @IsNotEmpty({ message: 'Password is required' })
   password: string;
 
@@ -54,7 +52,8 @@ export class RegisterDto {
   @IsString({ message: 'Name must be a string' })
   @MaxLength(100, { message: 'Name must not exceed 100 characters' })
   @Matches(/^[a-zA-Z0-9\s\-_.]+$/, {
-    message: 'Name can only contain letters, numbers, spaces, hyphens, underscores, and periods',
+    message:
+      'Name can only contain letters, numbers, spaces, hyphens, underscores, and periods',
   })
   name?: string;
 }

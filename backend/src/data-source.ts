@@ -18,7 +18,7 @@ import { Payment } from './entities/payment.entity';
  */
 function parseDatabaseConfig() {
   const dbUrl = process.env.DATABASE_URL;
-  
+
   if (dbUrl) {
     try {
       const url = new URL(dbUrl);
@@ -52,11 +52,26 @@ const dbConfig = parseDatabaseConfig();
 const AppDataSource = new DataSource({
   type: 'postgres',
   ...dbConfig,
-  entities: [User, Wallet, RefreshToken, Company, WishlistItem, UserWallet, CompanyWallet, EscrowDeployment, Contribution, ContractDeploymentHistory, Payment],
+  entities: [
+    User,
+    Wallet,
+    RefreshToken,
+    Company,
+    WishlistItem,
+    UserWallet,
+    CompanyWallet,
+    EscrowDeployment,
+    Contribution,
+    ContractDeploymentHistory,
+    Payment,
+  ],
   migrations: [__dirname + '/migrations/**/*{.ts,.js}'],
   migrationsRun: false, // Don't auto-run migrations - use CLI explicitly
   synchronize: process.env.TYPEORM_SYNCHRONIZE === 'true',
-  logging: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+  logging:
+    process.env.NODE_ENV === 'development'
+      ? ['query', 'error', 'warn']
+      : ['error'],
 });
 
 export default AppDataSource;

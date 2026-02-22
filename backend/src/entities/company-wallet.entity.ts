@@ -1,10 +1,18 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToOne, JoinColumn, CreateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  OneToOne,
+  JoinColumn,
+  CreateDateColumn,
+} from 'typeorm';
 import { Company } from './company.entity';
 import { UserWallet } from './user-wallet.entity';
 
 /**
  * CompanyWallet Entity
- * 
+ *
  * Stores derived child wallets for companies
  * Each company wallet is derived from the user's master wallet
  * Maintains the hierarchical relationship

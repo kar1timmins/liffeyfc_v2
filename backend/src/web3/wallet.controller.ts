@@ -1,4 +1,13 @@
-import { Controller, Post, Get, UseGuards, Param, Body, Query, Logger } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  UseGuards,
+  Param,
+  Body,
+  Query,
+  Logger,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { WalletGenerationService } from './wallet-generation.service';
@@ -25,21 +34,28 @@ export class WalletController {
   @UseGuards(AuthGuard('jwt'))
   async generateMasterWallet(@CurrentUser() user: any) {
     try {
-      this.logger.log(`🔑 Generating master wallet for user: ${JSON.stringify(user)}`);
-      
+      this.logger.log(
+        `🔑 Generating master wallet for user: ${JSON.stringify(user)}`,
+      );
+
       if (!user || !user.sub) {
-        this.logger.error(`❌ User or user.sub is missing: ${JSON.stringify(user)}`);
+        this.logger.error(
+          `❌ User or user.sub is missing: ${JSON.stringify(user)}`,
+        );
         return {
           success: false,
           message: 'User not authenticated properly',
         };
       }
 
-      const walletData = await this.walletService.generateMasterWallet(user.sub);
-      
+      const walletData = await this.walletService.generateMasterWallet(
+        user.sub,
+      );
+
       return {
         success: true,
-        message: 'Master wallet generated successfully. Please download and store this information securely.',
+        message:
+          'Master wallet generated successfully. Please download and store this information securely.',
         data: walletData,
       };
     } catch (error: any) {
@@ -56,7 +72,7 @@ export class WalletController {
    * POST /wallet/restore
    * Accepts: { input: "12/24 word mnemonic or 0x prefixed private key" }
    * Returns: Restored wallet data (address, derivation path, etc)
-   * 
+   *
    * IMPORTANT: If restoring from the same mnemonic, all previously derived company
    * wallets will regenerate with identical addresses, allowing funds to flow correctly.
    */
@@ -68,9 +84,11 @@ export class WalletController {
   ) {
     try {
       this.logger.log(`🔑 Restoring master wallet for user: ${user.sub}`);
-      
+
       if (!user || !user.sub) {
-        this.logger.error(`❌ User or user.sub is missing: ${JSON.stringify(user)}`);
+        this.logger.error(
+          `❌ User or user.sub is missing: ${JSON.stringify(user)}`,
+        );
         return {
           success: false,
           message: 'User not authenticated properly',
@@ -84,11 +102,15 @@ export class WalletController {
         };
       }
 
-      const walletData = await this.walletService.restoreMasterWallet(user.sub, dto.input);
-      
+      const walletData = await this.walletService.restoreMasterWallet(
+        user.sub,
+        dto.input,
+      );
+
       return {
         success: true,
-        message: 'Master wallet restored successfully. All derived company wallets will regenerate automatically.',
+        message:
+          'Master wallet restored successfully. All derived company wallets will regenerate automatically.',
         data: walletData,
       };
     } catch (error: any) {
@@ -108,7 +130,9 @@ export class WalletController {
   @UseGuards(AuthGuard('jwt'))
   async checkWallet(@CurrentUser() user: any) {
     const hasWallet = await this.walletService.hasMasterWallet(user.sub);
-    const addresses = hasWallet ? await this.walletService.getMasterWalletAddresses(user.sub) : null;
+    const addresses = hasWallet
+      ? await this.walletService.getMasterWalletAddresses(user.sub)
+      : null;
 
     return {
       success: true,
@@ -140,7 +164,9 @@ export class WalletController {
   @Get('addresses')
   @UseGuards(AuthGuard('jwt'))
   async getWalletAddresses(@CurrentUser() user: any) {
-    const addresses = await this.walletService.getMasterWalletAddresses(user.sub);
+    const addresses = await this.walletService.getMasterWalletAddresses(
+      user.sub,
+    );
 
     if (!addresses) {
       return {
@@ -164,7 +190,9 @@ export class WalletController {
   @UseGuards(AuthGuard('jwt'))
   async deriveMultichainAddresses(@CurrentUser() user: any) {
     try {
-      const addresses = await this.walletService.addMultichainAddresses(user.sub);
+      const addresses = await this.walletService.addMultichainAddresses(
+        user.sub,
+      );
       return {
         success: true,
         message: 'Multi-chain addresses derived and saved.',
@@ -204,7 +232,10 @@ export class WalletController {
     @Param('companyId') companyId: string,
   ) {
     try {
-      const addresses = await this.walletService.generateCompanyWallet(user.sub, companyId);
+      const addresses = await this.walletService.generateCompanyWallet(
+        user.sub,
+        companyId,
+      );
 
       return {
         success: true,
@@ -231,7 +262,11 @@ export class WalletController {
     @Query('chain') chain: string,
   ) {
     try {
-      if (!address || !chain || (chain !== 'ethereum' && chain !== 'avalanche')) {
+      if (
+        !address ||
+        !chain ||
+        (chain !== 'ethereum' && chain !== 'avalanche')
+      ) {
         return {
           success: false,
           message: 'Invalid address or chain parameter',
@@ -240,13 +275,14 @@ export class WalletController {
 
       const result = await this.walletService.lookupWalletAddress(
         address,
-        chain as 'ethereum' | 'avalanche',
+        chain,
       );
 
       if (!result) {
         return {
           success: false,
-          message: 'Wallet address not found in system. This address is not associated with any company.',
+          message:
+            'Wallet address not found in system. This address is not associated with any company.',
         };
       }
 
@@ -282,15 +318,16 @@ export class WalletController {
         dto.amountEth,
       );
 
-      const chainName = dto.chain === 'ethereum'
-        ? 'Ethereum Sepolia'
-        : dto.chain === 'avalanche'
-        ? 'Avalanche Fuji'
-        : dto.chain === 'solana'
-        ? 'Solana (mainnet)' // or devnet depending on configuration
-        : dto.chain === 'stellar'
-        ? 'Stellar (public)'
-        : dto.chain;
+      const chainName =
+        dto.chain === 'ethereum'
+          ? 'Ethereum Sepolia'
+          : dto.chain === 'avalanche'
+            ? 'Avalanche Fuji'
+            : dto.chain === 'solana'
+              ? 'Solana (mainnet)' // or devnet depending on configuration
+              : dto.chain === 'stellar'
+                ? 'Stellar (public)'
+                : dto.chain;
 
       return {
         success: true,

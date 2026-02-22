@@ -1,4 +1,9 @@
-import { Injectable, HttpException, HttpStatus, Optional } from '@nestjs/common';
+import {
+  Injectable,
+  HttpException,
+  HttpStatus,
+  Optional,
+} from '@nestjs/common';
 import { ethers } from 'ethers';
 import {
   WalletConnection,
@@ -32,10 +37,7 @@ export class Web3Service {
         symbol: 'ETH',
         decimals: 18,
       },
-      rpcUrls: [
-        'https://eth.llamarpc.com',
-        'https://ethereum.publicnode.com',
-      ],
+      rpcUrls: ['https://eth.llamarpc.com', 'https://ethereum.publicnode.com'],
       blockExplorerUrls: ['https://etherscan.io'],
     });
 
@@ -48,7 +50,10 @@ export class Web3Service {
         symbol: 'ETH',
         decimals: 18,
       },
-      rpcUrls: ['https://rpc.sepolia.org', 'https://ethereum-sepolia.publicnode.com'],
+      rpcUrls: [
+        'https://rpc.sepolia.org',
+        'https://ethereum-sepolia.publicnode.com',
+      ],
       blockExplorerUrls: ['https://sepolia.etherscan.io'],
     });
 
@@ -80,7 +85,9 @@ export class Web3Service {
 
     // Initialize providers
     this.chainConfigs.forEach((config, chainId) => {
-      const provider = this.overrides?.get(chainId) ?? new ethers.JsonRpcProvider(config.rpcUrls[0]);
+      const provider =
+        this.overrides?.get(chainId) ??
+        new ethers.JsonRpcProvider(config.rpcUrls[0]);
       this.providers.set(chainId, provider);
     });
   }
@@ -108,7 +115,7 @@ export class Web3Service {
     }
 
     const chainInfo = this.chainConfigs.get(chainId);
-    
+
     if (!chainInfo) {
       throw new HttpException(
         `Chain configuration not found for ${chainId}`,
@@ -166,14 +173,15 @@ export class Web3Service {
   /**
    * Verify a signed message
    */
-  async verifySignature(dto: VerifySignatureDto): Promise<SignatureVerification> {
+  async verifySignature(
+    dto: VerifySignatureDto,
+  ): Promise<SignatureVerification> {
     const { address, message, signature } = dto;
 
     try {
       // Recover the address from the signature
       const recoveredAddress = ethers.verifyMessage(message, signature);
-      const isValid =
-        recoveredAddress.toLowerCase() === address.toLowerCase();
+      const isValid = recoveredAddress.toLowerCase() === address.toLowerCase();
 
       return {
         isValid,

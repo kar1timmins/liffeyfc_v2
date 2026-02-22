@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { Worker, Job } from 'bullmq';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -25,9 +30,12 @@ export class DeploymentWorkerService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   async onModuleInit() {
-    const redisUrl = this.configService.get<string>('REDIS_URL') || 'redis://localhost:6379';
-    
-    this.logger.log(`📡 Worker connecting to Redis: ${redisUrl.replace(/:[^:]*@/, ':****@')}`);
+    const redisUrl =
+      this.configService.get<string>('REDIS_URL') || 'redis://localhost:6379';
+
+    this.logger.log(
+      `📡 Worker connecting to Redis: ${redisUrl.replace(/:[^:]*@/, ':****@')}`,
+    );
 
     // Parse Redis URL
     const redisConfig = this.parseRedisUrl(redisUrl);
@@ -51,7 +59,7 @@ export class DeploymentWorkerService implements OnModuleInit, OnModuleDestroy {
           max: 5, // Max 5 jobs per duration
           duration: 60000, // Per minute (rate limiting to avoid RPC throttling)
         },
-      }
+      },
     );
 
     // Worker event listeners
@@ -117,19 +125,22 @@ export class DeploymentWorkerService implements OnModuleInit, OnModuleDestroy {
 
       // Deploy escrow contracts using platform wallet
       await job.updateProgress(30);
-      this.logger.log(`📋 Starting contract deployment with PLATFORM wallet...`);
-
-      const result = await this.escrowService.deployEscrowContractsWithPlatformWallet(
-        deploymentData.userId,
-        deploymentData.wishlistItemId,
-        deploymentData.companyWalletAddress,
-        deploymentData.masterWalletAddress,
-        deploymentData.targetAmountEth,
-        deploymentData.durationInDays,
-        deploymentData.chains,
-        deploymentData.campaignName || null,
-        deploymentData.campaignDescription || null,
+      this.logger.log(
+        `📋 Starting contract deployment with PLATFORM wallet...`,
       );
+
+      const result =
+        await this.escrowService.deployEscrowContractsWithPlatformWallet(
+          deploymentData.userId,
+          deploymentData.wishlistItemId,
+          deploymentData.companyWalletAddress,
+          deploymentData.masterWalletAddress,
+          deploymentData.targetAmountEth,
+          deploymentData.durationInDays,
+          deploymentData.chains,
+          deploymentData.campaignName || null,
+          deploymentData.campaignDescription || null,
+        );
 
       await job.updateProgress(90);
 

@@ -26,23 +26,29 @@ export class ContactService {
   async verifyRecaptcha(token: string): Promise<boolean> {
     const secretKey = process.env.RECAPTCHA_SECRET_KEY;
     if (!secretKey) {
-      throw new HttpException('reCAPTCHA not configured', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(
+        'reCAPTCHA not configured',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
 
     try {
-      const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+      const response = await fetch(
+        'https://www.google.com/recaptcha/api/siteverify',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            secret: secretKey,
+            response: token,
+          }).toString(),
         },
-        body: new URLSearchParams({
-          secret: secretKey,
-          response: token,
-        }).toString(),
-      });
+      );
 
       const result: RecaptchaResponse = await response.json();
-      
+
       if (!result.success) {
         console.error('reCAPTCHA verification failed:', result['error-codes']);
         return false;
@@ -65,24 +71,28 @@ export class ContactService {
   async submitInterest(data: InterestFormData): Promise<{ success: boolean }> {
     // Validate required fields
     const errors: Record<string, string> = {};
-    
+
     if (!data.name || data.name.trim().length < 2) {
       errors.name = 'Full name must be at least 2 characters.';
     }
-    
+
     if (!data.email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email)) {
       errors.email = 'Enter a valid email address.';
     }
-    
+
     if (!['Yes', 'No'].includes(data.pitchedBefore)) {
       errors.pitchedBefore = 'Please select if you have pitched before.';
     }
-    
-    const allowedInterests = ['Attending', 'Pitching my business', 'Investing / Partnering'];
+
+    const allowedInterests = [
+      'Attending',
+      'Pitching my business',
+      'Investing / Partnering',
+    ];
     if (!allowedInterests.includes(data.interest)) {
       errors.interest = 'Select a valid interest option.';
     }
-    
+
     if (!data.consent) {
       errors.consent = 'Consent is required.';
     }
@@ -90,24 +100,33 @@ export class ContactService {
     if (Object.keys(errors).length > 0) {
       throw new HttpException(
         { error: 'validation_failed', errors },
-        HttpStatus.BAD_REQUEST
+        HttpStatus.BAD_REQUEST,
       );
     }
 
     // Verify reCAPTCHA
     if (!data.recaptchaToken) {
-      throw new HttpException('reCAPTCHA token is required', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'reCAPTCHA token is required',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     const recaptchaValid = await this.verifyRecaptcha(data.recaptchaToken);
     if (!recaptchaValid) {
-      throw new HttpException('reCAPTCHA verification failed', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'reCAPTCHA verification failed',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     // Submit to Web3Forms
     const accessKey = process.env.WEB3FORMS_ACCESS_KEY;
     if (!accessKey) {
-      throw new HttpException('Email service not configured', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(
+        'Email service not configured',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
 
     try {
@@ -131,16 +150,19 @@ export class ContactService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
+          Accept: 'application/json',
         },
         body: JSON.stringify(payload),
       });
 
       const result = await response.json();
-      
+
       if (!response.ok || !result.success) {
         console.error('Web3Forms submission failed:', result);
-        throw new HttpException('Email submission failed', HttpStatus.BAD_GATEWAY);
+        throw new HttpException(
+          'Email submission failed',
+          HttpStatus.BAD_GATEWAY,
+        );
       }
 
       return { success: true };

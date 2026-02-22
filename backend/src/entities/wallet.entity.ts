@@ -1,9 +1,15 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { User } from './user.entity';
 
 /**
  * Wallet Entity
- * 
+ *
  * Stores Web3 wallet addresses for users
  * Users with role 'user' or 'investor' can connect wallets
  * Staff members typically don't need wallet connections

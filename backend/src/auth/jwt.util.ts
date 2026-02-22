@@ -14,7 +14,7 @@ export function signJwt(
   userId: string,
   userRole: UserRole,
   expiresIn: string | number = '15m',
-  options?: { issuer?: string; audience?: string }
+  options?: { issuer?: string; audience?: string },
 ) {
   const payload: JwtPayload = {
     sub: userId,
@@ -26,7 +26,7 @@ export function signJwt(
     ...(options?.issuer && { issuer: options.issuer }),
     ...(options?.audience && { audience: options.audience }),
   };
-  
+
   return sign(payload, JwtConfig.getSecret(), opts);
 }
 
@@ -38,7 +38,7 @@ export function signJwt(
  */
 export function verifyJwt(
   token: string,
-  options?: { issuer?: string; audience?: string }
+  options?: { issuer?: string; audience?: string },
 ): JwtPayload | null {
   try {
     const decoded = verify(token, JwtConfig.getSecret(), {

@@ -1,4 +1,17 @@
-import { Body, Controller, Get, Param, Post, Patch, UseGuards, UseInterceptors, UploadedFile, ParseFilePipe, MaxFileSizeValidator, FileTypeValidator } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Patch,
+  UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { extname } from 'path';
@@ -19,9 +32,16 @@ export class UsersController {
 
   @Post('register')
   async register(@Body() body: CreateUserDto) {
-    const existing = body.email ? await this.usersService.findByEmail(body.email) : null;
-    if (existing) return { success: false, message: 'Email already registered' };
-    const created = await this.usersService.create({ email: body.email, name: body.name, passwordHash: body.password });
+    const existing = body.email
+      ? await this.usersService.findByEmail(body.email)
+      : null;
+    if (existing)
+      return { success: false, message: 'Email already registered' };
+    const created = await this.usersService.create({
+      email: body.email,
+      name: body.name,
+      passwordHash: body.password,
+    });
     return { success: true, data: created };
   }
 
@@ -29,7 +49,7 @@ export class UsersController {
   @UseGuards(AuthGuard('jwt'))
   async get(@Param('id') id: string, @CurrentUser() currentUser: any) {
     const user = await this.usersService.findById(id);
-    
+
     if (!user) {
       return { success: false, message: 'User not found' };
     }
@@ -37,7 +57,9 @@ export class UsersController {
     // Generate fresh signed URL for profile photo if it exists
     if (user.profilePhotoUrl && !user.profilePhotoUrl.startsWith('http')) {
       try {
-        const freshUrl = await this.gcpStorageService.generateSignedUrl(user.profilePhotoUrl);
+        const freshUrl = await this.gcpStorageService.generateSignedUrl(
+          user.profilePhotoUrl,
+        );
         user.profilePhotoUrl = freshUrl;
       } catch (error) {
         console.error('Failed to generate fresh signed URL:', error);
@@ -58,18 +80,30 @@ export class UsersController {
 
   @Post('upload-avatar')
   @UseGuards(AuthGuard('jwt'))
-  @UseInterceptors(FileInterceptor('file', {
-    storage: memoryStorage(),
-    fileFilter: (req, file, cb) => {
-      // Validate file type
-      const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-      if (allowedMimeTypes.includes(file.mimetype)) {
-        cb(null, true);
-      } else {
-        cb(new Error(`Invalid file type. Only JPEG, PNG, and WebP images are allowed.`), false);
-      }
-    },
-  }))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      fileFilter: (req, file, cb) => {
+        // Validate file type
+        const allowedMimeTypes = [
+          'image/jpeg',
+          'image/jpg',
+          'image/png',
+          'image/webp',
+        ];
+        if (allowedMimeTypes.includes(file.mimetype)) {
+          cb(null, true);
+        } else {
+          cb(
+            new Error(
+              `Invalid file type. Only JPEG, PNG, and WebP images are allowed.`,
+            ),
+            false,
+          );
+        }
+      },
+    }),
+  )
   async uploadAvatar(
     @UploadedFile(
       new ParseFilePipe({
@@ -77,7 +111,8 @@ export class UsersController {
           new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5MB
         ],
       }),
-    ) file: Express.Multer.File,
+    )
+    file: Express.Multer.File,
     @CurrentUser() currentUser: any,
   ) {
     if (!currentUser) {
@@ -96,7 +131,7 @@ export class UsersController {
         try {
           // Extract the file path from either signed URL or direct path
           let oldFilePath = currentUserData.profilePhotoUrl;
-          
+
           // If it's a signed URL, extract the path from the URL
           if (oldFilePath.startsWith('http')) {
             const url = new URL(oldFilePath);
@@ -106,7 +141,7 @@ export class UsersController {
               oldFilePath = decodeURIComponent(pathMatch[1]);
             }
           }
-          
+
           await this.gcpStorageService.deleteFile(oldFilePath);
         } catch (deleteError) {
           // Log but don't fail upload if deletion fails
@@ -122,17 +157,20 @@ export class UsersController {
 
       // Upload to GCP with user-specific path
       await this.gcpStorageService.uploadFile(file, filePath);
-      
+
       // Generate signed URL for immediate response
       const photoUrl = await this.gcpStorageService.generateSignedUrl(filePath);
 
       // Update user profile with file path
-      const updatedUser = await this.usersService.updateProfilePhoto(currentUser.sub, filePath);
-      
+      const updatedUser = await this.usersService.updateProfilePhoto(
+        currentUser.sub,
+        filePath,
+      );
+
       if (!updatedUser) {
         throw new Error('Failed to update user profile');
       }
-      
+
       // Return fresh signed URL to user
       updatedUser.profilePhotoUrl = photoUrl;
 
@@ -154,7 +192,7 @@ export class UsersController {
   @UseGuards(AuthGuard('jwt'))
   async attachWallet(
     @Body() body: { address: string; chainId?: string },
-    @CurrentUser() currentUser: any
+    @CurrentUser() currentUser: any,
   ) {
     const userId = currentUser?.sub;
     if (!userId) {
@@ -162,20 +200,24 @@ export class UsersController {
     }
 
     try {
-      const updatedUser = await this.usersService.attachWallet(userId, body.address, body.chainId);
-      
+      const updatedUser = await this.usersService.attachWallet(
+        userId,
+        body.address,
+        body.chainId,
+      );
+
       if (!updatedUser) {
         return { success: false, message: 'User not found' };
       }
-      
-      return { 
-        success: true, 
-        data: updatedUser
+
+      return {
+        success: true,
+        data: updatedUser,
       };
     } catch (error) {
-      return { 
-        success: false, 
-        message: error.message || 'Failed to attach wallet' 
+      return {
+        success: false,
+        message: error.message || 'Failed to attach wallet',
       };
     }
   }
@@ -183,13 +225,14 @@ export class UsersController {
   @Patch('upgrade-to-investor')
   @UseGuards(AuthGuard('jwt'))
   async upgradeToInvestor(
-    @Body() body: { 
-      investorCompany: string; 
-      investmentFocus: string; 
+    @Body()
+    body: {
+      investorCompany: string;
+      investmentFocus: string;
       linkedinUrl?: string;
       isAccredited?: boolean;
     },
-    @CurrentUser() currentUser: any
+    @CurrentUser() currentUser: any,
   ) {
     const userId = currentUser?.sub;
     if (!userId) {
@@ -198,26 +241,29 @@ export class UsersController {
 
     try {
       // Upgrade the user to investor role
-      const updatedUser = await this.usersService.upgradeToInvestor(userId, body);
-      
+      const updatedUser = await this.usersService.upgradeToInvestor(
+        userId,
+        body,
+      );
+
       if (!updatedUser) {
         return { success: false, message: 'User not found' };
       }
-      
+
       // Generate new JWT with investor role
       const newToken = signJwt(updatedUser.id, updatedUser.role);
-      
-      return { 
-        success: true, 
-        data: { 
+
+      return {
+        success: true,
+        data: {
           user: updatedUser,
-          accessToken: newToken 
-        } 
+          accessToken: newToken,
+        },
       };
     } catch (error) {
-      return { 
-        success: false, 
-        message: error.message || 'Failed to upgrade to investor' 
+      return {
+        success: false,
+        message: error.message || 'Failed to upgrade to investor',
       };
     }
   }
@@ -226,20 +272,23 @@ export class UsersController {
   @UseGuards(AuthGuard('jwt'))
   async setUsdcWallet(
     @CurrentUser() currentUser: any,
-    @Body('walletAddress') walletAddress: string
+    @Body('walletAddress') walletAddress: string,
   ) {
     try {
-      const updated = await this.usersService.setUsdcWallet(currentUser.sub, walletAddress);
-      return { 
-        success: true, 
-        data: { 
-          usdcWalletAddress: updated.usdcWalletAddress 
-        } 
+      const updated = await this.usersService.setUsdcWallet(
+        currentUser.sub,
+        walletAddress,
+      );
+      return {
+        success: true,
+        data: {
+          usdcWalletAddress: updated.usdcWalletAddress,
+        },
       };
     } catch (error) {
-      return { 
-        success: false, 
-        message: error.message || 'Failed to set USDC wallet' 
+      return {
+        success: false,
+        message: error.message || 'Failed to set USDC wallet',
       };
     }
   }
@@ -248,17 +297,19 @@ export class UsersController {
   @UseGuards(AuthGuard('jwt'))
   async getUsdcWallet(@CurrentUser() currentUser: any) {
     try {
-      const walletAddress = await this.usersService.getUsdcWallet(currentUser.sub);
-      return { 
-        success: true, 
-        data: { 
-          usdcWalletAddress: walletAddress 
-        } 
+      const walletAddress = await this.usersService.getUsdcWallet(
+        currentUser.sub,
+      );
+      return {
+        success: true,
+        data: {
+          usdcWalletAddress: walletAddress,
+        },
       };
     } catch (error) {
-      return { 
-        success: false, 
-        message: error.message || 'Failed to get USDC wallet' 
+      return {
+        success: false,
+        message: error.message || 'Failed to get USDC wallet',
       };
     }
   }
@@ -268,14 +319,14 @@ export class UsersController {
   async removeUsdcWallet(@CurrentUser() currentUser: any) {
     try {
       await this.usersService.removeUsdcWallet(currentUser.sub);
-      return { 
-        success: true, 
-        message: 'USDC wallet removed' 
+      return {
+        success: true,
+        message: 'USDC wallet removed',
       };
     } catch (error) {
-      return { 
-        success: false, 
-        message: error.message || 'Failed to remove USDC wallet' 
+      return {
+        success: false,
+        message: error.message || 'Failed to remove USDC wallet',
       };
     }
   }

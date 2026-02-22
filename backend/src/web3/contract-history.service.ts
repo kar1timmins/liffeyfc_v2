@@ -1,7 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ContractDeploymentHistory, ContractAction } from '../entities/contract-deployment-history.entity';
+import {
+  ContractDeploymentHistory,
+  ContractAction,
+} from '../entities/contract-deployment-history.entity';
 
 @Injectable()
 export class ContractHistoryService {
@@ -47,9 +50,14 @@ export class ContractHistoryService {
 
       await this.historyRepo.save(historyEntry);
 
-      this.logger.log(`📝 Contract history logged: ${params.action} by ${params.fromAddress} on ${params.chain}/${params.network}`);
+      this.logger.log(
+        `📝 Contract history logged: ${params.action} by ${params.fromAddress} on ${params.chain}/${params.network}`,
+      );
     } catch (error) {
-      this.logger.error(`❌ Failed to log contract history: ${error.message}`, error.stack);
+      this.logger.error(
+        `❌ Failed to log contract history: ${error.message}`,
+        error.stack,
+      );
       // Don't throw - logging failures shouldn't break business logic
     }
   }
@@ -68,7 +76,9 @@ export class ContractHistoryService {
   /**
    * Get contract history for a company
    */
-  async getCompanyHistory(companyId: string): Promise<ContractDeploymentHistory[]> {
+  async getCompanyHistory(
+    companyId: string,
+  ): Promise<ContractDeploymentHistory[]> {
     return this.historyRepo.find({
       where: { companyId },
       relations: ['user', 'wishlistItem', 'company'],
@@ -79,7 +89,9 @@ export class ContractHistoryService {
   /**
    * Get contract history for a specific contract address
    */
-  async getContractHistory(contractAddress: string): Promise<ContractDeploymentHistory[]> {
+  async getContractHistory(
+    contractAddress: string,
+  ): Promise<ContractDeploymentHistory[]> {
     return this.historyRepo.find({
       where: { contractAddress },
       relations: ['user', 'company', 'wishlistItem'],
@@ -90,7 +102,9 @@ export class ContractHistoryService {
   /**
    * Get deployment history for a wishlist item
    */
-  async getWishlistItemHistory(wishlistItemId: string): Promise<ContractDeploymentHistory[]> {
+  async getWishlistItemHistory(
+    wishlistItemId: string,
+  ): Promise<ContractDeploymentHistory[]> {
     return this.historyRepo.find({
       where: { wishlistItemId },
       relations: ['user', 'company', 'wishlistItem'],

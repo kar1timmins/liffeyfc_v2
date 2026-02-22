@@ -23,18 +23,20 @@ export class USDCValidatorService {
     'https://sepolia-rpc.publicnode.com',
     'https://ethereum-sepolia.publicnode.com',
     'https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
-    'https://rpc.sepolia.org'
+    'https://rpc.sepolia.org',
   ];
 
   private avalancheRPCEndpoints = [
     'https://api.avax-test.network/ext/bc/C/rpc',
     'https://avalanche-fuji-c-chain.publicnode.com',
-    'https://avalanche-fuji.drpc.org'
+    'https://avalanche-fuji.drpc.org',
   ];
 
   constructor() {
-    const ethereumRpcUrl = process.env.ETHEREUM_RPC_URL || this.ethereumRPCEndpoints[0];
-    const avalancheRpcUrl = process.env.AVALANCHE_RPC_URL || this.avalancheRPCEndpoints[0];
+    const ethereumRpcUrl =
+      process.env.ETHEREUM_RPC_URL || this.ethereumRPCEndpoints[0];
+    const avalancheRpcUrl =
+      process.env.AVALANCHE_RPC_URL || this.avalancheRPCEndpoints[0];
 
     this.ethereumProvider = new ethers.JsonRpcProvider(ethereumRpcUrl);
     this.avalancheProvider = new ethers.JsonRpcProvider(avalancheRpcUrl);
@@ -51,13 +53,17 @@ export class USDCValidatorService {
       await this.ethereumProvider.getNetwork();
       return this.ethereumProvider;
     } catch (error) {
-      this.logger.warn('⚠️  Current Ethereum RPC endpoint failed, trying fallbacks...');
+      this.logger.warn(
+        '⚠️  Current Ethereum RPC endpoint failed, trying fallbacks...',
+      );
 
       for (const rpcUrl of this.ethereumRPCEndpoints) {
         try {
           const provider = new ethers.JsonRpcProvider(rpcUrl);
           await provider.getNetwork();
-          this.logger.log(`✅ Successfully switched to Ethereum RPC: ${rpcUrl}`);
+          this.logger.log(
+            `✅ Successfully switched to Ethereum RPC: ${rpcUrl}`,
+          );
           this.ethereumProvider = provider;
           return provider;
         } catch (e) {
@@ -76,13 +82,17 @@ export class USDCValidatorService {
       await this.avalancheProvider.getNetwork();
       return this.avalancheProvider;
     } catch (error) {
-      this.logger.warn('⚠️  Current Avalanche RPC endpoint failed, trying fallbacks...');
+      this.logger.warn(
+        '⚠️  Current Avalanche RPC endpoint failed, trying fallbacks...',
+      );
 
       for (const rpcUrl of this.avalancheRPCEndpoints) {
         try {
           const provider = new ethers.JsonRpcProvider(rpcUrl);
           await provider.getNetwork();
-          this.logger.log(`✅ Successfully switched to Avalanche RPC: ${rpcUrl}`);
+          this.logger.log(
+            `✅ Successfully switched to Avalanche RPC: ${rpcUrl}`,
+          );
           this.avalancheProvider = provider;
           return provider;
         } catch (e) {
@@ -105,7 +115,7 @@ export class USDCValidatorService {
     txHash: string,
     chain: 'ethereum' | 'avalanche',
     expectedAmount: number,
-    recipientAddress: string
+    recipientAddress: string,
   ): Promise<{
     valid: boolean;
     amount: number;
@@ -115,26 +125,32 @@ export class USDCValidatorService {
     timestamp: Date;
   }> {
     this.logger.log(`🔍 Validating USDC payment: ${txHash} on ${chain}`);
-    this.logger.log(`   Expected: ${expectedAmount} USDC to ${recipientAddress}`);
+    this.logger.log(
+      `   Expected: ${expectedAmount} USDC to ${recipientAddress}`,
+    );
 
     try {
       // 1. Get provider for the chain
-      const provider = chain === 'ethereum' 
-        ? await this.getWorkingEthereumProvider()
-        : await this.getWorkingAvalancheProvider();
+      const provider =
+        chain === 'ethereum'
+          ? await this.getWorkingEthereumProvider()
+          : await this.getWorkingAvalancheProvider();
 
       // 2. Get USDC contract address for the chain
-      const usdcAddress = chain === 'ethereum' 
-        ? this.USDC_SEPOLIA 
-        : this.USDC_FUJI;
+      const usdcAddress =
+        chain === 'ethereum' ? this.USDC_SEPOLIA : this.USDC_FUJI;
 
       // 3. Fetch transaction receipt
       const receipt = await provider.getTransactionReceipt(txHash);
       if (!receipt) {
-        throw new BadRequestException('Transaction not found or not yet confirmed');
+        throw new BadRequestException(
+          'Transaction not found or not yet confirmed',
+        );
       }
 
-      this.logger.log(`✅ Transaction found - Block: ${receipt.blockNumber}, Status: ${receipt.status}`);
+      this.logger.log(
+        `✅ Transaction found - Block: ${receipt.blockNumber}, Status: ${receipt.status}`,
+      );
 
       // 4. Check transaction was successful
       if (receipt.status !== 1) {
@@ -150,13 +166,13 @@ export class USDCValidatorService {
       // 6. Verify it's a USDC contract interaction
       if (tx.to?.toLowerCase() !== usdcAddress.toLowerCase()) {
         throw new BadRequestException(
-          `Transaction is not to USDC contract. Expected: ${usdcAddress}, Got: ${tx.to}`
+          `Transaction is not to USDC contract. Expected: ${usdcAddress}, Got: ${tx.to}`,
         );
       }
 
       // 7. Decode USDC transfer event from logs
       const usdcInterface = new ethers.Interface([
-        'event Transfer(address indexed from, address indexed to, uint256 value)'
+        'event Transfer(address indexed from, address indexed to, uint256 value)',
       ]);
 
       let transferEvent: ethers.LogDescription | null = null;
@@ -165,7 +181,7 @@ export class USDCValidatorService {
           try {
             const parsed = usdcInterface.parseLog({
               topics: log.topics as string[],
-              data: log.data
+              data: log.data,
             });
             if (parsed && parsed.name === 'Transfer') {
               transferEvent = parsed;
@@ -178,7 +194,9 @@ export class USDCValidatorService {
       }
 
       if (!transferEvent) {
-        throw new BadRequestException('No USDC Transfer event found in transaction');
+        throw new BadRequestException(
+          'No USDC Transfer event found in transaction',
+        );
       }
 
       // 8. Extract transfer details
@@ -194,7 +212,7 @@ export class USDCValidatorService {
       // 9. Validate recipient
       if (to.toLowerCase() !== recipientAddress.toLowerCase()) {
         throw new BadRequestException(
-          `USDC sent to wrong address. Expected: ${recipientAddress}, Got: ${to}`
+          `USDC sent to wrong address. Expected: ${recipientAddress}, Got: ${to}`,
         );
       }
 
@@ -206,7 +224,7 @@ export class USDCValidatorService {
       const minAcceptable = expectedAmount * 0.99;
       if (amountInUSDC < minAcceptable) {
         throw new BadRequestException(
-          `Insufficient payment: ${amountInUSDC} USDC < ${expectedAmount} USDC (required)`
+          `Insufficient payment: ${amountInUSDC} USDC < ${expectedAmount} USDC (required)`,
         );
       }
 
@@ -233,7 +251,9 @@ export class USDCValidatorService {
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new BadRequestException(`Failed to validate USDC payment: ${error.message}`);
+      throw new BadRequestException(
+        `Failed to validate USDC payment: ${error.message}`,
+      );
     }
   }
 
@@ -263,12 +283,16 @@ export class USDCValidatorService {
 
     if (chain === 'ethereum') {
       if (!ethAddress) {
-        throw new Error('USDC_RECEIVER_ETH not configured in environment variables');
+        throw new Error(
+          'USDC_RECEIVER_ETH not configured in environment variables',
+        );
       }
       return ethAddress;
     } else {
       if (!avaxAddress) {
-        throw new Error('USDC_RECEIVER_AVAX not configured in environment variables');
+        throw new Error(
+          'USDC_RECEIVER_AVAX not configured in environment variables',
+        );
       }
       return avaxAddress;
     }

@@ -17,7 +17,7 @@ export enum ContractAction {
   FINALIZED = 'finalized',
   REFUND_INITIATED = 'refund_initiated',
   CONTRIBUTED = 'contributed',
-  REFUNDED = 'refunded'
+  REFUNDED = 'refunded',
 }
 
 @Entity('contract_deployment_history')

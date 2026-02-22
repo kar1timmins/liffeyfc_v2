@@ -19,9 +19,12 @@ import { WishlistItem } from '../entities/wishlist-item.entity';
 // Dev mode logging helper
 const isDev = process.env.NODE_ENV !== 'production';
 const devLog = {
-  log: (msg: string, ...args: any[]) => isDev && console.log(`[WalletGeneration] ${msg}`, ...args),
-  error: (msg: string, ...args: any[]) => console.error(`[WalletGeneration] ${msg}`, ...args),
-  warn: (msg: string, ...args: any[]) => console.warn(`[WalletGeneration] ${msg}`, ...args),
+  log: (msg: string, ...args: any[]) =>
+    isDev && console.log(`[WalletGeneration] ${msg}`, ...args),
+  error: (msg: string, ...args: any[]) =>
+    console.error(`[WalletGeneration] ${msg}`, ...args),
+  warn: (msg: string, ...args: any[]) =>
+    console.warn(`[WalletGeneration] ${msg}`, ...args),
 };
 
 export interface GeneratedWallet {
@@ -77,7 +80,9 @@ export class WalletGenerationService {
     // Get encryption key from environment variable
     const key = process.env.WALLET_ENCRYPTION_KEY;
     if (!key || key.length !== 64) {
-      throw new Error('WALLET_ENCRYPTION_KEY must be set and be 64 hex characters (32 bytes)');
+      throw new Error(
+        'WALLET_ENCRYPTION_KEY must be set and be 64 hex characters (32 bytes)',
+      );
     }
     this.ENCRYPTION_KEY = Buffer.from(key, 'hex');
   }
@@ -114,9 +119,14 @@ export class WalletGenerationService {
 
     const parts = encryptedData.split(':');
     if (parts.length !== 3) {
-      devLog.error('Invalid encrypted data format. Expected 3 parts, got:', parts.length);
+      devLog.error(
+        'Invalid encrypted data format. Expected 3 parts, got:',
+        parts.length,
+      );
       devLog.error('First 50 chars:', encryptedData.substring(0, 50));
-      throw new Error(`Invalid encrypted data format: expected 3 parts separated by ':', got ${parts.length} parts`);
+      throw new Error(
+        `Invalid encrypted data format: expected 3 parts separated by ':', got ${parts.length} parts`,
+      );
     }
 
     try {
@@ -136,7 +146,8 @@ export class WalletGenerationService {
 
       return decrypted;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       devLog.error('Decryption error:', errorMessage);
       throw new Error(`Failed to decrypt data: ${errorMessage}`);
     }
@@ -151,7 +162,10 @@ export class WalletGenerationService {
    * Called during wallet generation / restore so all addresses are stored
    * in a single DB row alongside the existing EVM addresses.
    */
-  private deriveNonEvmAddresses(mnemonic: string, childIndex = 0): {
+  private deriveNonEvmAddresses(
+    mnemonic: string,
+    childIndex = 0,
+  ): {
     solanaAddress: string;
     stellarAddress: string;
     bitcoinAddress: string;
@@ -172,12 +186,21 @@ export class WalletGenerationService {
 
     // ---- Stellar (ed25519, path varies by childIndex) ----------------------
     const { key: xlmKey } = derivePath(xlmPath, seedHex);
-    const stellarKeypair = StellarKeypair.fromRawEd25519Seed(Buffer.from(xlmKey));
+    const stellarKeypair = StellarKeypair.fromRawEd25519Seed(
+      Buffer.from(xlmKey),
+    );
     const stellarAddress = stellarKeypair.publicKey(); // G...
 
     // ---- Bitcoin P2WPKH native SegWit (path varies by childIndex) ----------
-    const btcWallet = HDNodeWallet.fromPhrase(mnemonic, undefined, `${this.BTC_DERIVATION_BASE}/${childIndex}`);
-    const pubkeyBytes = Buffer.from(btcWallet.signingKey.compressedPublicKey.slice(2), 'hex'); // strip 0x
+    const btcWallet = HDNodeWallet.fromPhrase(
+      mnemonic,
+      undefined,
+      `${this.BTC_DERIVATION_BASE}/${childIndex}`,
+    );
+    const pubkeyBytes = Buffer.from(
+      btcWallet.signingKey.compressedPublicKey.slice(2),
+      'hex',
+    ); // strip 0x
     const sha256Hash = crypto.createHash('sha256').update(pubkeyBytes).digest();
     const hash160 = crypto.createHash('ripemd160').update(sha256Hash).digest();
     const words = bech32.toWords(hash160);
@@ -190,7 +213,10 @@ export class WalletGenerationService {
   /**
    * Derive private keys/seed for non‑EVM chains from the mnemonic.
    */
-  public deriveNonEvmKeys(mnemonic: string, childIndex = 0): {
+  public deriveNonEvmKeys(
+    mnemonic: string,
+    childIndex = 0,
+  ): {
     solanaPrivateKey: string;
     stellarPrivateKey: string;
     bitcoinPrivateKey: string;
@@ -209,11 +235,17 @@ export class WalletGenerationService {
 
     // Stellar seed (starts with 'S')
     const { key: xlmKey } = derivePath(xlmPath, seedHex);
-    const stellarKeypair = StellarKeypair.fromRawEd25519Seed(Buffer.from(xlmKey));
+    const stellarKeypair = StellarKeypair.fromRawEd25519Seed(
+      Buffer.from(xlmKey),
+    );
     const stellarPrivateKey = stellarKeypair.secret();
 
     // Bitcoin private key
-    const btcWallet = HDNodeWallet.fromPhrase(mnemonic, undefined, `${this.BTC_DERIVATION_BASE}/${childIndex}`);
+    const btcWallet = HDNodeWallet.fromPhrase(
+      mnemonic,
+      undefined,
+      `${this.BTC_DERIVATION_BASE}/${childIndex}`,
+    );
     const bitcoinPrivateKey = btcWallet.privateKey;
 
     return { solanaPrivateKey, stellarPrivateKey, bitcoinPrivateKey };
@@ -230,7 +262,9 @@ export class WalletGenerationService {
     });
 
     if (existing) {
-      throw new Error('User already has a master wallet. Only one wallet per user is allowed.');
+      throw new Error(
+        'User already has a master wallet. Only one wallet per user is allowed.',
+      );
     }
 
     // Generate new random wallet
@@ -241,15 +275,21 @@ export class WalletGenerationService {
     }
 
     // Derive Ethereum address (standard path)
-    const ethWallet = HDNodeWallet.fromPhrase(mnemonic, undefined, `${this.ETH_DERIVATION_BASE}/0`);
-    
+    const ethWallet = HDNodeWallet.fromPhrase(
+      mnemonic,
+      undefined,
+      `${this.ETH_DERIVATION_BASE}/0`,
+    );
+
     // For Avalanche, we use the same address format (EVM compatible)
     // In production, you might want to use different derivation paths
     const avaxAddress = ethWallet.address;
 
     // Derive non-EVM addresses (Solana, Stellar, Bitcoin) from the same mnemonic
-    const { solanaAddress, stellarAddress, bitcoinAddress } = this.deriveNonEvmAddresses(mnemonic);
-    const { solanaPrivateKey, stellarPrivateKey, bitcoinPrivateKey } = this.deriveNonEvmKeys(mnemonic);
+    const { solanaAddress, stellarAddress, bitcoinAddress } =
+      this.deriveNonEvmAddresses(mnemonic);
+    const { solanaPrivateKey, stellarPrivateKey, bitcoinPrivateKey } =
+      this.deriveNonEvmKeys(mnemonic);
 
     // Encrypt sensitive data
     const encryptedMnemonic = this.encrypt(mnemonic);
@@ -273,8 +313,14 @@ export class WalletGenerationService {
 
     // Also record the USDC wallet address on the user (same as ETH address)
     try {
-      await this.userRepo.update(userId, { usdcWalletAddress: ethWallet.address });
-      devLog.log('Saved usdcWalletAddress for user:', userId, ethWallet.address);
+      await this.userRepo.update(userId, {
+        usdcWalletAddress: ethWallet.address,
+      });
+      devLog.log(
+        'Saved usdcWalletAddress for user:',
+        userId,
+        ethWallet.address,
+      );
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       devLog.error('Failed to save usdcWalletAddress on user:', errorMessage);
@@ -295,7 +341,8 @@ export class WalletGenerationService {
       stellarPrivateKey,
       bitcoinPrivateKey,
       derivationPath: `${this.ETH_DERIVATION_BASE}/0`,
-      warning: 'CRITICAL: Store this information securely offline. Never share your private key or mnemonic phrase. Loss of this data means permanent loss of access to your funds.',
+      warning:
+        'CRITICAL: Store this information securely offline. Never share your private key or mnemonic phrase. Loss of this data means permanent loss of access to your funds.',
       createdAt: new Date().toISOString(),
     };
   }
@@ -314,7 +361,9 @@ export class WalletGenerationService {
     });
 
     if (existing) {
-      throw new Error('User already has a master wallet. Cannot restore over existing wallet.');
+      throw new Error(
+        'User already has a master wallet. Cannot restore over existing wallet.',
+      );
     }
 
     let mnemonic: string;
@@ -323,7 +372,8 @@ export class WalletGenerationService {
     // Determine if input is a mnemonic (12/24 words) or private key (hex string)
     const isPrivateKey = input.startsWith('0x') && input.length === 66; // 0x + 64 hex chars
     const wordCount = input.trim().split(/\s+/).length;
-    const isMnemonic = (wordCount === 12 || wordCount === 24) && !input.startsWith('0x');
+    const isMnemonic =
+      (wordCount === 12 || wordCount === 24) && !input.startsWith('0x');
 
     if (isPrivateKey) {
       // Restore from private key - derive as master wallet
@@ -339,13 +389,19 @@ export class WalletGenerationService {
       // Restore from mnemonic phrase
       try {
         // Validate mnemonic - fromPhrase returns HDNodeWallet
-        ethWallet = HDNodeWallet.fromPhrase(input, undefined, `${this.ETH_DERIVATION_BASE}/0`);
+        ethWallet = HDNodeWallet.fromPhrase(
+          input,
+          undefined,
+          `${this.ETH_DERIVATION_BASE}/0`,
+        );
         mnemonic = input.trim();
       } catch (error) {
         throw new Error('Invalid mnemonic phrase');
       }
     } else {
-      throw new Error('Input must be a 12/24 word mnemonic phrase or a valid private key starting with 0x');
+      throw new Error(
+        'Input must be a 12/24 word mnemonic phrase or a valid private key starting with 0x',
+      );
     }
 
     // For Avalanche, we use the same address format (EVM compatible)
@@ -361,11 +417,16 @@ export class WalletGenerationService {
 
     if (mnemonic) {
       try {
-        ({ solanaAddress, stellarAddress, bitcoinAddress } = this.deriveNonEvmAddresses(mnemonic));
-        ({ solanaPrivateKey, stellarPrivateKey, bitcoinPrivateKey } = this.deriveNonEvmKeys(mnemonic));
+        ({ solanaAddress, stellarAddress, bitcoinAddress } =
+          this.deriveNonEvmAddresses(mnemonic));
+        ({ solanaPrivateKey, stellarPrivateKey, bitcoinPrivateKey } =
+          this.deriveNonEvmKeys(mnemonic));
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : String(err);
-        devLog.warn('Could not derive non-EVM addresses/keys during restore:', errorMessage);
+        devLog.warn(
+          'Could not derive non-EVM addresses/keys during restore:',
+          errorMessage,
+        );
       }
     }
 
@@ -391,11 +452,20 @@ export class WalletGenerationService {
 
     // Also record the USDC wallet address on the user (same as ETH address)
     try {
-      await this.userRepo.update(userId, { usdcWalletAddress: ethWallet.address });
-      devLog.log('Saved usdcWalletAddress for user (restore):', userId, ethWallet.address);
+      await this.userRepo.update(userId, {
+        usdcWalletAddress: ethWallet.address,
+      });
+      devLog.log(
+        'Saved usdcWalletAddress for user (restore):',
+        userId,
+        ethWallet.address,
+      );
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
-      devLog.error('Failed to save usdcWalletAddress on user (restore):', errorMessage);
+      devLog.error(
+        'Failed to save usdcWalletAddress on user (restore):',
+        errorMessage,
+      );
     }
 
     // Auto-generate wallets for all existing companies that don't have addresses
@@ -412,7 +482,7 @@ export class WalletGenerationService {
         try {
           const company = companiesWithoutAddresses[i];
           // Use the nextChildIndex incrementally
-          const childIndex = (i + 1);
+          const childIndex = i + 1;
           const derivationPath = `${this.ETH_DERIVATION_BASE}/${childIndex}`;
 
           // Decrypt mnemonic if available, otherwise use private key
@@ -420,7 +490,11 @@ export class WalletGenerationService {
           let childWallet: HDNodeWallet;
 
           if (mnemonic) {
-            childWallet = HDNodeWallet.fromPhrase(mnemonic, undefined, derivationPath);
+            childWallet = HDNodeWallet.fromPhrase(
+              mnemonic,
+              undefined,
+              derivationPath,
+            );
           } else {
             // For private key restoration, we can't derive further
             // Just use the master wallet for all companies (simplified approach)
@@ -449,7 +523,10 @@ export class WalletGenerationService {
           });
         } catch (error) {
           // Log but continue with other companies
-          console.error(`Failed to generate wallet for company during restoration:`, error);
+          console.error(
+            `Failed to generate wallet for company during restoration:`,
+            error,
+          );
         }
       }
 
@@ -458,7 +535,10 @@ export class WalletGenerationService {
       await this.userWalletRepo.save(userWallet);
     } catch (error) {
       // Log but don't fail restoration if company wallet generation fails
-      console.error('Failed to auto-generate company wallets after restoration:', error);
+      console.error(
+        'Failed to auto-generate company wallets after restoration:',
+        error,
+      );
     }
 
     // Return confirmation data
@@ -476,7 +556,8 @@ export class WalletGenerationService {
       ...(mnemonic && { stellarPrivateKey }),
       ...(mnemonic && { bitcoinPrivateKey }),
       derivationPath: `${this.ETH_DERIVATION_BASE}/0`,
-      warning: 'CRITICAL: Wallet successfully restored. All previously derived company wallets will regenerate with the same addresses.',
+      warning:
+        'CRITICAL: Wallet successfully restored. All previously derived company wallets will regenerate with the same addresses.',
       createdAt: new Date().toISOString(),
     };
   }
@@ -485,9 +566,17 @@ export class WalletGenerationService {
    * Generate a child wallet for a company
    * Derives from the user's master wallet
    */
-  async generateCompanyWallet(userId: string, companyId: string): Promise<{ ethAddress: string; avaxAddress: string }> {
-    devLog.log('Starting generateCompanyWallet for userId:', userId, 'companyId:', companyId);
-    
+  async generateCompanyWallet(
+    userId: string,
+    companyId: string,
+  ): Promise<{ ethAddress: string; avaxAddress: string }> {
+    devLog.log(
+      'Starting generateCompanyWallet for userId:',
+      userId,
+      'companyId:',
+      companyId,
+    );
+
     // Get user's master wallet
     const userWallet = await this.userWalletRepo.findOne({
       where: { userId },
@@ -495,7 +584,9 @@ export class WalletGenerationService {
 
     if (!userWallet) {
       devLog.log('No master wallet found for user:', userId);
-      throw new Error('User does not have a master wallet. Generate a master wallet first.');
+      throw new Error(
+        'User does not have a master wallet. Generate a master wallet first.',
+      );
     }
 
     devLog.log('Found user master wallet:', userWallet.id);
@@ -506,7 +597,10 @@ export class WalletGenerationService {
     });
 
     if (existingCompanyWallet) {
-      devLog.log('Company already has wallet:', existingCompanyWallet.ethAddress);
+      devLog.log(
+        'Company already has wallet:',
+        existingCompanyWallet.ethAddress,
+      );
       // Return existing wallet addresses
       return {
         ethAddress: existingCompanyWallet.ethAddress,
@@ -522,43 +616,63 @@ export class WalletGenerationService {
       let childIndex: number;
 
       // Check if we have a mnemonic (from generated wallet) or only private key (from restored wallet)
-      const hasMnemonic = userWallet.encryptedMnemonic && userWallet.encryptedMnemonic.trim() !== '';
-      
+      const hasMnemonic =
+        userWallet.encryptedMnemonic &&
+        userWallet.encryptedMnemonic.trim() !== '';
+
       if (hasMnemonic) {
         // HD Wallet with mnemonic - can derive child wallets
         devLog.log('Master wallet has mnemonic - using HD derivation');
-        
+
         try {
           const mnemonic = this.decrypt(userWallet.encryptedMnemonic);
-          
+
           // Get next child index for HD derivation
           childIndex = userWallet.nextChildIndex;
           derivationPath = `${this.ETH_DERIVATION_BASE}/${childIndex}`;
           devLog.log('Using child index:', childIndex, 'path:', derivationPath);
 
           // Derive child wallet from mnemonic
-          childWallet = HDNodeWallet.fromPhrase(mnemonic, undefined, derivationPath);
-          devLog.log('Derived child wallet address via HD:', childWallet.address);
+          childWallet = HDNodeWallet.fromPhrase(
+            mnemonic,
+            undefined,
+            derivationPath,
+          );
+          devLog.log(
+            'Derived child wallet address via HD:',
+            childWallet.address,
+          );
         } catch (decryptError) {
-          const errorMessage = decryptError instanceof Error ? decryptError.message : String(decryptError);
-          console.error('[WalletGeneration] Failed to decrypt or use mnemonic:', errorMessage);
+          const errorMessage =
+            decryptError instanceof Error
+              ? decryptError.message
+              : String(decryptError);
+          console.error(
+            '[WalletGeneration] Failed to decrypt or use mnemonic:',
+            errorMessage,
+          );
           throw new Error(
             'Master wallet mnemonic is corrupted. ' +
-            'Please regenerate your master wallet from your backup. ' +
-            'Go to your profile and generate a new master wallet.'
+              'Please regenerate your master wallet from your backup. ' +
+              'Go to your profile and generate a new master wallet.',
           );
         }
       } else {
         // Private key only (restored from private key) - generate independent child wallet
-        devLog.log('Master wallet has no mnemonic (restored from private key) - generating independent child wallet');
-        
+        devLog.log(
+          'Master wallet has no mnemonic (restored from private key) - generating independent child wallet',
+        );
+
         // For wallets restored from private key only, we generate independent random wallets
         // Each company gets a unique wallet (not derived from the same key)
         const newWallet = Wallet.createRandom();
         childWallet = newWallet;
         childIndex = userWallet.nextChildIndex;
         derivationPath = `independent-wallet-${childIndex}`;
-        devLog.log('Generated independent wallet for company:', childWallet.address);
+        devLog.log(
+          'Generated independent wallet for company:',
+          childWallet.address,
+        );
       }
 
       const avaxAddress = childWallet.address; // Same for Avalanche (EVM compatible)
@@ -570,11 +684,18 @@ export class WalletGenerationService {
       if (hasMnemonic) {
         try {
           const mnemonic = this.decrypt(userWallet.encryptedMnemonic);
-          ({ solanaAddress, stellarAddress, bitcoinAddress } = this.deriveNonEvmAddresses(mnemonic, childIndex));
-          devLog.log('Derived non-EVM addresses for company wallet at index:', childIndex);
+          ({ solanaAddress, stellarAddress, bitcoinAddress } =
+            this.deriveNonEvmAddresses(mnemonic, childIndex));
+          devLog.log(
+            'Derived non-EVM addresses for company wallet at index:',
+            childIndex,
+          );
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
-          devLog.warn('Could not derive non-EVM addresses for company wallet:', msg);
+          devLog.warn(
+            'Could not derive non-EVM addresses for company wallet:',
+            msg,
+          );
         }
       }
 
@@ -608,22 +729,36 @@ export class WalletGenerationService {
         ethAddress: childWallet.address,
         avaxAddress: avaxAddress,
       });
-      devLog.log('Company update result:', updateResult.affected, 'rows affected');
+      devLog.log(
+        'Company update result:',
+        updateResult.affected,
+        'rows affected',
+      );
 
       // Verify the update by fetching the company
       const updatedCompany = await this.companyRepo.findOne({
-        where: { id: companyId }
+        where: { id: companyId },
       });
-      devLog.log('Verified company addresses - ETH:', updatedCompany?.ethAddress, 'AVAX:', updatedCompany?.avaxAddress);
+      devLog.log(
+        'Verified company addresses - ETH:',
+        updatedCompany?.ethAddress,
+        'AVAX:',
+        updatedCompany?.avaxAddress,
+      );
 
       return {
         ethAddress: childWallet.address,
         avaxAddress: avaxAddress,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : '';
-      console.error('[WalletGeneration] Error during wallet generation:', errorMessage, errorStack);
+      console.error(
+        '[WalletGeneration] Error during wallet generation:',
+        errorMessage,
+        errorStack,
+      );
       throw error;
     }
   }
@@ -650,7 +785,15 @@ export class WalletGenerationService {
   } | null> {
     const wallet = await this.userWalletRepo.findOne({
       where: { userId },
-      select: ['id', 'ethAddress', 'avaxAddress', 'solanaAddress', 'stellarAddress', 'bitcoinAddress', 'encryptedMnemonic'],
+      select: [
+        'id',
+        'ethAddress',
+        'avaxAddress',
+        'solanaAddress',
+        'stellarAddress',
+        'bitcoinAddress',
+        'encryptedMnemonic',
+      ],
     });
 
     if (!wallet) {
@@ -662,8 +805,13 @@ export class WalletGenerationService {
     if (!wallet.solanaAddress && wallet.encryptedMnemonic?.trim()) {
       try {
         const mnemonic = this.decrypt(wallet.encryptedMnemonic);
-        const { solanaAddress, stellarAddress, bitcoinAddress } = this.deriveNonEvmAddresses(mnemonic, 0);
-        await this.userWalletRepo.update(wallet.id, { solanaAddress, stellarAddress, bitcoinAddress });
+        const { solanaAddress, stellarAddress, bitcoinAddress } =
+          this.deriveNonEvmAddresses(mnemonic, 0);
+        await this.userWalletRepo.update(wallet.id, {
+          solanaAddress,
+          stellarAddress,
+          bitcoinAddress,
+        });
         wallet.solanaAddress = solanaAddress;
         wallet.stellarAddress = stellarAddress;
         wallet.bitcoinAddress = bitcoinAddress;
@@ -688,7 +836,9 @@ export class WalletGenerationService {
    * Retrieve decrypted mnemonic/private key for the user’s master wallet.
    * Returns null if no wallet exists.
    */
-  async getMasterWalletDownload(userId: string): Promise<WalletDownloadData | null> {
+  async getMasterWalletDownload(
+    userId: string,
+  ): Promise<WalletDownloadData | null> {
     const wallet = await this.userWalletRepo.findOne({ where: { userId } });
     if (!wallet) return null;
 
@@ -697,7 +847,10 @@ export class WalletGenerationService {
       try {
         mnemonic = this.decrypt(wallet.encryptedMnemonic);
       } catch (err) {
-        devLog.error('Failed to decrypt mnemonic for download:', err instanceof Error ? err.message : err);
+        devLog.error(
+          'Failed to decrypt mnemonic for download:',
+          err instanceof Error ? err.message : err,
+        );
       }
     }
 
@@ -706,7 +859,10 @@ export class WalletGenerationService {
       try {
         privateKey = this.decrypt(wallet.encryptedPrivateKey);
       } catch (err) {
-        devLog.error('Failed to decrypt private key for download:', err instanceof Error ? err.message : err);
+        devLog.error(
+          'Failed to decrypt private key for download:',
+          err instanceof Error ? err.message : err,
+        );
       }
     }
 
@@ -718,7 +874,8 @@ export class WalletGenerationService {
 
     if (mnemonic) {
       try {
-        ({ solanaPrivateKey, stellarPrivateKey, bitcoinPrivateKey } = this.deriveNonEvmKeys(mnemonic));
+        ({ solanaPrivateKey, stellarPrivateKey, bitcoinPrivateKey } =
+          this.deriveNonEvmKeys(mnemonic));
       } catch (err) {
         devLog.warn('Failed to derive non-EVM private keys for download:', err);
       }
@@ -742,7 +899,8 @@ export class WalletGenerationService {
       stellarPrivateKey,
       bitcoinPrivateKey,
       derivationPath: wallet.derivationPath || '',
-      warning: 'This information is sensitive. Do not share it. Download and store securely.',
+      warning:
+        'This information is sensitive. Do not share it. Download and store securely.',
       createdAt: new Date().toISOString(),
     };
   }
@@ -761,7 +919,11 @@ export class WalletGenerationService {
     if (!userWallet) throw new Error('No master wallet found');
 
     // Already have all addresses — return them without touching the DB
-    if (userWallet.solanaAddress && userWallet.stellarAddress && userWallet.bitcoinAddress) {
+    if (
+      userWallet.solanaAddress &&
+      userWallet.stellarAddress &&
+      userWallet.bitcoinAddress
+    ) {
       return {
         solanaAddress: userWallet.solanaAddress,
         stellarAddress: userWallet.stellarAddress,
@@ -769,14 +931,24 @@ export class WalletGenerationService {
       };
     }
 
-    if (!userWallet.encryptedMnemonic || userWallet.encryptedMnemonic.trim() === '') {
-      throw new Error('Wallet was restored from a private key only — multi-chain derivation requires the mnemonic phrase.');
+    if (
+      !userWallet.encryptedMnemonic ||
+      userWallet.encryptedMnemonic.trim() === ''
+    ) {
+      throw new Error(
+        'Wallet was restored from a private key only — multi-chain derivation requires the mnemonic phrase.',
+      );
     }
 
     const mnemonic = this.decrypt(userWallet.encryptedMnemonic);
-    const { solanaAddress, stellarAddress, bitcoinAddress } = this.deriveNonEvmAddresses(mnemonic);
+    const { solanaAddress, stellarAddress, bitcoinAddress } =
+      this.deriveNonEvmAddresses(mnemonic);
 
-    await this.userWalletRepo.update(userWallet.id, { solanaAddress, stellarAddress, bitcoinAddress });
+    await this.userWalletRepo.update(userWallet.id, {
+      solanaAddress,
+      stellarAddress,
+      bitcoinAddress,
+    });
 
     return { solanaAddress, stellarAddress, bitcoinAddress };
   }
@@ -784,7 +956,14 @@ export class WalletGenerationService {
   /**
    * Get all company wallets derived from user's master wallet
    */
-  async getUserCompanyWallets(userId: string): Promise<Array<{ companyId: string; companyName: string; ethAddress: string; avaxAddress: string }>> {
+  async getUserCompanyWallets(userId: string): Promise<
+    Array<{
+      companyId: string;
+      companyName: string;
+      ethAddress: string;
+      avaxAddress: string;
+    }>
+  > {
     const userWallet = await this.userWalletRepo.findOne({
       where: { userId },
     });
@@ -798,7 +977,7 @@ export class WalletGenerationService {
       relations: ['company'],
     });
 
-    return companyWallets.map(cw => ({
+    return companyWallets.map((cw) => ({
       companyId: cw.companyId,
       companyName: cw.company.name,
       ethAddress: cw.ethAddress,
@@ -811,7 +990,7 @@ export class WalletGenerationService {
    * Supports both:
    * 1. Company wallet addresses (child addresses from company wallet derivation)
    * 2. User master wallet addresses (parent wallet from user wallet derivation)
-   * 
+   *
    * Used to verify recipient before sending funds
    */
   async lookupWalletAddress(address: string, chain: 'ethereum' | 'avalanche') {
@@ -824,13 +1003,17 @@ export class WalletGenerationService {
       company = await this.companyRepo
         .createQueryBuilder('company')
         .leftJoinAndSelect('company.wishlistItems', 'wishlistItems')
-        .where('LOWER(company.ethAddress) = :ethAddress', { ethAddress: address_lower })
+        .where('LOWER(company.ethAddress) = :ethAddress', {
+          ethAddress: address_lower,
+        })
         .getOne();
     } else {
       company = await this.companyRepo
         .createQueryBuilder('company')
         .leftJoinAndSelect('company.wishlistItems', 'wishlistItems')
-        .where('LOWER(company.avaxAddress) = :avaxAddress', { avaxAddress: address_lower })
+        .where('LOWER(company.avaxAddress) = :avaxAddress', {
+          avaxAddress: address_lower,
+        })
         .getOne();
     }
 
@@ -844,7 +1027,9 @@ export class WalletGenerationService {
           .leftJoinAndSelect('user.userWallet', 'userWallet')
           .leftJoinAndSelect('user.companies', 'companies')
           .leftJoinAndSelect('companies.wishlistItems', 'wishlistItems')
-          .where('LOWER(userWallet.ethAddress) = :ethAddress', { ethAddress: address_lower })
+          .where('LOWER(userWallet.ethAddress) = :ethAddress', {
+            ethAddress: address_lower,
+          })
           .getOne();
       } else {
         user = await this.userRepo
@@ -852,32 +1037,37 @@ export class WalletGenerationService {
           .leftJoinAndSelect('user.userWallet', 'userWallet')
           .leftJoinAndSelect('user.companies', 'companies')
           .leftJoinAndSelect('companies.wishlistItems', 'wishlistItems')
-          .where('LOWER(userWallet.avaxAddress) = :avaxAddress', { avaxAddress: address_lower })
+          .where('LOWER(userWallet.avaxAddress) = :avaxAddress', {
+            avaxAddress: address_lower,
+          })
           .getOne();
       }
 
       // If found as user with companies, aggregate bounties from all their companies
       if (user && user.companies && user.companies.length > 0) {
         // Get all wishlist items from all user's companies
-        const allWishlistIds = user.companies.flatMap(comp => 
-          comp.wishlistItems?.map(w => w.id) || []
+        const allWishlistIds = user.companies.flatMap(
+          (comp) => comp.wishlistItems?.map((w) => w.id) || [],
         );
 
         let bounties: any[] = [];
         if (allWishlistIds.length > 0) {
-          const deployments = await this.escrowDeploymentRepo.createQueryBuilder('ed')
-            .where('ed.wishlistItemId IN (:...wishlistIds)', { wishlistIds: allWishlistIds })
+          const deployments = await this.escrowDeploymentRepo
+            .createQueryBuilder('ed')
+            .where('ed.wishlistItemId IN (:...wishlistIds)', {
+              wishlistIds: allWishlistIds,
+            })
             .andWhere('ed.chain = :chain', { chain })
             .leftJoinAndSelect('ed.wishlistItem', 'wi')
             .getMany();
 
           bounties = deployments
-            .filter(d => {
+            .filter((d) => {
               // Only show active bounties (not expired)
               const now = new Date();
               return d.deadline > now;
             })
-            .map(d => ({
+            .map((d) => ({
               id: d.id,
               title: d.wishlistItem?.title || 'Unnamed Bounty',
               description: d.wishlistItem?.description,
@@ -893,7 +1083,7 @@ export class WalletGenerationService {
         // Return all companies and their bounties
         return {
           isUserMasterWallet: true,
-          companies: user.companies.map(c => ({
+          companies: user.companies.map((c) => ({
             id: c.id,
             name: c.name,
             description: c.description,
@@ -907,23 +1097,24 @@ export class WalletGenerationService {
     }
 
     // Found as company wallet - return single company
-    const wishlistIds = company.wishlistItems?.map(w => w.id) || [];
-    
+    const wishlistIds = company.wishlistItems?.map((w) => w.id) || [];
+
     let bounties: any[] = [];
     if (wishlistIds.length > 0) {
-      const deployments = await this.escrowDeploymentRepo.createQueryBuilder('ed')
+      const deployments = await this.escrowDeploymentRepo
+        .createQueryBuilder('ed')
         .where('ed.wishlistItemId IN (:...wishlistIds)', { wishlistIds })
         .andWhere('ed.chain = :chain', { chain })
         .leftJoinAndSelect('ed.wishlistItem', 'wi')
         .getMany();
 
       bounties = deployments
-        .filter(d => {
+        .filter((d) => {
           // Only show active bounties (not expired)
           const now = new Date();
           return d.deadline > now;
         })
-        .map(d => ({
+        .map((d) => ({
           id: d.id,
           title: d.wishlistItem?.title || 'Unnamed Bounty',
           description: d.wishlistItem?.description,

@@ -128,9 +128,6 @@
     error = null;
 
     try {
-      // Note: MetaMask connection check removed for now
-      // In production, uncomment the section below to require MetaMask connection
-      /*
       if (!window.ethereum) {
         error = 'MetaMask not installed. Please install MetaMask to use USDC payments.';
         return;
@@ -145,14 +142,6 @@
       const userAddress = accounts[0];
       const balance = await getUSDCBalance(selectedPaymentChain, userAddress);
       usdcBalance = balance;
-      */
-
-      // For now, skip balance check and proceed to payment
-      usdcBalance = {
-        raw: '0',
-        formatted: '0.00 USDC',
-        decimals: 6
-      };
 
       // Also load platform receiver address
       await loadPlatformInfo();

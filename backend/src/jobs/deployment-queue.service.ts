@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { ConfigService } from '@nestjs/config';
 
@@ -28,9 +33,12 @@ export class DeploymentQueueService implements OnModuleInit, OnModuleDestroy {
   constructor(private configService: ConfigService) {}
 
   async onModuleInit() {
-    const redisUrl = this.configService.get<string>('REDIS_URL') || 'redis://localhost:6379';
-    
-    this.logger.log(`📡 Connecting to Redis for deployment queue: ${redisUrl.replace(/:[^:]*@/, ':****@')}`);
+    const redisUrl =
+      this.configService.get<string>('REDIS_URL') || 'redis://localhost:6379';
+
+    this.logger.log(
+      `📡 Connecting to Redis for deployment queue: ${redisUrl.replace(/:[^:]*@/, ':****@')}`,
+    );
 
     // Parse Redis URL to get connection options
     const redisConfig = this.parseRedisUrl(redisUrl);
@@ -135,7 +143,7 @@ export class DeploymentQueueService implements OnModuleInit, OnModuleDestroy {
   }> {
     try {
       const job = await this.queue.getJob(jobId);
-      
+
       if (!job) {
         return { status: 'not-found' };
       }

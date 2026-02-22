@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddMultichainToCompanyWallets1771000000001 implements MigrationInterface {
+export class AddMultichainToCompanyWallets1771000000001
+  implements MigrationInterface
+{
   name = 'AddMultichainToCompanyWallets1771000000001';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -13,8 +15,14 @@ export class AddMultichainToCompanyWallets1771000000001 implements MigrationInte
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "company_wallets" DROP COLUMN IF EXISTS "solanaAddress"`);
-    await queryRunner.query(`ALTER TABLE "company_wallets" DROP COLUMN IF EXISTS "stellarAddress"`);
-    await queryRunner.query(`ALTER TABLE "company_wallets" DROP COLUMN IF EXISTS "bitcoinAddress"`);
+    await queryRunner.query(
+      `ALTER TABLE "company_wallets" DROP COLUMN IF EXISTS "solanaAddress"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "company_wallets" DROP COLUMN IF EXISTS "stellarAddress"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "company_wallets" DROP COLUMN IF EXISTS "bitcoinAddress"`,
+    );
   }
 }

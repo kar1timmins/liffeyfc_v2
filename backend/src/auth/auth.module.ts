@@ -14,13 +14,19 @@ import { GoogleStrategy } from './google.strategy';
 
 @Module({
   imports: [
-    UsersModule, 
-    Web3Module, 
+    UsersModule,
+    Web3Module,
     CommonModule,
-    TypeOrmModule.forFeature([RefreshToken]), 
-    PassportModule.register({ defaultStrategy: 'jwt' })
+    TypeOrmModule.forFeature([RefreshToken]),
+    PassportModule.register({ defaultStrategy: 'jwt' }),
   ],
-  providers: [AuthService, JwtStrategy, GoogleStrategy, SecurityMonitoringService, TokenCleanupService],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    GoogleStrategy,
+    SecurityMonitoringService,
+    TokenCleanupService,
+  ],
   controllers: [AuthController],
   exports: [AuthService, SecurityMonitoringService, TokenCleanupService],
 })

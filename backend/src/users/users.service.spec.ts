@@ -16,13 +16,21 @@ describe('UsersService (unit, mocked repos)', () => {
     const walletsStore: Record<string, any> = {};
 
     usersRepo = {
-      create: jest.fn().mockImplementation((payload) => ({ id: `u-${Object.keys(usersStore).length + 1}`, ...payload })),
+      create: jest.fn().mockImplementation((payload) => ({
+        id: `u-${Object.keys(usersStore).length + 1}`,
+        ...payload,
+      })),
       save: jest.fn().mockImplementation(async (user: any) => {
         usersStore[user.id] = user;
         return user;
       }),
       findOne: jest.fn().mockImplementation(async (opts: any) => {
-        if (opts.where?.email) return Object.values(usersStore).find((u: any) => u.email === opts.where.email) || null;
+        if (opts.where?.email)
+          return (
+            Object.values(usersStore).find(
+              (u: any) => u.email === opts.where.email,
+            ) || null
+          );
         if (opts.where?.id) return usersStore[opts.where.id] || null;
         return null;
       }),
@@ -30,10 +38,14 @@ describe('UsersService (unit, mocked repos)', () => {
 
     walletsRepo = {
       findOne: jest.fn().mockImplementation(async (opts: any) => {
-        if (opts.where?.address) return walletsStore[opts.where.address] || null;
+        if (opts.where?.address)
+          return walletsStore[opts.where.address] || null;
         return null;
       }),
-      create: jest.fn().mockImplementation((payload) => ({ id: `w-${Object.keys(walletsStore).length + 1}`, ...payload })),
+      create: jest.fn().mockImplementation((payload) => ({
+        id: `w-${Object.keys(walletsStore).length + 1}`,
+        ...payload,
+      })),
       save: jest.fn().mockImplementation(async (w: any) => {
         walletsStore[w.address] = w;
         return w;

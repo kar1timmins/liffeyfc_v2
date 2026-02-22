@@ -44,9 +44,10 @@ export class LoggerService {
    */
   error(namespace: string, message: string, error?: Error | any) {
     const timestamp = new Date().toISOString();
-    const errorInfo = error instanceof Error 
-      ? { message: error.message, stack: error.stack }
-      : error;
+    const errorInfo =
+      error instanceof Error
+        ? { message: error.message, stack: error.stack }
+        : error;
     const ctx = errorInfo ? ` | ${JSON.stringify(errorInfo)}` : '';
     console.error(`[${timestamp}] ❌ [${namespace}] ${message}${ctx}`);
   }
