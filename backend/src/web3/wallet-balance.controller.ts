@@ -266,6 +266,83 @@ export class WalletBalanceController {
     }
   }
 
+  @Get('usdc')
+  async getUsdcBalance(
+    @Query('address') address: string,
+    @Query('chain') chain: string,
+  ) {
+    if (!address || !chain) {
+      throw new HttpException(
+        'Address and chain are required',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+      throw new HttpException(
+        'Invalid EVM address format',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (chain !== 'ethereum' && chain !== 'avalanche') {
+      throw new HttpException(
+        'USDC balance is only available for ethereum and avalanche',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const usdcContracts: Record<string, string> = {
+      ethereum: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238', // Sepolia
+      avalanche: '0x5425890298aed601595a70AB815c96711a31Bc65', // Fuji
+    };
+    const contractAddress = usdcContracts[chain];
+
+    // Encode balanceOf(address): selector 0x70a08231 + address padded to 32 bytes
+    const paddedAddress = address.toLowerCase().replace('0x', '').padStart(64, '0');
+    const callData = `0x70a08231${paddedAddress}`;
+
+    const rpcEndpoints =
+      chain === 'ethereum' ? this.sepoliaRpcEndpoints : [this.fujiRpc];
+    let lastError: any;
+
+    for (const rpcUrl of rpcEndpoints) {
+      try {
+        const response = await fetch(rpcUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'eth_call',
+            params: [{ to: contractAddress, data: callData }, 'latest'],
+            id: 1,
+          }),
+        });
+        const data = await response.json();
+        if (data.result) {
+          const rawBalance = BigInt(data.result);
+          const balanceUsdc = Number(rawBalance) / 1e6;
+          return {
+            chain,
+            address,
+            contractAddress,
+            balanceRaw: rawBalance.toString(),
+            balanceUsdc: balanceUsdc.toFixed(2),
+          };
+        } else if (data.error) {
+          lastError = data.error;
+          continue;
+        }
+      } catch (err) {
+        lastError = err;
+        continue;
+      }
+    }
+
+    throw new HttpException(
+      `Failed to fetch USDC balance: ${lastError?.message ?? 'Unknown error'}`,
+      HttpStatus.SERVICE_UNAVAILABLE,
+    );
+  }
+
   @Get('gas-price')
   async getGasPrice(@Query('chain') chain: string) {
     if (!chain) {

@@ -3,7 +3,6 @@
   import { PUBLIC_API_URL } from '$env/static/public';
   import { authStore } from '$lib/stores/auth';
   import { toastStore } from '$lib/stores/toast';
-  import { getUSDCBalance, formatUSDC } from '$lib/web3/usdc';
 
   let { 
     usdcWallet = null,
@@ -158,8 +157,14 @@
   }
 
   async function fetchBalance() {
-    // determine address based on selected chain (usdcWallet for EVM, displayWallet otherwise)
-    const addr = usdcWallet || displayWallet;
+    // Use the address that belongs to the selected chain
+    let addr: string;
+    if (selectedChain === 'ethereum' || selectedChain === 'avalanche') {
+      addr = usdcWallet || displayWallet;
+    } else {
+      addr = displayWallet;
+    }
+
     if (!addr) {
       balance = null;
       return;
@@ -167,24 +172,27 @@
 
     isLoadingBalance = true;
     try {
-      // for ethereum/avalanche show USDC balance using helper
       if (selectedChain === 'ethereum' || selectedChain === 'avalanche') {
-        try {
-          const usdcBal = await getUSDCBalance(selectedChain, addr);
-          balance = `${formatUSDC(usdcBal.formatted)} USDC`;
-        } catch (error: any) {
-          console.error('Failed to fetch USDC balance:', error);
-          balance = 'Error fetching USDC balance';
+        // Fetch USDC token balance via backend proxy (ERC20 balanceOf)
+        const response = await fetch(`${PUBLIC_API_URL}/wallet-balance/usdc?address=${encodeURIComponent(addr)}&chain=${selectedChain}`);
+        if (!response.ok) {
+          balance = 'Unable to fetch USDC balance';
+          return;
         }
-      } else {
-        // for non-EVM chains just show native balance using existing backend endpoint
-        const response = await fetch(`${PUBLIC_API_URL}/wallet-balance?address=${addr}&chain=${selectedChain}`);
         const data = await response.json();
-
-        if (data.balanceEth !== undefined) {
-          balance = `${parseFloat(data.balanceEth).toFixed(4)} ETH`;
-        } else if (data.balanceAvax !== undefined) {
-          balance = `${parseFloat(data.balanceAvax).toFixed(4)} AVAX`;
+        balance = `${parseFloat(data.balanceUsdc).toFixed(2)} USDC`;
+      } else {
+        // Non-EVM chains: show native balance (no USDC contract available)
+        const response = await fetch(`${PUBLIC_API_URL}/wallet-balance?address=${encodeURIComponent(addr)}&chain=${selectedChain}`);
+        if (!response.ok) {
+          balance = 'Unable to fetch balance';
+          return;
+        }
+        const data = await response.json();
+        if (data.balanceSol !== undefined) {
+          balance = `${parseFloat(data.balanceSol).toFixed(6)} SOL`;
+        } else if (data.balanceXlm !== undefined) {
+          balance = `${parseFloat(data.balanceXlm).toFixed(6)} XLM`;
         } else {
           balance = 'Unable to fetch balance';
         }
@@ -293,18 +301,14 @@
           
           {#if balance !== null}
             <div class="bg-base-100 rounded p-3 border border-base-300">
-              <p class="text-xs opacity-60">Balance</p>
+              <p class="text-xs opacity-60">
+                {selectedChain === 'ethereum' || selectedChain === 'avalanche' ? 'USDC Balance' : 'Native Balance'}
+              </p>
               <p class="text-lg font-semibold">{balance}</p>
-              {#if selectedChain === 'ethereum' || selectedChain === 'avalanche'}
+              {#if selectedChain !== 'ethereum' && selectedChain !== 'avalanche'}
                 <p class="text-xs opacity-50 mt-1">
-                  Shown amount is your USDC token balance on
-                  {selectedChain === 'ethereum' ? ' Sepolia' : ' Fuji'} network.
-                </p>
-              {:else}
-                <p class="text-xs opacity-50 mt-1">
-                  USDC payments are only supported on Ethereum/Avalanche. This value
-                  reflects your native {selectedChain === 'solana' ? 'SOL' : 'XLM'}
-                  balance and will not be used for USDC billing.
+                  USDC payments are only supported on Ethereum/Avalanche. This reflects your
+                  native {selectedChain === 'solana' ? 'SOL' : 'XLM'} balance.
                 </p>
               {/if}
             </div>

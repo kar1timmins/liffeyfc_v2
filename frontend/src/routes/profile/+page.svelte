@@ -26,7 +26,7 @@
   let loadingWallet = $state(false);
 
   // control whether address list is shown
-  let masterWalletExpanded = $state(false);
+  let masterWalletExpanded = $state(true);
   let masterBalances = $state<{ [chain: string]: string }>({});
 
 
@@ -630,7 +630,9 @@
               </button>
             </div>
           </div>
-        {:else}
+        {:else if masterWallet && !masterWalletExpanded}
+          <!-- wallet exists but section is collapsed; show nothing -->
+        {:else if !masterWallet}
           <div class="alert alert-info">
             <Wallet size={18} />
             <div>
