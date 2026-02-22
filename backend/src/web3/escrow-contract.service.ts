@@ -361,7 +361,7 @@ export class EscrowContractService {
       throw new BadRequestException('Failed to access mnemonic');
     }
 
-    const { solanaPrivateKey, stellarPrivateKey } =
+    const { solanaPrivateKey, stellarPrivateKey, bitcoinPrivateKey } =
       this.walletGenerationService.deriveNonEvmKeys(mnemonic);
     if (chain === 'solana') {
       if (!solanaPrivateKey)
@@ -372,6 +372,11 @@ export class EscrowContractService {
       if (!stellarPrivateKey)
         throw new BadRequestException('Stellar key derivation failed');
       return stellarPrivateKey;
+    }
+    if (chain === 'bitcoin') {
+      if (!bitcoinPrivateKey)
+        throw new BadRequestException('Bitcoin key derivation failed');
+      return bitcoinPrivateKey; // raw hex private key
     }
 
     // fallback should not happen
@@ -2192,18 +2197,19 @@ export class EscrowContractService {
       }
 
       if (chain === 'bitcoin') {
-        // simple validation for testnet bech32 address
-        if (!/^(?:tb1|bc1)[a-z0-9]{25,39}$/.test(recipientAddress)) {
-          throw new Error('Invalid Bitcoin address');
+        // mainnet bc1q (P2WPKH) address validation
+        if (!/^bc1[a-z0-9]{25,80}$/.test(recipientAddress)) {
+          throw new Error('Invalid Bitcoin address (expected mainnet bc1... address)');
         }
         // build and broadcast a simple P2WPKH transaction using Blockstream API
         const wif = await this.getUserPrivateKey(userId, 'bitcoin');
         // instantiate factory each time in case networks object not yet configured
-        const ECPair = ECPairFactory({ network: networks.testnet });
-        const keyPair = ECPair.fromWIF(wif);
+        const ECPair = ECPairFactory({ network: networks.bitcoin });
+        // wif is a raw hex private key; use fromPrivateKey instead of fromWIF
+        const keyPair = ECPair.fromPrivateKey(Buffer.from(wif.replace(/^0x/, ''), 'hex'), { network: networks.bitcoin });
         const { address: fromAddr } = payments.p2wpkh({
           pubkey: keyPair.publicKey,
-          network: networks.testnet,
+          network: networks.bitcoin,
         });
 
         if (!fromAddr) {
@@ -2212,19 +2218,19 @@ export class EscrowContractService {
 
         // fetch UTXOs
         const utxoResp = await fetch(
-          `https://blockstream.info/testnet/api/address/${fromAddr}/utxo`,
+          `https://blockstream.info/api/address/${fromAddr}/utxo`,
         );
         if (!utxoResp.ok) throw new Error('Failed to fetch UTXOs');
         const utxos: Array<{ txid: string; vout: number; value: number }> =
           await utxoResp.json();
-        const psbt = new Psbt({ network: networks.testnet });
+        const psbt = new Psbt({ network: networks.bitcoin });
         let totalSats = 0;
         for (const u of utxos) {
           psbt.addInput({
             hash: u.txid,
             index: u.vout,
             witnessUtxo: {
-              script: address.toOutputScript(fromAddr, networks.testnet),
+              script: address.toOutputScript(fromAddr, networks.bitcoin),
               value: u.value,
             },
           });
@@ -2243,7 +2249,7 @@ export class EscrowContractService {
         psbt.finalizeAllInputs();
         const rawTx = psbt.extractTransaction().toHex();
         const broadcastResp = await fetch(
-          'https://blockstream.info/testnet/api/tx',
+          'https://blockstream.info/api/tx',
           { method: 'POST', body: rawTx },
         );
         if (!broadcastResp.ok) {
@@ -2251,7 +2257,7 @@ export class EscrowContractService {
           throw new Error(`Broadcast failed: ${errText}`);
         }
         const txid = await broadcastResp.text();
-        const explorerUrl = `https://www.blockstream.info/testnet/tx/${txid}`;
+        const explorerUrl = `https://www.blockstream.info/tx/${txid}`;
         return {
           transactionHash: txid,
           from: fromAddr,

@@ -54,10 +54,10 @@ export class WalletBalanceController {
         );
       }
     } else if (chain === 'bitcoin') {
-      // simple testnet bech32 validation
-      if (!/^(?:tb1|bc1)[a-z0-9]{25,39}$/.test(address)) {
+      // mainnet P2WPKH bech32 (bc1q...)
+      if (!/^bc1[a-z0-9]{25,80}$/.test(address)) {
         throw new HttpException(
-          'Invalid Bitcoin address format',
+          'Invalid Bitcoin address format (expected mainnet bc1... address)',
           HttpStatus.BAD_REQUEST,
         );
       }
@@ -242,9 +242,9 @@ export class WalletBalanceController {
 
   private async getBitcoinBalance(address: string) {
     try {
-      // use blockstream testnet API to get utxos and sum values
+      // addresses are mainnet bc1q (P2WPKH); use mainnet Blockstream API
       const resp = await fetch(
-        `https://blockstream.info/testnet/api/address/${address}/utxo`,
+        `https://blockstream.info/api/address/${address}/utxo`,
       );
       if (!resp.ok) {
         throw new Error(`Blockstream returned ${resp.status}`);

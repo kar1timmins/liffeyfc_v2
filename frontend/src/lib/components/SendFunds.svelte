@@ -120,7 +120,7 @@
 		avalanche: 'https://testnet.snowtrace.io/tx/',
 		solana: 'https://explorer.solana.com/tx/',
 		stellar: 'https://stellarscan.io/tx/',
-		bitcoin: 'https://www.blockstream.info/testnet/tx/'
+		bitcoin: 'https://www.blockstream.info/tx/'
 	};
 
 	// Reactive effect: Update recipient address when bounty is selected

@@ -3,6 +3,7 @@
   import { PUBLIC_API_URL } from '$env/static/public';
   import { authStore } from '$lib/stores/auth';
   import { toastStore } from '$lib/stores/toast';
+  import { getUSDCBalance, formatUSDC } from '$lib/web3/usdc';
 
   let { 
     usdcWallet = null,
@@ -157,12 +158,6 @@
   }
 
   async function fetchBalance() {
-    // only USDC balances exist on EVM networks; show zero for others to avoid confusion
-    if (selectedChain !== 'ethereum' && selectedChain !== 'avalanche') {
-      balance = '0.00 USDC';
-      return;
-    }
-
     // determine address based on selected chain (usdcWallet for EVM, displayWallet otherwise)
     const addr = usdcWallet || displayWallet;
     if (!addr) {
@@ -172,15 +167,27 @@
 
     isLoadingBalance = true;
     try {
-      const response = await fetch(`${PUBLIC_API_URL}/wallet-balance?address=${addr}&chain=${selectedChain}`);
-      const data = await response.json();
-
-      if (data.balanceEth !== undefined) {
-        balance = `${parseFloat(data.balanceEth).toFixed(4)} ${selectedChain === 'ethereum' ? 'ETH' : 'AVAX'}`;
-      } else if (data.balanceAvax !== undefined) {
-        balance = `${parseFloat(data.balanceAvax).toFixed(4)} AVAX`;
+      // for ethereum/avalanche show USDC balance using helper
+      if (selectedChain === 'ethereum' || selectedChain === 'avalanche') {
+        try {
+          const usdcBal = await getUSDCBalance(selectedChain, addr);
+          balance = `${formatUSDC(usdcBal.formatted)} USDC`;
+        } catch (error: any) {
+          console.error('Failed to fetch USDC balance:', error);
+          balance = 'Error fetching USDC balance';
+        }
       } else {
-        balance = 'Unable to fetch balance';
+        // for non-EVM chains just show native balance using existing backend endpoint
+        const response = await fetch(`${PUBLIC_API_URL}/wallet-balance?address=${addr}&chain=${selectedChain}`);
+        const data = await response.json();
+
+        if (data.balanceEth !== undefined) {
+          balance = `${parseFloat(data.balanceEth).toFixed(4)} ETH`;
+        } else if (data.balanceAvax !== undefined) {
+          balance = `${parseFloat(data.balanceAvax).toFixed(4)} AVAX`;
+        } else {
+          balance = 'Unable to fetch balance';
+        }
       }
     } catch (err) {
       console.error('Error fetching balance:', err);
@@ -288,7 +295,12 @@
             <div class="bg-base-100 rounded p-3 border border-base-300">
               <p class="text-xs opacity-60">Balance</p>
               <p class="text-lg font-semibold">{balance}</p>
-              {#if selectedChain !== 'ethereum' && selectedChain !== 'avalanche'}
+              {#if selectedChain === 'ethereum' || selectedChain === 'avalanche'}
+                <p class="text-xs opacity-50 mt-1">
+                  Shown amount is your USDC token balance on
+                  {selectedChain === 'ethereum' ? ' Sepolia' : ' Fuji'} network.
+                </p>
+              {:else}
                 <p class="text-xs opacity-50 mt-1">
                   USDC payments are only supported on Ethereum/Avalanche. This value
                   reflects your native {selectedChain === 'solana' ? 'SOL' : 'XLM'}
