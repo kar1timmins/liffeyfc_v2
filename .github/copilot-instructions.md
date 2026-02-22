@@ -13,6 +13,8 @@ Purpose: quick rules and references to help AI agents be productive in this repo
 
 - **Architectural decisions agents should remember**:
   - Three-tier wallet model: master user wallet -> child company wallets -> escrow contracts. See [docs/MASTER_WALLET_LOOKUP.md](../docs/MASTER_WALLET_LOOKUP.md).
+  - Cross-chain contributions: contracts deploy only on ETH/AVAX but donations may arrive on SOL/XLM/BTC; manual contributions are recorded and converted to EUR. `BountiesService` aggregates totals in EUR and exposes `totalRaisedEur`.
+  - Crypto price service (`backend/src/web3/crypto-prices.service.ts`) provides EUR conversion for ETH, AVAX (Chainlink) and SOL/XLM/BTC (CoinGecko) with 5‑minute cache.
   - All Web3 RPC calls are proxied through the backend (`/wallet-balance`, `/wallet/lookup`) — do not call RPC endpoints directly from the frontend.
   - SIWE nonce storage uses Redis via `backend/src/web3/nonce.redis.service.ts` (fallback in-memory used when `REDIS_URL` is not set).
   - Use TypeORM migrations in the backend (dev uses synchronize; production must run migrations explicitly).
@@ -42,9 +44,13 @@ Purpose: quick rules and references to help AI agents be productive in this repo
 
 - **Quick API & files**:
   - Wallet lookup: `GET /wallet/lookup?address=<addr>&chain=<ethereum|avalanche>` (`backend/src/web3/wallet-generation.service.ts`).
-  - Wallet balance proxy: `GET /wallet-balance?address=<addr>&chain=<ethereum|avalanche>` and `GET /wallet-balance/gas-price?chain=<chain>` (`backend/src/web3/wallet-balance.controller.ts`).
+  - Wallet balance proxy: `GET /wallet-balance?address=<addr>&chain=<ethereum|avalanche|solana|stellar>` and `GET /wallet-balance/gas-price?chain=<chain>` (`backend/src/web3/wallet-balance.controller.ts`). Solana and Stellar support is now added (using public RPC/Horizon).
   - SIWE endpoints: `GET /auth/siwe/message/:address` & `POST /auth/siwe/verify` (`backend/src/auth/`).
-  - Bounties endpoints: `GET /bounties`, `POST /bounties`, `GET /bounties/:id/contributors` (`backend/src/bounties/`).
+  - Bounties endpoints: `GET /bounties`, `POST /bounties`, `GET /bounties/:id/contributors`, POST `/bounties/:id/contributions/manual` (`backend/src/bounties/`).
+- Wallet secrets endpoint: `GET /wallet/download` returns decrypted mnemonic/private key for current user (used by `/settings`).
+  - Additional price helpers: `backend/src/web3/crypto-prices.service.ts` now includes `getPriceEur`/`toEur` for ETH, AVAX, SOL, XLM, BTC (Chainlink + CoinGecko).
+  - Balance proxy expanded to handle Solana & Stellar using `getBalance` RPC and Horizon respectively.
+  - Master wallet address endpoints: `GET /wallet/addresses` used by profile/dashboard; now returns solana/stellar/bitcoin fields too.
   - Hardhat scripts: `hardhat/scripts/*` (deploy, test, factory scripts). TypeChain types output location: `hardhat/types/` or `typechain/` (check `hardhat.config.ts`).
 
 - **Quick commands**:
@@ -56,9 +62,11 @@ Purpose: quick rules and references to help AI agents be productive in this repo
 
 - **Common pitfalls / tips**:
   - Do not call RPC endpoints directly from the frontend. Use the backend wallet proxy to avoid CORS and to centralize multiple RPC fallbacks.
+  - When extending contributions to new chains (SOL, XLM, BTC) add manual recording endpoints and update `BountiesService.enrichWithBlockchainData`.
   - If changing entities, generate & commit TypeORM migrations and update `backend/src/migrations/`.
   - Check `TYPEORM_SYNCHRONIZE` env var — `true` in local/dev but must be `false` in production with migrations run explicitly.
   - For SIWE nonces, prefer the Redis backed service for multi-instance or Docker Compose setups (`REDIS_URL`).
+  - Frontend wallet display components (`profile/+page.svelte`, dashboard) now expect additional address fields; update tests accordingly.
 
 - **Agent guidelines** (what to do / avoid):
   - Favor small, logically-scoped PRs. Preserve existing naming/organization and common DTO patterns.
@@ -97,4 +105,4 @@ chmod +x .github/scripts/check-copilot-instructions.sh
 
 ---
 
-Updated: 2025-12-13 by automation
+Updated: 2026-02-22 by automation

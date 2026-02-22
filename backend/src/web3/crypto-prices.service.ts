@@ -167,6 +167,62 @@ export class CryptoPricesService implements OnModuleInit {
   /**
    * Clear cache (useful for testing or manual refresh)
    */
+  // ---------------------------------------------------------------------------
+  // Non-EVM price helpers (SOL, XLM, BTC) via CoinGecko free API
+  // ---------------------------------------------------------------------------
+
+  private readonly COINGECKO_ID: Record<string, string> = {
+    SOL: 'solana',
+    XLM: 'stellar',
+    BTC: 'bitcoin',
+  };
+
+  /** In-process cache for CoinGecko prices (symbol → { price, ts }) */
+  private cgCache = new Map<string, { price: number; ts: number }>();
+  private readonly CG_TTL = 5 * 60 * 1000; // 5 minutes
+
+  /**
+   * Returns the EUR price for any supported symbol:
+   * ETH and AVAX come from Chainlink; SOL, XLM, BTC come from CoinGecko.
+   */
+  async getPriceEur(symbol: string): Promise<number> {
+    const s = symbol.toUpperCase();
+    if (s === 'ETH' || s === 'AVAX') {
+      const prices = await this.getPrices();
+      return s === 'ETH' ? prices.ethEur : prices.avaxEur;
+    }
+    return this.fetchCoinGeckoEurPrice(s);
+  }
+
+  /** Convert an amount of any supported crypto to EUR. */
+  async toEur(symbol: string, amount: number): Promise<number> {
+    if (amount <= 0) return 0;
+    const price = await this.getPriceEur(symbol);
+    return amount * price;
+  }
+
+  private async fetchCoinGeckoEurPrice(symbol: string): Promise<number> {
+    const cached = this.cgCache.get(symbol);
+    if (cached && Date.now() - cached.ts < this.CG_TTL) return cached.price;
+
+    const id = this.COINGECKO_ID[symbol];
+    if (!id) return 0;
+
+    try {
+      const url = `https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=eur`;
+      const res = await fetch(url, { headers: { Accept: 'application/json' } });
+      const data: Record<string, { eur?: number }> = await res.json();
+      const price = data[id]?.eur ?? 0;
+      this.cgCache.set(symbol, { price, ts: Date.now() });
+      this.logger.log(`💰 CoinGecko ${symbol}/EUR = ${price}`);
+      return price;
+    } catch (err) {
+      this.logger.warn(`⚠️ CoinGecko ${symbol} fetch failed, using fallback`, String(err));
+      const FALLBACK: Record<string, number> = { SOL: 150, XLM: 0.10, BTC: 80000 };
+      return this.cgCache.get(symbol)?.price ?? (FALLBACK[symbol] ?? 0);
+    }
+  }
+
   async clearCache(): Promise<void> {
     if (this.redis) {
       await this.redis.del(this.CACHE_KEY);

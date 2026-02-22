@@ -20,7 +20,12 @@ async function bootstrap() {
   }
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  
+
+  // Trust the first proxy (Railway, nginx, etc.) so request.ip resolves the real
+  // client IP from X-Forwarded-For rather than the proxy's internal address.
+  // Required for accurate Stripe customer_ip_address in production.
+  app.set('trust proxy', 1);
+
   // Serve static files from uploads directory (disabled - using GCP for profile photos)
   // app.useStaticAssets(join(__dirname, '..', 'uploads'), {
   //   prefix: '/uploads',

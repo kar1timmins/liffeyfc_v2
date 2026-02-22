@@ -22,6 +22,18 @@ export class UserWallet {
   @Column({ type: 'varchar', length: 42, unique: true })
   avaxAddress: string;
 
+  // Solana address (base58, ~44 chars)
+  @Column({ type: 'varchar', length: 64, nullable: true, default: null })
+  solanaAddress: string | null;
+
+  // Stellar public key (G..., 56 chars)
+  @Column({ type: 'varchar', length: 64, nullable: true, default: null })
+  stellarAddress: string | null;
+
+  // Bitcoin P2WPKH bech32 address (bc1q..., 42 chars)
+  @Column({ type: 'varchar', length: 64, nullable: true, default: null })
+  bitcoinAddress: string | null;
+
   // Encrypted mnemonic phrase (12 or 24 words) - CRITICAL: Must be encrypted at rest
   @Column({ type: 'text' })
   encryptedMnemonic: string;

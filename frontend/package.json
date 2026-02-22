@@ -51,6 +51,7 @@
 		]
 	},
 	"dependencies": {
+		"@stripe/crypto": "^0.0.4",
 		"@wagmi/core": "^2.19.0",
 		"@web3modal/ethereum": "^2.7.1",
 		"@web3modal/html": "^2.7.1",

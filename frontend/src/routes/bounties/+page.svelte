@@ -125,6 +125,12 @@
     return 'progress-error';
   }
 
+  function formatCrypto(value: string | number, symbol = 'ETH') {
+    const num = typeof value === 'string' ? parseFloat(value) : value;
+    if (isNaN(num)) return `0 ${symbol}`;
+    return `${num.toFixed(4)} ${symbol}`;
+  }
+
   function formatCurrency(value: string | number) {
     const num = typeof value === 'string' ? parseFloat(value) : value;
     return new Intl.NumberFormat('en-IE', {
@@ -295,18 +301,30 @@
               <div class="space-y-2 mb-4">
                 <div class="flex justify-between text-sm">
                   <span class="font-medium">Target</span>
-                  <span class="font-bold text-primary">{formatCurrency(bounty.targetAmount || 0)}</span>
+                  <span class="font-bold text-primary">
+                    {#if bounty.targetAmountEth}
+                      {formatCrypto(bounty.targetAmountEth)} <span class="opacity-60 text-xs">(≈ {formatCurrency(bounty.targetAmount || 0)})</span>
+                    {:else}
+                      {formatCurrency(bounty.targetAmount || 0)}
+                    {/if}
+                  </span>
                 </div>
                 <div class="flex justify-between text-sm">
                   <span>Raised</span>
-                  <span>{formatCurrency(bounty.raisedAmount || 0)}</span>
+                  <span class="font-semibold text-success">
+                    {#if bounty.targetAmountEth}
+                      {formatCrypto(bounty.raisedAmount || 0)}
+                    {:else}
+                      {formatCurrency(bounty.raisedAmount || 0)}
+                    {/if}
+                  </span>
                 </div>
                 <progress 
                   class="progress {getProgressColor(bounty.progressPercentage || 0)} w-full" 
                   value={bounty.progressPercentage || 0} 
                   max="100"
                 ></progress>
-                <div class="text-xs text-center opacity-70">
+                <div class="text-xs text-center font-semibold opacity-80">
                   {bounty.progressPercentage || 0}% funded
                 </div>
               </div>

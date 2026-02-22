@@ -120,6 +120,20 @@ export class WalletController {
   }
 
   /**
+   * Download master wallet secrets (mnemonic & private key)
+   * GET /wallet/download
+   */
+  @Get('download')
+  @UseGuards(AuthGuard('jwt'))
+  async downloadMasterWallet(@CurrentUser() user: any) {
+    const data = await this.walletService.getMasterWalletDownload(user.sub);
+    if (!data) {
+      return { success: false, message: 'No master wallet found' };
+    }
+    return { success: true, data };
+  }
+
+  /**
    * Get user's wallet addresses
    * GET /wallet/addresses
    */
@@ -139,6 +153,29 @@ export class WalletController {
       success: true,
       data: addresses,
     };
+  }
+
+  /**
+   * Derive and persist multi-chain addresses (Solana, Stellar, Bitcoin)
+   * for wallets generated before multi-chain support was added.
+   * POST /wallet/derive-multichain
+   */
+  @Post('derive-multichain')
+  @UseGuards(AuthGuard('jwt'))
+  async deriveMultichainAddresses(@CurrentUser() user: any) {
+    try {
+      const addresses = await this.walletService.addMultichainAddresses(user.sub);
+      return {
+        success: true,
+        message: 'Multi-chain addresses derived and saved.',
+        data: addresses,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.message || 'Failed to derive multi-chain addresses',
+      };
+    }
   }
 
   /**

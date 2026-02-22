@@ -17,6 +17,10 @@
   let isSending = $state(false);
   let sendSuccess = $state<string | null>(null);
   let sendError = $state<string | null>(null);
+
+  // Live bounty data for escrow-enabled wishlist items (keyed by wishlist item id)
+  let liveBounties = $state<Record<string, any>>({});
+  let isFetchingBounties = $state(false);
   
   // Donation state for wishlist items
   let donationAmounts = $state<Record<string, string>>({});
@@ -27,9 +31,16 @@
   // Bounty contribution state (for escrow-enabled wishlist items)
   let bountyContributions = $state<Record<string, string>>({});
   let contributingBountyId = $state<string | null>(null);
-  let selectedBountyChain = $state<Record<string, 'ethereum' | 'avalanche'>>({});
+  let selectedBountyChain = $state<Record<string, string>>({});
   let bountyContributionSuccess = $state<string | null>(null);
   let bountyContributionError = $state<string | null>(null);
+
+  // Manual (non-EVM) contribution state for SOL / XLM / BTC
+  let manualContribAmounts = $state<Record<string, string>>({});
+  let manualContribTxHashes = $state<Record<string, string>>({});
+  let recordingManualContribId = $state<string | null>(null);
+  let manualContribSuccess = $state<string | null>(null);
+  let manualContribError = $state<string | null>(null);
 
   const companyId = $derived($page.params.id);
   const isInvestor = $derived($authStore.user?.role === 'investor');
@@ -67,6 +78,7 @@
 
   onMount(async () => {
     await fetchCompany();
+    await fetchCompanyBounties();
   });
 
   async function fetchCompany() {
@@ -92,6 +104,74 @@
 
   function goBack() {
     goto('/companies');
+  }
+
+  async function fetchCompanyBounties() {
+    if (!companyId) return;
+    isFetchingBounties = true;
+    try {
+      const res = await fetch(`${PUBLIC_API_URL}/bounties/company/${companyId}`);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        const map: Record<string, any> = {};
+        for (const bounty of data.data) {
+          map[bounty.id] = bounty;
+        }
+        liveBounties = map;
+      }
+    } catch (e) {
+      console.error('Failed to fetch company bounties:', e);
+    } finally {
+      isFetchingBounties = false;
+    }
+  }
+
+  async function recordManualContribution(itemId: string, chain: string) {
+    const amount = manualContribAmounts[itemId];
+    const txHash = manualContribTxHashes[itemId];
+
+    if (!amount || parseFloat(amount) <= 0) {
+      manualContribError = 'Please enter a valid amount';
+      setTimeout(() => (manualContribError = null), 3000);
+      return;
+    }
+    if (!txHash || txHash.trim().length < 10) {
+      manualContribError = 'Please enter a valid transaction hash';
+      setTimeout(() => (manualContribError = null), 3000);
+      return;
+    }
+
+    const token = $authStore.accessToken;
+    if (!token) { manualContribError = 'Not authenticated'; return; }
+
+    recordingManualContribId = itemId;
+    manualContribError = null;
+    manualContribSuccess = null;
+
+    try {
+      const res = await fetch(`${PUBLIC_API_URL}/bounties/${itemId}/contributions/manual`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chain, nativeAmount: parseFloat(amount), transactionHash: txHash.trim() }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        manualContribSuccess = `Contribution recorded! Thank you.`;
+        manualContribAmounts[itemId] = '';
+        manualContribTxHashes[itemId] = '';
+        setTimeout(() => (manualContribSuccess = null), 5000);
+        // Refresh bounty data to update totals
+        await fetchCompanyBounties();
+      } else {
+        manualContribError = result.message || 'Failed to record contribution';
+        setTimeout(() => (manualContribError = null), 4000);
+      }
+    } catch (err: any) {
+      manualContribError = err.message || 'Failed to record contribution';
+      setTimeout(() => (manualContribError = null), 4000);
+    } finally {
+      recordingManualContribId = null;
+    }
   }
 
   function copyAddress(address: string) {
@@ -692,8 +772,19 @@
                   high: 'badge-warning',
                   critical: 'badge-error'
                 }}
-                {@const percentage = item.value ? Math.min(100, ((item.amountRaised || 0) / item.value) * 100) : 0}
-                {@const remaining = item.value ? Math.max(0, item.value - (item.amountRaised || 0)) : 0}
+                {@const liveBounty = item.isEscrowActive ? liveBounties[item.id] : null}
+                {@const percentage = liveBounty
+                  ? (liveBounty.progressPercentage || 0)
+                  : (item.value ? Math.min(100, ((item.amountRaised || 0) / item.value) * 100) : 0)}
+                {@const raisedDisplay = liveBounty
+                  ? (liveBounty.totalRaisedEur > 0
+                      ? `€${(liveBounty.totalRaisedEur as number).toFixed(2)} (all chains)`
+                      : `${parseFloat(liveBounty.raisedAmount || '0').toFixed(4)} ETH`)
+                  : `€${(item.amountRaised || 0).toLocaleString()}`}
+                {@const targetDisplay = liveBounty
+                  ? `€${parseFloat(liveBounty.targetAmount || item.value || '0').toLocaleString()}`
+                  : `€${(item.value || 0).toLocaleString()}`}
+                {@const remaining = liveBounty ? null : (item.value ? Math.max(0, item.value - (item.amountRaised || 0)) : 0)}
                 
                 <div class="glass-subtle rounded-xl p-4 {item.isFulfilled ? 'opacity-60' : ''}">
                   <div class="flex items-start gap-4">
@@ -718,26 +809,32 @@
                         <p class="opacity-80 mb-3">{item.description}</p>
                       {/if}
 
-                      {#if item.value}
-                        <div class="mt-3">
-                          <div class="flex justify-between text-sm mb-2">
-                            <span class="opacity-70">Funding Progress</span>
-                            <span class="font-semibold">{percentage.toFixed(0)}% complete</span>
-                          </div>
-                          <progress class="progress progress-primary w-full h-3 mb-2" value={percentage} max="100"></progress>
-                          <div class="flex justify-between text-sm opacity-70">
-                            <span>Raised: ${(item.amountRaised || 0).toLocaleString()}</span>
-                            <span>Goal: ${item.value.toLocaleString()}</span>
-                          </div>
-                          {#if remaining > 0}
-                            <p class="text-sm mt-2 opacity-60">
-                              ${remaining.toLocaleString()} remaining to reach goal
-                            </p>
-                          {:else}
-                            <p class="text-sm mt-2 text-success font-semibold">
-                              🎉 Goal reached!
-                            </p>
-                          {/if}
+                        {#if item.value}
+                          <div class="mt-3">
+                            <div class="flex justify-between text-sm mb-2">
+                              <span class="opacity-70">Funding Progress
+                                {#if liveBounty && isFetchingBounties}
+                                  <span class="loading loading-xs loading-spinner ml-1"></span>
+                                {:else if liveBounty}
+                                  <span class="badge badge-xs badge-success ml-1">live</span>
+                                {/if}
+                              </span>
+                              <span class="font-semibold">{percentage.toFixed(0)}% complete</span>
+                            </div>
+                            <progress class="progress {percentage >= 100 ? 'progress-success' : percentage >= 75 ? 'progress-info' : percentage >= 50 ? 'progress-warning' : 'progress-primary'} w-full h-3 mb-2" value={percentage} max="100"></progress>
+                            <div class="flex justify-between text-sm opacity-70">
+                              <span>Raised: {raisedDisplay}</span>
+                              <span>Goal: {targetDisplay}</span>
+                            </div>
+                            {#if percentage >= 100}
+                              <p class="text-sm mt-2 text-success font-semibold">
+                                🎉 Goal reached!
+                              </p>
+                            {:else if remaining !== null && remaining > 0}
+                              <p class="text-sm mt-2 opacity-60">
+                                €{remaining.toLocaleString()} remaining to reach goal
+                              </p>
+                            {/if}
 
                           <!-- Contract Info Section for Company Owner -->
                           {#if item.isEscrowActive && isOwner && (item.ethereumEscrowAddress || item.avalancheEscrowAddress)}
@@ -786,13 +883,13 @@
                               {/if}
 
                               <p class="text-xs opacity-70 mt-3">
-                                Investors can now contribute via blockchain escrow. View bounty details in the <a href="/bounties" class="link">Bounties page</a>.
+                                Investors can now contribute via blockchain escrow. View bounty details in the <a href="/bounties" class="link">Bounties page</a>{#if liveBounty} or <a href="/bounties/{item.id}" class="link link-primary">see live progress</a>{/if}.
                               </p>
                             </div>
                           {/if}
 
                           <!-- Escrow Contribution for Investors (Blockchain) -->
-                          {#if item.isEscrowActive && isInvestor && !isOwner && remaining > 0}
+                          {#if item.isEscrowActive && isInvestor && !isOwner && percentage < 100}
                             <div class="mt-4 p-4 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-lg border-2 border-primary/20">
                               <div class="flex items-center gap-2 mb-3">
                                 <span class="badge badge-primary badge-sm">🔗 Blockchain Escrow</span>
@@ -816,28 +913,56 @@
                               <p class="text-sm font-semibold mb-3">Contribute via Smart Contract:</p>
                               
                               <!-- Network Selector -->
-                              <div class="flex gap-2 mb-3">
+                              <div class="flex flex-wrap gap-2 mb-3">
                                 {#if item.ethereumEscrowAddress}
                                   <button
-                                    class="btn btn-sm flex-1 {selectedBountyChain[item.id] === 'ethereum' ? 'btn-primary' : 'btn-outline'}"
+                                    class="btn btn-xs {selectedBountyChain[item.id] === 'ethereum' ? 'btn-primary' : 'btn-outline'}"
                                     onclick={() => selectedBountyChain[item.id] = 'ethereum'}
-                                    disabled={contributingBountyId === item.id}
+                                    disabled={contributingBountyId === item.id || recordingManualContribId === item.id}
                                   >
-                                    Ethereum
+                                    ETH Sepolia
                                   </button>
                                 {/if}
                                 {#if item.avalancheEscrowAddress}
                                   <button
-                                    class="btn btn-sm flex-1 {selectedBountyChain[item.id] === 'avalanche' ? 'btn-primary' : 'btn-outline'}"
+                                    class="btn btn-xs {selectedBountyChain[item.id] === 'avalanche' ? 'btn-primary' : 'btn-outline'}"
                                     onclick={() => selectedBountyChain[item.id] = 'avalanche'}
-                                    disabled={contributingBountyId === item.id}
+                                    disabled={contributingBountyId === item.id || recordingManualContribId === item.id}
                                   >
-                                    Avalanche
+                                    AVAX Fuji
+                                  </button>
+                                {/if}
+                                {#if liveBounty?.solanaWalletAddress}
+                                  <button
+                                    class="btn btn-xs {selectedBountyChain[item.id] === 'solana' ? 'btn-success' : 'btn-outline btn-success'}"
+                                    onclick={() => selectedBountyChain[item.id] = 'solana'}
+                                    disabled={recordingManualContribId === item.id}
+                                  >
+                                    SOL
+                                  </button>
+                                {/if}
+                                {#if liveBounty?.stellarWalletAddress}
+                                  <button
+                                    class="btn btn-xs {selectedBountyChain[item.id] === 'stellar' ? 'btn-warning' : 'btn-outline btn-warning'}"
+                                    onclick={() => selectedBountyChain[item.id] = 'stellar'}
+                                    disabled={recordingManualContribId === item.id}
+                                  >
+                                    XLM
+                                  </button>
+                                {/if}
+                                {#if liveBounty?.bitcoinWalletAddress}
+                                  <button
+                                    class="btn btn-xs {selectedBountyChain[item.id] === 'bitcoin' ? 'btn-warning' : 'btn-outline btn-warning'}"
+                                    onclick={() => selectedBountyChain[item.id] = 'bitcoin'}
+                                    disabled={recordingManualContribId === item.id}
+                                  >
+                                    BTC
                                   </button>
                                 {/if}
                               </div>
                               
-                              {#if selectedBountyChain[item.id]}
+                              {#if selectedBountyChain[item.id] === 'ethereum' || selectedBountyChain[item.id] === 'avalanche'}
+                                <!-- EVM: MetaMask smart contract contribution -->
                                 <div class="flex gap-2">
                                   <input
                                     type="number"
@@ -850,7 +975,7 @@
                                   />
                                   <button 
                                     class="btn btn-primary btn-sm"
-                                    onclick={() => contributeToEscrow(item.id, selectedBountyChain[item.id])}
+                                    onclick={() => contributeToEscrow(item.id, selectedBountyChain[item.id] as 'ethereum' | 'avalanche')}
                                     disabled={contributingBountyId === item.id || !bountyContributions[item.id]}
                                   >
                                     {#if contributingBountyId === item.id}
@@ -864,6 +989,71 @@
                                 <p class="text-xs opacity-60 mt-2">
                                   ⚠️ Funds locked until {new Date(item.campaignDeadline).toLocaleDateString()}. Refunded if target not met (minus gas fees split among contributors).
                                 </p>
+
+                              {:else if selectedBountyChain[item.id] === 'solana' || selectedBountyChain[item.id] === 'stellar' || selectedBountyChain[item.id] === 'bitcoin'}
+                                <!-- Non-EVM: send directly to company wallet, then record here -->
+                                {@const chainLabel = selectedBountyChain[item.id] === 'solana' ? 'SOL' : selectedBountyChain[item.id] === 'stellar' ? 'XLM' : 'BTC'}
+                                {@const walletAddr = selectedBountyChain[item.id] === 'solana'
+                                  ? liveBounty?.solanaWalletAddress
+                                  : selectedBountyChain[item.id] === 'stellar'
+                                    ? liveBounty?.stellarWalletAddress
+                                    : liveBounty?.bitcoinWalletAddress}
+
+                                {#if walletAddr}
+                                  <div class="mb-3">
+                                    <p class="text-xs font-semibold mb-1 opacity-70">Send {chainLabel} to this address:</p>
+                                    <div class="flex items-center gap-2 bg-base-200 rounded px-3 py-2">
+                                      <code class="text-xs break-all flex-1">{walletAddr}</code>
+                                      <button class="btn btn-ghost btn-xs" onclick={() => navigator.clipboard.writeText(walletAddr)} title="Copy">
+                                        <Copy class="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {#if manualContribSuccess}
+                                    <div class="alert alert-success alert-sm mb-2 py-2">
+                                      <span class="text-xs">{manualContribSuccess}</span>
+                                    </div>
+                                  {/if}
+                                  {#if manualContribError}
+                                    <div class="alert alert-error alert-sm mb-2 py-2">
+                                      <span class="text-xs">{manualContribError}</span>
+                                    </div>
+                                  {/if}
+
+                                  <p class="text-xs font-semibold mb-2 opacity-80">After sending, record your contribution:</p>
+                                  <div class="space-y-2">
+                                    <input
+                                      type="number"
+                                      bind:value={manualContribAmounts[item.id]}
+                                      placeholder={`Amount sent in ${chainLabel}`}
+                                      step="0.000001"
+                                      min="0.000001"
+                                      class="input input-bordered input-sm w-full"
+                                      disabled={recordingManualContribId === item.id}
+                                    />
+                                    <input
+                                      type="text"
+                                      bind:value={manualContribTxHashes[item.id]}
+                                      placeholder="Transaction hash"
+                                      class="input input-bordered input-sm w-full font-mono text-xs"
+                                      disabled={recordingManualContribId === item.id}
+                                    />
+                                    <button
+                                      class="btn btn-success btn-sm w-full"
+                                      onclick={() => recordManualContribution(item.id, selectedBountyChain[item.id])}
+                                      disabled={recordingManualContribId === item.id || !manualContribAmounts[item.id] || !manualContribTxHashes[item.id]}
+                                    >
+                                      {#if recordingManualContribId === item.id}
+                                        <span class="loading loading-spinner loading-xs"></span>
+                                      {:else}
+                                        <CheckCircle class="w-4 h-4" />
+                                      {/if}
+                                      Record Contribution
+                                    </button>
+                                  </div>
+                                  <p class="text-xs opacity-50 mt-2">Your contribution will be converted to EUR at the current rate and added to the campaign total.</p>
+                                {/if}
                               {:else}
                                 <p class="text-xs opacity-60 text-center py-2">
                                   ↑ Select a network to contribute
@@ -871,7 +1061,7 @@
                               {/if}
                             </div>
                           <!-- Regular Donation for Investors (Non-escrow) -->
-                          {:else if !item.isEscrowActive && isInvestor && !isOwner && remaining > 0}
+                          {:else if !item.isEscrowActive && isInvestor && !isOwner && (remaining ?? 0) > 0}
                             <div class="mt-4 p-4 bg-base-200/50 rounded-lg">
                               <p class="text-sm font-semibold mb-2">Support this need:</p>
                               <div class="flex gap-2">
@@ -881,7 +1071,7 @@
                                   placeholder="Amount ($)"
                                   step="1"
                                   min="1"
-                                  max={remaining}
+                                  max={remaining ?? undefined}
                                   class="input input-bordered input-sm flex-1"
                                   disabled={donatingItemId === item.id}
                                 />
@@ -904,11 +1094,15 @@
                             </div>
                           {/if}
                         </div>
-                      {:else}
-                        <p class="text-sm opacity-60 mt-2">
-                          {item.amountRaised > 0 ? `Total support received: $${(item.amountRaised || 0).toLocaleString()}` : 'No monetary goal set'}
-                        </p>
-                      {/if}
+                        {:else}
+                          <p class="text-sm opacity-60 mt-2">
+                            {(liveBounty?.raisedAmount && parseFloat(liveBounty.raisedAmount) > 0)
+                              ? `Raised: ${parseFloat(liveBounty.raisedAmount).toFixed(4)} ETH`
+                              : (item.amountRaised > 0 
+                                  ? `Total support received: €${(item.amountRaised || 0).toLocaleString()}` 
+                                  : 'No monetary goal set')}
+                          </p>
+                        {/if}
 
                       {#if item.isFulfilled}
                         <span class="text-success text-sm mt-2 inline-block">✓ Fulfilled</span>

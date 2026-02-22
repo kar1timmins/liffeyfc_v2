@@ -4,11 +4,70 @@
 	import { authStore } from '$lib/stores/auth';
 	import { walletStore, isConnected, formattedAddress } from '$lib/stores/walletStore';
 	import { toastStore } from '$lib/stores/toast';
-	import { User, Settings, Wallet, LogOut, UserCircle, Briefcase, Home, Building2, Target, TrendingUp } from 'lucide-svelte';
+	import { User, Settings, Wallet, LogOut, UserCircle, Briefcase, Home, Building2, Target, TrendingUp, Copy, Check, ExternalLink, ShieldCheck } from 'lucide-svelte';
 	import { PUBLIC_API_URL } from '$env/static/public';
 
 	let user = $state<any>(null);
 	let avatarUrl = $state<string | null>(null);
+
+	// ---- Wallet addresses ----
+	let walletAddresses = $state<{
+		ethAddress: string;
+		avaxAddress: string;
+		solanaAddress: string | null;
+		stellarAddress: string | null;
+		bitcoinAddress: string | null;
+	} | null>(null);
+	let isFetchingWallet = $state(false);
+	let copiedAddress = $state<string | null>(null);
+
+	const walletChains = $derived([
+		{
+			key: 'ethAddress',
+			label: 'Ethereum',
+			badge: 'badge-primary',
+			symbol: 'ETH',
+			address: walletAddresses?.ethAddress ?? null,
+			explorerBase: 'https://sepolia.etherscan.io/address/',
+			explorerLabel: 'Etherscan'
+		},
+		{
+			key: 'avaxAddress',
+			label: 'Avalanche',
+			badge: 'badge-error',
+			symbol: 'AVAX',
+			address: walletAddresses?.avaxAddress ?? null,
+			explorerBase: 'https://testnet.snowtrace.io/address/',
+			explorerLabel: 'Snowtrace'
+		},
+		{
+			key: 'solanaAddress',
+			label: 'Solana',
+			badge: 'badge-secondary',
+			symbol: 'SOL',
+			address: walletAddresses?.solanaAddress ?? null,
+			explorerBase: 'https://explorer.solana.com/address/',
+			explorerLabel: 'Explorer'
+		},
+		{
+			key: 'stellarAddress',
+			label: 'Stellar',
+			badge: 'badge-accent',
+			symbol: 'XLM',
+			address: walletAddresses?.stellarAddress ?? null,
+			explorerBase: 'https://stellar.expert/explorer/public/account/',
+			explorerLabel: 'Explorer'
+		},
+		{
+			key: 'bitcoinAddress',
+			label: 'Bitcoin',
+			badge: 'badge-warning',
+			symbol: 'BTC',
+			address: walletAddresses?.bitcoinAddress ?? null,
+			explorerBase: 'https://mempool.space/address/',
+			explorerLabel: 'Mempool'
+		}
+	]);
 
 	function handleLogout() {
 		authStore.logout();
@@ -52,12 +111,37 @@
 		}
 	}
 
+	async function fetchWalletAddresses() {
+		const token = $authStore.accessToken;
+		if (!token) return;
+		isFetchingWallet = true;
+		try {
+			const res = await fetch(`${PUBLIC_API_URL}/wallet/addresses`, {
+				headers: { Authorization: `Bearer ${token}` }
+			});
+			const data = await res.json();
+			if (data.success && data.data) walletAddresses = data.data;
+		} catch (e) {
+			console.error('Failed to fetch wallet addresses:', e);
+		} finally {
+			isFetchingWallet = false;
+		}
+	}
+
+	async function copyAddress(addr: string) {
+		try {
+			await navigator.clipboard.writeText(addr);
+			copiedAddress = addr;
+			setTimeout(() => (copiedAddress = null), 2000);
+		} catch {}
+	}
+
 	onMount(async () => {
 		const ok = await authStore.verify();
 		if (!ok) goto('/auth');
 		
-		// Fetch full user profile with GCP avatar
-		await fetchUserProfile();
+		// Fetch full user profile and wallet addresses in parallel
+		await Promise.all([fetchUserProfile(), fetchWalletAddresses()]);
 		
 		// Subscribe to auth store for updates
 		authStore.subscribe((s) => {
@@ -221,8 +305,8 @@
 				</div>
 				<p class="text-base-content/70 mb-4 flex-grow">Manage your account settings, preferences, and security options.</p>
 				<div class="card-actions">
-					<button class="btn btn-outline btn-block" disabled>
-						Coming Soon
+				<button class="btn btn-outline btn-block" onclick={() => goto('/settings')}>
+					View Settings
 					</button>
 				</div>
 			</div>
@@ -254,5 +338,89 @@
 				</div>
 			</div>
 		</div>
+	</div>
+
+	<!-- My Wallet Addresses Section -->
+	<div class="mt-8">
+		<div class="flex items-center gap-3 mb-4">
+			<div class="p-2 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/20">
+				<ShieldCheck size={22} class="text-primary" />
+			</div>
+			<h2 class="text-2xl font-bold">My Wallet Addresses</h2>
+			{#if !walletAddresses && !isFetchingWallet}
+				<span class="badge badge-ghost badge-sm">No wallet generated</span>
+			{/if}
+		</div>
+
+		{#if isFetchingWallet}
+			<div class="flex items-center gap-3 p-6 card bg-base-100 shadow">
+				<span class="loading loading-spinner loading-sm"></span>
+				<span class="opacity-70 text-sm">Loading addresses…</span>
+			</div>
+		{:else if !walletAddresses}
+			<div class="card bg-base-100 shadow border border-base-300">
+				<div class="card-body items-center text-center gap-3">
+					<Wallet size={36} class="opacity-30" />
+					<p class="opacity-70">You haven't generated a master wallet yet.</p>
+					<button class="btn btn-primary btn-sm" onclick={() => goto('/profile')}>
+						Generate Wallet
+					</button>
+				</div>
+			</div>
+		{:else}
+			<div class="card bg-base-100 shadow-xl border border-base-300">
+				<div class="card-body p-0">
+					<div class="divide-y divide-base-200">
+						{#each walletChains as chain}
+							<div class="flex items-center gap-4 px-5 py-4 hover:bg-base-50 transition-colors">
+								<!-- Chain label -->
+								<div class="flex items-center gap-2 w-32 shrink-0">
+									<span class="badge {chain.badge} badge-sm">{chain.symbol}</span>
+									<span class="text-sm font-medium opacity-80 hidden sm:inline">{chain.label}</span>
+								</div>
+
+								<!-- Address -->
+								<div class="flex-1 min-w-0">
+									{#if chain.address}
+										<code class="text-xs font-mono break-all opacity-90">{chain.address}</code>
+									{:else}
+										<span class="text-xs opacity-40 italic">Not available (wallet imported via private key)</span>
+									{/if}
+								</div>
+
+								<!-- Actions -->
+								{#if chain.address}
+									<div class="flex items-center gap-1 shrink-0">
+										<button
+											class="btn btn-ghost btn-xs"
+											title="Copy address"
+											onclick={() => copyAddress(chain.address!)}
+										>
+											{#if copiedAddress === chain.address}
+												<Check size={14} class="text-success" />
+											{:else}
+												<Copy size={14} />
+											{/if}
+										</button>
+										<a
+											href="{chain.explorerBase}{chain.address}"
+											target="_blank"
+											rel="noopener noreferrer"
+											class="btn btn-ghost btn-xs"
+											title="View on {chain.explorerLabel}"
+										>
+											<ExternalLink size={14} />
+										</a>
+									</div>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				</div>
+			</div>
+			<p class="text-xs opacity-50 mt-2 ml-1">
+			These are your master wallet addresses derived from your seed phrase. Keep your seed phrase safe and offline.
+		</p>
+		{/if}
 	</div>
 </div>

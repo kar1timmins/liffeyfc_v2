@@ -50,6 +50,18 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+    healthcheck:
+      # Use node itself (always available in alpine) to verify NestJS is accepting connections.
+      # Exits 0 if the server responds with any non-5xx status (including 404 on the root path).
+      test:
+        - CMD
+        - node
+        - -e
+        - "const h=require('http');const r=h.get('http://localhost:3000',res=>{process.exit(res.statusCode<500?0:1)});r.on('error',()=>process.exit(1));r.setTimeout(3000,()=>{r.destroy();process.exit(1)});"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
     restart: unless-stopped
 
   frontend:
@@ -75,8 +87,10 @@ services:
       - ./frontend:/app
       - /app/node_modules
     depends_on:
-      - backend
-      - postgres
+      backend:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
   postgres:

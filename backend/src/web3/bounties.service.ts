@@ -3,9 +3,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { WishlistItem } from '../entities/wishlist-item.entity';
 import { User } from '../entities/user.entity';
+import { Company } from '../entities/company.entity';
+import { CompanyWallet } from '../entities/company-wallet.entity';
 import { Contribution } from '../entities/contribution.entity';
 import { EscrowDeployment } from '../entities/escrow-deployment.entity';
 import { EscrowContractService, ContributorInfo } from './escrow-contract.service';
+import { CryptoPricesService } from './crypto-prices.service';
 
 export interface BountyFilters {
   status?: string;
@@ -21,6 +24,7 @@ export interface BountyDeployment {
   deployedAt: string;
   campaignName?: string | null;
   campaignDescription?: string | null;
+  targetAmountEth?: number | null;
 }
 
 export interface BountyResponse {
@@ -28,8 +32,14 @@ export interface BountyResponse {
   title: string;
   description: string;
   category: string;
+  /** Target in EUR (wishlist item value) */
   targetAmount: string;
+  targetAmountEur: number;
+  targetAmountEth: number | null;
+  /** EVM raised amount in native token as string (ETH or AVAX) */
   raisedAmount: string;
+  /** Total raised across ALL chains, converted to EUR */
+  totalRaisedEur: number;
   progressPercentage: number;
   contributorCount: number;
   deadline: string;
@@ -45,8 +55,25 @@ export interface BountyResponse {
   isEscrowActive: boolean;
   ethereumEscrowAddress: string | null;
   avalancheEscrowAddress: string | null;
+  /** Company child wallet addresses for non-EVM direct contributions */
+  solanaWalletAddress: string | null;
+  stellarWalletAddress: string | null;
+  bitcoinWalletAddress: string | null;
   deployments: BountyDeployment[];
   createdAt: string;
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  id: string;
+  name: string;
+  description?: string;
+  industry?: string;
+  logoUrl?: string;
+  completedBounties: number;
+  activeBounties: number;
+  totalBounties: number;
+  totalRaisedEth: number;
 }
 
 @Injectable()
@@ -58,11 +85,16 @@ export class BountiesService {
     private readonly wishlistRepository: Repository<WishlistItem>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Company)
+    private readonly companyRepository: Repository<Company>,
+    @InjectRepository(CompanyWallet)
+    private readonly companyWalletRepository: Repository<CompanyWallet>,
     @InjectRepository(Contribution)
     private readonly contributionRepository: Repository<Contribution>,
     @InjectRepository(EscrowDeployment)
     private readonly escrowDeploymentRepository: Repository<EscrowDeployment>,
     private readonly escrowService: EscrowContractService,
+    private readonly pricesService: CryptoPricesService,
   ) {}
 
   /**
@@ -396,7 +428,7 @@ export class BountiesService {
 
       // Calculate statistics
       const totalContributions = contributions.reduce(
-        (sum, c) => sum + parseFloat(c.amountEth.toString()),
+        (sum, c) => sum + parseFloat((c.amountEth ?? 0).toString()),
         0,
       );
       const uniqueContributors = new Set(contributions.map(c => c.contributorAddress)).size;
@@ -456,12 +488,15 @@ export class BountiesService {
   }
 
   /**
-   * Enrich wishlist item with blockchain data
+   * Enrich wishlist item with blockchain data.
+   * Returns EVM on-chain data plus EUR totals that aggregate all chains
+   * (ETH escrow + AVAX escrow + manual SOL/XLM/BTC contributions).
    */
   private async enrichWithBlockchainData(
     wishlistItem: WishlistItem,
   ): Promise<BountyResponse> {
     let raisedAmount = '0';
+    let evmRaisedEth = 0;
     let contributorCount = 0;
     let blockchainStatus: 'active' | 'funded' | 'failed' | 'expired' = 'active';
     let deployments: BountyDeployment[] = [];
@@ -481,6 +516,7 @@ export class BountiesService {
         deployedAt: deployment.createdAt.toISOString(),
         campaignName: deployment.campaignName || null,
         campaignDescription: deployment.campaignDescription || null,
+        targetAmountEth: deployment.targetAmountEth ?? null,
       }));
     } catch (error) {
       this.logger.warn(`⚠️  Failed to fetch deployments for ${wishlistItem.id}:`, error.message);
@@ -489,27 +525,26 @@ export class BountiesService {
     // Fetch blockchain data if contracts exist
     if (wishlistItem.ethereumEscrowAddress || wishlistItem.avalancheEscrowAddress) {
       try {
-        // Try Ethereum first
         if (wishlistItem.ethereumEscrowAddress) {
           const ethStatus = await this.escrowService.getCampaignStatus(
             wishlistItem.ethereumEscrowAddress,
             'ethereum',
           );
           raisedAmount = ethStatus.totalRaised;
+          evmRaisedEth = parseFloat(ethStatus.totalRaised);
           contributorCount = ethStatus.contributorCount;
           blockchainStatus = this.mapBlockchainStatus(
             ethStatus.deadline,
             parseFloat(ethStatus.totalRaised),
             parseFloat(wishlistItem.value?.toString() || '0'),
           );
-        }
-        // Fall back to Avalanche
-        else if (wishlistItem.avalancheEscrowAddress) {
+        } else if (wishlistItem.avalancheEscrowAddress) {
           const avaxStatus = await this.escrowService.getCampaignStatus(
             wishlistItem.avalancheEscrowAddress,
             'avalanche',
           );
           raisedAmount = avaxStatus.totalRaised;
+          evmRaisedEth = parseFloat(avaxStatus.totalRaised);
           contributorCount = avaxStatus.contributorCount;
           blockchainStatus = this.mapBlockchainStatus(
             avaxStatus.deadline,
@@ -525,12 +560,68 @@ export class BountiesService {
       }
     }
 
-    // Calculate progress percentage
-    const targetAmount = parseFloat(wishlistItem.value?.toString() || '0');
-    const raised = parseFloat(raisedAmount);
-    const progressPercentage = targetAmount > 0 ? Math.min((raised / targetAmount) * 100, 100) : 0;
+    // ---- Cross-chain EUR aggregation ------------------------------------
+    const targetAmountEur = parseFloat(wishlistItem.value?.toString() || '0');
 
-    // Determine final status
+    // Convert EVM raised amount to EUR
+    let evmRaisedEur = 0;
+    try {
+      const priceSymbol = wishlistItem.ethereumEscrowAddress ? 'ETH' : 'AVAX';
+      evmRaisedEur = await this.pricesService.toEur(priceSymbol, evmRaisedEth);
+    } catch {
+      // price fetch failed — evmRaisedEur stays 0
+    }
+
+    // Sum manual (non-EVM) contributions stored in DB
+    let manualRaisedEur = 0;
+    try {
+      const manualContribs = await this.contributionRepository
+        .createQueryBuilder('c')
+        .where('c.wishlistItemId = :id', { id: wishlistItem.id })
+        .andWhere("c.chain NOT IN ('ethereum', 'avalanche')")
+        .andWhere('c.isRefunded = false')
+        .andWhere('c.amountEur IS NOT NULL')
+        .getMany();
+
+      manualRaisedEur = manualContribs.reduce(
+        (sum, c) => sum + parseFloat(c.amountEur?.toString() ?? '0'),
+        0,
+      );
+      if (manualContribs.length > 0) {
+        contributorCount += new Set(manualContribs.map(c => c.userId ?? c.contractAddress)).size;
+      }
+    } catch { /* ignore */ }
+
+    const totalRaisedEur = evmRaisedEur + manualRaisedEur;
+
+    // Progress percentage: EUR-based when we have a EUR target, otherwise fall back to on-chain
+    const ethTargetFromDeployment = deployments.find(d => d.targetAmountEth != null)?.targetAmountEth ?? null;
+    let progressPercentage: number;
+    if (targetAmountEur > 0) {
+      progressPercentage = Math.min((totalRaisedEur / targetAmountEur) * 100, 100);
+    } else if (ethTargetFromDeployment && ethTargetFromDeployment > 0) {
+      progressPercentage = Math.min((evmRaisedEth / ethTargetFromDeployment) * 100, 100);
+    } else {
+      progressPercentage = 0;
+    }
+
+    // ---- Company child wallet addresses for non-EVM contributions -------
+    let solanaWalletAddress: string | null = null;
+    let stellarWalletAddress: string | null = null;
+    let bitcoinWalletAddress: string | null = null;
+    try {
+      const cw = await this.companyWalletRepository.findOne({
+        where: { companyId: wishlistItem.company.id },
+        select: ['solanaAddress', 'stellarAddress', 'bitcoinAddress'],
+      });
+      if (cw) {
+        solanaWalletAddress = cw.solanaAddress ?? null;
+        stellarWalletAddress = cw.stellarAddress ?? null;
+        bitcoinWalletAddress = cw.bitcoinAddress ?? null;
+      }
+    } catch { /* missing wallet is not fatal */ }
+
+    // ---- Determine final status -----------------------------------------
     const now = new Date();
     const deadline = wishlistItem.campaignDeadline || now;
     let status: 'active' | 'funded' | 'expired' | 'failed' = blockchainStatus;
@@ -547,7 +638,10 @@ export class BountiesService {
       description: wishlistItem.description || '',
       category: wishlistItem.category,
       targetAmount: wishlistItem.value?.toString() || '0',
+      targetAmountEur,
+      targetAmountEth: ethTargetFromDeployment,
       raisedAmount,
+      totalRaisedEur: Math.round(totalRaisedEur * 100) / 100,
       progressPercentage: Math.round(progressPercentage),
       contributorCount,
       deadline: (wishlistItem.campaignDeadline || now).toISOString(),
@@ -562,9 +656,125 @@ export class BountiesService {
       isEscrowActive: wishlistItem.isEscrowActive,
       ethereumEscrowAddress: wishlistItem.ethereumEscrowAddress || null,
       avalancheEscrowAddress: wishlistItem.avalancheEscrowAddress || null,
+      solanaWalletAddress,
+      stellarWalletAddress,
+      bitcoinWalletAddress,
       deployments,
       createdAt: wishlistItem.createdAt.toISOString(),
     };
+  }
+
+  /**
+   * Record a manual (off-chain) contribution from a non-EVM wallet.
+   * The contributor sends SOL/XLM/BTC directly to the company's child wallet
+   * and then records it here with the transaction hash.
+   */
+  async recordManualContribution(
+    wishlistItemId: string,
+    chain: 'solana' | 'stellar' | 'bitcoin',
+    nativeAmount: number,
+    transactionHash: string,
+    userId?: string,
+  ): Promise<void> {
+    const wishlistItem = await this.wishlistRepository.findOne({
+      where: { id: wishlistItemId, isEscrowActive: true },
+      relations: ['company'],
+    });
+    if (!wishlistItem) {
+      throw new HttpException('Bounty not found', HttpStatus.NOT_FOUND);
+    }
+
+    const symbolMap: Record<string, string> = { solana: 'SOL', stellar: 'XLM', bitcoin: 'BTC' };
+    const currencySymbol = symbolMap[chain];
+    const amountEur = await this.pricesService.toEur(currencySymbol, nativeAmount);
+
+    // Get receiving wallet address
+    let receivingAddress: string | null = null;
+    try {
+      const cw = await this.companyWalletRepository.findOne({
+        where: { companyId: wishlistItem.company.id },
+      });
+      if (cw) {
+        if (chain === 'solana') receivingAddress = cw.solanaAddress;
+        else if (chain === 'stellar') receivingAddress = cw.stellarAddress;
+        else if (chain === 'bitcoin') receivingAddress = cw.bitcoinAddress;
+      }
+    } catch { /* not fatal if wallet lookup fails */ }
+
+    const contribution = this.contributionRepository.create({
+      contributorAddress: 'manual',
+      userId: userId ?? undefined,
+      escrowDeploymentId: undefined,
+      wishlistItemId,
+      contractAddress: receivingAddress ?? undefined,
+      chain,
+      transactionHash,
+      currencySymbol,
+      nativeAmount,
+      amountEur,
+      amountWei: undefined,
+      amountEth: undefined,
+      isRefunded: false,
+    });
+
+    await this.contributionRepository.save(contribution);
+    this.logger.log(
+      `✅ Manual contribution recorded: ${nativeAmount} ${currencySymbol} = €${amountEur.toFixed(2)} for bounty ${wishlistItemId}`,
+    );
+  }
+
+  /**
+   * Get the leaderboard: all public companies ranked by total raised ETH,
+   * then by number of completed (funded) bounties.
+   */
+  async getLeaderboard(): Promise<LeaderboardEntry[]> {
+    const raw = await this.companyRepository
+      .createQueryBuilder('company')
+      .leftJoin('company.wishlistItems', 'wi')
+      .leftJoin('wi.escrowDeployments', 'ed')
+      .leftJoin('wi.contributions', 'con', 'con."isRefunded" = false')
+      .where('company.isPublic = :isPublic', { isPublic: true })
+      .select('company.id', 'id')
+      .addSelect('company.name', 'name')
+      .addSelect('company.description', 'description')
+      .addSelect('company.industry', 'industry')
+      .addSelect('company.logoUrl', 'logoUrl')
+      .addSelect(
+        `COUNT(DISTINCT CASE WHEN ed.status = 'funded' THEN ed.id END)`,
+        'completedBounties',
+      )
+      .addSelect(
+        `COUNT(DISTINCT CASE WHEN ed.status = 'active' THEN ed.id END)`,
+        'activeBounties',
+      )
+      .addSelect('COUNT(DISTINCT ed.id)', 'totalBounties')
+      .addSelect('COALESCE(SUM(con."amountEth"), 0)', 'totalRaisedEth')
+      .groupBy('company.id')
+      .getRawMany();
+
+    return raw
+      .map((r) => ({
+        rank: 0, // set after sort
+        id: r.id,
+        name: r.name,
+        description: r.description ?? undefined,
+        industry: r.industry ?? undefined,
+        logoUrl: r.logoUrl ?? undefined,
+        completedBounties: parseInt(r.completedBounties, 10) || 0,
+        activeBounties: parseInt(r.activeBounties, 10) || 0,
+        totalBounties: parseInt(r.totalBounties, 10) || 0,
+        totalRaisedEth: parseFloat(r.totalRaisedEth) || 0,
+      }))
+      .sort((a, b) => {
+        if (b.totalRaisedEth !== a.totalRaisedEth)
+          return b.totalRaisedEth - a.totalRaisedEth;
+        if (b.completedBounties !== a.completedBounties)
+          return b.completedBounties - a.completedBounties;
+        if (b.totalBounties !== a.totalBounties)
+          return b.totalBounties - a.totalBounties;
+        return a.name.localeCompare(b.name);
+      })
+      .map((entry, idx) => ({ ...entry, rank: idx + 1 }));
   }
 
   /**

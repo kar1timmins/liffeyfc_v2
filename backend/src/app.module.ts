@@ -12,6 +12,7 @@ import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { CompaniesModule } from './companies/companies.module';
 import { PaymentsModule } from './payments/payments.module';
+import { CryptoModule } from './crypto/crypto.module';
 import { JobsModule } from './jobs/jobs.module';
 import { throttlerConfig } from './config/throttler.config';
 import { GcpStorageService } from './common/gcp-storage.service';
@@ -123,6 +124,7 @@ function validateDatabaseConfig() {
     AuthModule,
     CompaniesModule,
     PaymentsModule,
+    CryptoModule,
     JobsModule, // BullMQ deployment queue
   ],
   controllers: [AppController],
