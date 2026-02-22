@@ -120,6 +120,20 @@ export class WalletController {
   }
 
   /**
+   * Download master wallet secrets (mnemonic & private key)
+   * GET /wallet/download
+   */
+  @Get('download')
+  @UseGuards(AuthGuard('jwt'))
+  async downloadMasterWallet(@CurrentUser() user: any) {
+    const data = await this.walletService.getMasterWalletDownload(user.sub);
+    if (!data) {
+      return { success: false, message: 'No master wallet found' };
+    }
+    return { success: true, data };
+  }
+
+  /**
    * Get user's wallet addresses
    * GET /wallet/addresses
    */

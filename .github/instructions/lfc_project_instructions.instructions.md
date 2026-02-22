@@ -106,7 +106,7 @@ liffeyfc_v2/
   - `Company`: Business profiles with owner relationships and derived child wallet addresses
   - `WishlistItem`: Company wishlists with optional escrow integration
   - `EscrowDeployment`: Smart contract addresses for bounties, tracks deployment and contributions
-  - `Contribution`: Investor contributions to bounties with blockchain transaction tracking
+  - `Contribution`: Investor contributions to bounties with blockchain transaction tracking. Schema now supports multiple chains (ethereum, avalanche, solana, stellar, bitcoin), nullable EVM fields, plus `currencySymbol`, `nativeAmount`, and `amountEur` for cross‑chain EUR aggregation. Manual contributions are recorded via API rather than on‑chain.
   - `RefreshToken`: JWT refresh tokens with rotation and revocation
 
 #### Authentication & Authorization
@@ -130,7 +130,7 @@ The system manages three hierarchical levels of wallet addresses for supporting 
 **Tier 1: User Master Wallet**
 - Single per user, stored in `user_wallets` table
 - Derived from user's MetaMask seed phrase
-- Ethereum and Avalanche addresses
+- Ethereum and Avalanche addresses (plus derived Solana, Stellar and Bitcoin addresses for multi‑chain support)
 - Never changes once created
 - Used for SIWE authentication
 - Example: `0xBECE60A8fc74A3Ae7caD4b850c5Ac04051787257`
@@ -216,7 +216,7 @@ WishlistItem (1:N) → EscrowDeployment (bounty contracts)
 
 #### Authentication & Services
 - **Auth Module**: Handles SIWE, email/password, JWT, and refresh tokens
-- **Users Module**: User registration, profile, wallet management
+- **Users Module**: User registration, profile, wallet management. Master wallet now stores ETH/AVAX/SOL/XLM/BTC addresses; profile/dashboard components display all chains and USDC wallet manager allows selecting a network.
 - **Web3 Module**: Signature verification, nonce management, chain information
 - **Companies Module**: Company CRUD, wishlist management, owner verification
 - **Bounties Module**: Crowdfunding campaigns with smart contract integration
@@ -334,6 +334,9 @@ WishlistItem (1:N) → EscrowDeployment (bounty contracts)
   - `GET /bounties/company/:id` - Get bounties for specific company
   - `GET /bounties/:id/contributors` - List all contributors with amounts
   - `GET /bounties/:id/history` - Full audit trail of deployments and contributions
+  - `POST /bounties/:id/contributions/manual` - Record off-chain contributions for non‑EVM chains (SOL/XLM/BTC); amount converted to EUR and aggregated.
+
+- **Price service**: `backend/src/web3/crypto-prices.service.ts` provides `getPriceEur`/`toEur` methods used by `BountiesService` to convert native amounts to EUR; supports ETH, AVAX (Chainlink) and SOL, XLM, BTC (CoinGecko).
   
 - **Contract Sync**: Background sync of on-chain state (totalRaised, contributors, status)
 - **Deployment Tracking**: Database persistence of contract addresses, deployments, and contributions
@@ -585,8 +588,9 @@ pnpm run migration:run
   1. Company owner creates wishlist item (e.g., "Need $5000 for marketing campaign")
   2. Owner creates bounty linking wishlist item to smart contract escrow
   3. Bounty appears on public bounties page with goal amount and deadline
-  4. Investors browse bounties and contribute ETH/AVAX via MetaMask
-  5. Contributions held in escrow contract until goal met or deadline passes
+  4. Investors browse bounties and contribute ETH/AVAX via MetaMask — they may choose the network on which the contract was deployed.
+  5. Non‑EVM contributions (SOL, XLM, BTC) are sent directly to the company child wallet and then recorded manually through the API; all amounts are converted to EUR.
+  6. Contributions held in escrow contract until goal met or deadline passes
   6. If successful: Owner claims funds; contributors get recognition
   7. If failed: Contributors claim refunds with proportional gas fee deduction
 - **Access Control**:
@@ -616,7 +620,8 @@ pnpm run migration:run
   - Company profile at top
   - Wishlist items below with status badges
   - Escrow-enabled items show contribution form (investors only)
-  - Network selector (Ethereum Sepolia / Avalanche Fuji)
+  - Network selector (Ethereum Sepolia / Avalanche Fuji); additional tabs for SOL/XLM/BTC when available
+  - Progress bar aggregates all contributions in EUR (shows €X of €Y when any non‑EVM donations recorded)
   - MetaMask integration for transactions
   - Auto-refresh after successful contribution
 
@@ -644,6 +649,7 @@ pnpm run migration:run
 - `/auth` - Combined login/register page with animated toggle
 - `/dashboard` - User dashboard with personalized content
 - `/profile` - User profile management with avatar upload
+- `/settings` - User settings page where master wallet mnemonic and private key can be revealed and downloaded
 - `/companies` - Browse all companies
 - `/companies/[id]` - Company detail page with wishlist and contribution UI
 - `/bounties` - Browse all bounties/crowdfunding campaigns
@@ -663,6 +669,7 @@ pnpm run migration:run
   - Current chain and network
   - Balance information
   - Formatted address display
+  - Holds master wallet addresses fetched from backend (eth/avax/solana/stellar/bitcoin) for profile/dashboard components
 - **Component-Level State**: Svelte 5 runes (`$state`, `$derived`, `$effect`)
 
 ### Web3 Integration Layer

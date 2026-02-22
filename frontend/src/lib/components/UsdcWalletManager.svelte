@@ -6,22 +6,55 @@
 
   let { 
     usdcWallet = null,
+    masterWallet = null,
     onUpdate = () => {}
   }: {
     usdcWallet: string | null;
+    masterWallet?: {
+      ethAddress?: string;
+      avaxAddress?: string;
+      solanaAddress?: string | null;
+      stellarAddress?: string | null;
+      bitcoinAddress?: string | null;
+    } | null;
     onUpdate?: () => void;
   } = $props();
 
   let isEditing = $state(false);
   let isLoading = $state(false);
   let walletAddress = $state(usdcWallet || '');
+
+  // display wallet string (updates automatically with selected chain)
+  let displayWallet = $state('');
+
+  // update walletAddress and displayWallet when chain or props change
+  $effect(() => {
+    if (selectedChain === 'ethereum' || selectedChain === 'avalanche') {
+      walletAddress = usdcWallet || '';
+      displayWallet = usdcWallet || '';
+    } else if (selectedChain === 'solana') {
+      walletAddress = masterWallet?.solanaAddress || '';
+      displayWallet = masterWallet?.solanaAddress || '';
+    } else if (selectedChain === 'stellar') {
+      walletAddress = masterWallet?.stellarAddress || '';
+      displayWallet = masterWallet?.stellarAddress || '';
+    } else {
+      displayWallet = '';
+    }
+  });
+
   let showRemoveConfirm = $state(false);
   // allow selecting any of the wallet chains (balance only available for EVM)
-  let selectedChain = $state<'ethereum' | 'avalanche' | 'solana' | 'stellar' | 'bitcoin'>('ethereum');
+  let selectedChain = $state<'ethereum' | 'avalanche' | 'solana' | 'stellar'>('ethereum');
   let balance = $state<string | null>(null);
   let isLoadingBalance = $state(false);
 
   async function handleSaveWallet() {
+    // only allow editing for EVM networks
+    if (selectedChain !== 'ethereum' && selectedChain !== 'avalanche') {
+      toastStore.add({ message: 'Cannot set USDC wallet for this network', type: 'error' });
+      return;
+    }
     if (!walletAddress.trim()) {
       toastStore.add({ message: 'Wallet address is required', type: 'error' });
       return;
@@ -38,14 +71,8 @@
         return;
       }
     } else {
-      // simple length check for non-EVM
-      if (walletAddress.trim().length < 10) {
-        toastStore.add({ 
-          message: 'Please enter a valid wallet address', 
-          type: 'error' 
-        });
-        return;
-      }
+      // for Solana/Stellar we simply display master wallet address and editing is disabled
+      // no validation required here
     }
 
     isLoading = true;
@@ -130,22 +157,25 @@
   }
 
   async function fetchBalance() {
-    if (!usdcWallet) return;
-    
-    // only EVM chains support balance proxy
-    if (selectedChain !== 'ethereum' && selectedChain !== 'avalanche') {
-      balance = 'Not available';
-      return;
-    }
+    // determine address based on selected chain (usdcWallet for EVM, displayWallet otherwise)
+    const addr = (selectedChain === 'ethereum' || selectedChain === 'avalanche')
+      ? usdcWallet
+      : displayWallet;
+    if (!addr) return;
+
     isLoadingBalance = true;
     try {
-      const response = await fetch(`${PUBLIC_API_URL}/wallet-balance?address=${usdcWallet}&chain=${selectedChain}`);
+      const response = await fetch(`${PUBLIC_API_URL}/wallet-balance?address=${addr}&chain=${selectedChain}`);
       const data = await response.json();
-      
+
       if (data.balanceEth !== undefined) {
         balance = `${parseFloat(data.balanceEth).toFixed(4)} ${selectedChain === 'ethereum' ? 'ETH' : 'AVAX'}`;
       } else if (data.balanceAvax !== undefined) {
         balance = `${parseFloat(data.balanceAvax).toFixed(4)} AVAX`;
+      } else if (data.balanceSol !== undefined) {
+        balance = `${parseFloat(data.balanceSol).toFixed(4)} SOL`;
+      } else if (data.balanceXlm !== undefined) {
+        balance = `${parseFloat(data.balanceXlm).toFixed(4)} XLM`;
       } else {
         balance = 'Unable to fetch balance';
       }
@@ -158,8 +188,8 @@
   }
 
   function copyToClipboard() {
-    if (usdcWallet) {
-      navigator.clipboard.writeText(usdcWallet);
+    if (displayWallet) {
+      navigator.clipboard.writeText(displayWallet);
       toastStore.add({ 
         message: '📋 Copied to clipboard', 
         type: 'success',
@@ -171,9 +201,14 @@
   function getBlockExplorerUrl(address: string, chain: string) {
     if (chain === 'ethereum') {
       return `https://sepolia.etherscan.io/address/${address}`;
-    } else {
+    } else if (chain === 'avalanche') {
       return `https://testnet.snowtrace.io/address/${address}`;
+    } else if (chain === 'solana') {
+      return `https://explorer.solana.com/address/${address}`;
+    } else if (chain === 'stellar') {
+      return `https://stellar.expert/explorer/public/account/${address}`;
     }
+    return '#';
   }
 
   function getTestnetFaucetUrls(chain: string) {
@@ -183,12 +218,13 @@
         { name: 'Alchemy Faucet', url: 'https://www.alchemy.com/faucets/ethereum-sepolia' },
         { name: 'QuickNode Faucet', url: 'https://faucet.quicknode.com/ethereum/sepolia' },
       ];
-    } else {
+    } else if (chain === 'avalanche') {
       return [
         { name: 'Avalanche Faucet', url: 'https://faucets.avax.network/' },
         { name: 'QuickNode Faucet', url: 'https://faucet.quicknode.com/avalanche/fuji' },
       ];
     }
+    return [];
   }
 </script>
 
@@ -201,12 +237,12 @@
       Connect a wallet address to pay for contract deployments with testnet USDC
     </p>
 
-    {#if !isEditing && usdcWallet}
+    {#if !isEditing && displayWallet}
       <div class="bg-base-200 rounded-lg p-4 space-y-4">
         <div class="flex items-center justify-between">
           <div>
             <p class="text-xs opacity-60 mb-1">Wallet Address</p>
-            <p class="font-mono text-sm break-all">{usdcWallet}</p>
+            <p class="font-mono text-sm break-all">{displayWallet}</p>
           </div>
           <button
             class="btn btn-ghost btn-sm"
@@ -232,7 +268,6 @@
               <option value="avalanche">🔺 Avalanche Fuji</option>
               <option value="solana">◎ Solana</option>
               <option value="stellar">✧ Stellar</option>
-              <option value="bitcoin">₿ Bitcoin</option>
             </select>  
             <button
               class="btn btn-sm btn-outline gap-1"
@@ -256,7 +291,7 @@
 
         <!-- Block Explorer Link -->
         <a 
-          href={getBlockExplorerUrl(usdcWallet, selectedChain)}
+          href={getBlockExplorerUrl(displayWallet, selectedChain)}
           target="_blank"
           rel="noopener noreferrer"
           class="btn btn-sm btn-outline gap-2 w-full"

@@ -595,6 +595,7 @@
 
     <UsdcWalletManager 
       usdcWallet={user?.usdcWalletAddress}
+      masterWallet={masterWallet}
       onUpdate={() => { fetchMyCompanies(); /* optionally refresh auth store */ authStore.verify(); }}
     />
 
@@ -608,7 +609,7 @@
 
     <!-- Investor Upgrade Section (only show for regular users) -->
     {#if user.role === 'user'}
-      <div class="card bg-gradient-to-br from-accent/10 to-primary/10 shadow-lg border border-accent/20">
+      <div class="card bg-gradient-to-br from-accent/10 to-primary/10 shadow-lg border border-accent/20 mt-10">
         <div class="card-body">
           <div class="flex items-start gap-4 mb-4">
             <div class="p-3 rounded-lg bg-accent/20">

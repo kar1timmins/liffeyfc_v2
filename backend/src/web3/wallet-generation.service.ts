@@ -633,6 +633,47 @@ export class WalletGenerationService {
   }
 
   /**
+   * Retrieve decrypted mnemonic/private key for the user’s master wallet.
+   * Returns null if no wallet exists.
+   */
+  async getMasterWalletDownload(userId: string): Promise<WalletDownloadData | null> {
+    const wallet = await this.userWalletRepo.findOne({ where: { userId } });
+    if (!wallet) return null;
+
+    let mnemonic = '';
+    if (wallet.encryptedMnemonic && wallet.encryptedMnemonic.trim()) {
+      try {
+        mnemonic = this.decrypt(wallet.encryptedMnemonic);
+      } catch (err) {
+        devLog.error('Failed to decrypt mnemonic for download:', err instanceof Error ? err.message : err);
+      }
+    }
+
+    let privateKey = '';
+    if (wallet.encryptedPrivateKey && wallet.encryptedPrivateKey.trim()) {
+      try {
+        privateKey = this.decrypt(wallet.encryptedPrivateKey);
+      } catch (err) {
+        devLog.error('Failed to decrypt private key for download:', err instanceof Error ? err.message : err);
+      }
+    }
+
+    return {
+      address: wallet.ethAddress,
+      ethAddress: wallet.ethAddress,
+      avaxAddress: wallet.avaxAddress,
+      solanaAddress: wallet.solanaAddress || undefined,
+      stellarAddress: wallet.stellarAddress || undefined,
+      bitcoinAddress: wallet.bitcoinAddress || undefined,
+      mnemonic: mnemonic || '[unavailable]',
+      privateKey: privateKey || '[unavailable]',
+      derivationPath: wallet.derivationPath || '',
+      warning: 'This information is sensitive. Do not share it. Download and store securely.',
+      createdAt: new Date().toISOString(),
+    };
+  }
+
+  /**
    * Derive and persist Solana, Stellar and Bitcoin addresses for an existing
    * wallet that was generated before multi-chain support was added.
    * Safe to call if addresses already exist (will skip derivation).

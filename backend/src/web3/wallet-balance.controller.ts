@@ -17,9 +17,22 @@ export class WalletBalanceController {
       throw new HttpException('Address and chain are required', HttpStatus.BAD_REQUEST);
     }
 
-    // Validate Ethereum address format
-    if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
-      throw new HttpException('Invalid Ethereum address format', HttpStatus.BAD_REQUEST);
+    // Basic validation depends on chain
+    if (chain === 'ethereum' || chain === 'avalanche') {
+      if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+        throw new HttpException('Invalid Ethereum/Avalanche address format', HttpStatus.BAD_REQUEST);
+      }
+    } else if (chain === 'solana') {
+      // Solana base58 public keys are 32-44 chars
+      if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address)) {
+        throw new HttpException('Invalid Solana address format', HttpStatus.BAD_REQUEST);
+      }
+    } else if (chain === 'stellar') {
+      if (!/^G[A-Z0-9]{55}$/.test(address)) {
+        throw new HttpException('Invalid Stellar address format', HttpStatus.BAD_REQUEST);
+      }
+    } else {
+      throw new HttpException('Invalid chain specified', HttpStatus.BAD_REQUEST);
     }
 
     try {
@@ -27,9 +40,13 @@ export class WalletBalanceController {
         return await this.getEthereumBalance(address);
       } else if (chain === 'avalanche') {
         return await this.getAvalancheBalance(address);
-      } else {
-        throw new HttpException('Invalid chain specified', HttpStatus.BAD_REQUEST);
+      } else if (chain === 'solana') {
+        return await this.getSolanaBalance(address);
+      } else if (chain === 'stellar') {
+        return await this.getStellarBalance(address);
       }
+      // unreachable
+      throw new HttpException('Unsupported chain', HttpStatus.BAD_REQUEST);
     } catch (error) {
       console.error('Error fetching balance:', error);
       throw new HttpException('Failed to fetch balance', HttpStatus.INTERNAL_SERVER_ERROR);
@@ -121,6 +138,60 @@ export class WalletBalanceController {
         'Failed to fetch Avalanche balance',
         HttpStatus.SERVICE_UNAVAILABLE
       );
+    }
+  }
+
+  
+  // --------------------------------------------------------------------
+  // Solana / Stellar Balances
+  // --------------------------------------------------------------------
+  private readonly solanaRpc = 'https://api.mainnet-beta.solana.com';
+  private readonly stellarHorizon = 'https://horizon.stellar.org';
+
+  private async getSolanaBalance(address: string) {
+    try {
+      const response = await fetch(this.solanaRpc, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'getBalance',
+          params: [address, { commitment: 'final' }]
+        })
+      });
+      const data = await response.json();
+      const lamports = data.result?.value ?? 0;
+      const balanceSol = Number(lamports) / 1e9;
+      return {
+        chain: 'solana',
+        address,
+        balanceLamports: lamports.toString(),
+        balanceSol: balanceSol.toFixed(6)
+      };
+    } catch (err) {
+      console.error('Failed to fetch Solana balance:', err);
+      throw new HttpException('Failed to fetch Solana balance', HttpStatus.SERVICE_UNAVAILABLE);
+    }
+  }
+
+  private async getStellarBalance(address: string) {
+    try {
+      const res = await fetch(`${this.stellarHorizon}/accounts/${address}`);
+      if (!res.ok) {
+        throw new Error(`Horizon returned ${res.status}`);
+      }
+      const data = await res.json();
+      const native = (data.balances || []).find((b: any) => b.asset_type === 'native');
+      const balanceXlm = native ? parseFloat(native.balance) : 0;
+      return {
+        chain: 'stellar',
+        address,
+        balanceXlm: balanceXlm.toFixed(6)
+      };
+    } catch (err) {
+      console.error('Failed to fetch Stellar balance:', err);
+      throw new HttpException('Failed to fetch Stellar balance', HttpStatus.SERVICE_UNAVAILABLE);
     }
   }
 

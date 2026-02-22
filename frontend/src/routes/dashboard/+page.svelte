@@ -305,8 +305,8 @@
 				</div>
 				<p class="text-base-content/70 mb-4 flex-grow">Manage your account settings, preferences, and security options.</p>
 				<div class="card-actions">
-					<button class="btn btn-outline btn-block" disabled>
-						Coming Soon
+				<button class="btn btn-outline btn-block" onclick={() => goto('/settings')}>
+					View Settings
 					</button>
 				</div>
 			</div>
