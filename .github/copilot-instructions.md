@@ -69,6 +69,8 @@ Purpose: quick rules and references to help AI agents be productive in this repo
   - Frontend wallet display components (`profile/+page.svelte`, dashboard) now expect additional address fields; update tests accordingly.
 
 - **Agent guidelines** (what to do / avoid):
+  - Settings page now displays mnemonic and private keys for each supported chain (ETH/AVAX/SOL/XLM/BTC). Ensure backend `getMasterWalletDownload` provides additional key fields.
+  - Send funds feature now includes Solana and Stellar networks; update `SendFunds.svelte` and backend `sendUserTransaction` accordingly when touching this area.
   - Favor small, logically-scoped PRs. Preserve existing naming/organization and common DTO patterns.
   - If modifying entity shapes, update TypeORM migrations and tests. Run `pnpm run migration:generate` and `pnpm run migration:run` locally.
   - Avoid changing UI state libraries; use Svelte stores and runes for reactive updates.

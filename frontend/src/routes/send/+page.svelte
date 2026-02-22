@@ -54,6 +54,20 @@
 							<div class="text-xs opacity-70">Testnet for testing</div>
 						</div>
 					</div>
+					<div class="flex items-center gap-3">
+						<div class="badge badge-lg">◎</div>
+						<div>
+							<div class="font-semibold text-sm">Solana</div>
+							<div class="text-xs opacity-70">Mainnet (or Devnet for testing)</div>
+						</div>
+					</div>
+					<div class="flex items-center gap-3">
+						<div class="badge badge-lg">★</div>
+						<div>
+							<div class="font-semibold text-sm">Stellar</div>
+							<div class="text-xs opacity-70">Public network</div>
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -69,7 +83,7 @@
 					</li>
 					<li class="flex gap-3">
 						<div class="badge badge-sm flex-shrink-0">2</div>
-						<div>Select the network (Ethereum Sepolia or Avalanche Fuji)</div>
+						<div>Select the network (Ethereum Sepolia, Avalanche Fuji, Solana, or Stellar)</div>
 					</li>
 					<li class="flex gap-3">
 						<div class="badge badge-sm flex-shrink-0">3</div>
