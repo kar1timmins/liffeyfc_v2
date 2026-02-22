@@ -3,7 +3,7 @@
   import { authStore } from '$lib/stores/auth';
   import { goto } from '$app/navigation';
   import { PUBLIC_API_URL } from '$env/static/public';
-  import { User, Mail, Briefcase, Building, Globe, Linkedin, CheckCircle, ArrowUpCircle, ArrowLeft, Camera, Wallet } from 'lucide-svelte';
+  import { User, Mail, Briefcase, Building, Globe, Linkedin, CheckCircle, ArrowUpCircle, ArrowLeft, Camera, Wallet, ChevronDown, ChevronRight } from 'lucide-svelte';
   import GenerateWalletModal from '$lib/components/GenerateWalletModal.svelte';
   import RestoreWalletModal from '$lib/components/RestoreWalletModal.svelte';
   import UsdcWalletManager from '$lib/components/UsdcWalletManager.svelte';
@@ -24,6 +24,11 @@
   // Master wallet state
   let masterWallet = $state<any>(null);
   let loadingWallet = $state(false);
+
+  // control whether address list is shown
+  let masterWalletExpanded = $state(false);
+  let masterBalances = $state<{ [chain: string]: string }>({});
+
 
   // Avatar upload
   let fileInput: HTMLInputElement | undefined = $state();
@@ -105,12 +110,55 @@
     }
   }
 
+  async function fetchMasterBalances() {
+    if (!masterWallet) return;
+    const toFetch: Array<{ addr?: string; chain: string }> = [
+      { addr: masterWallet.ethAddress, chain: 'ethereum' },
+      { addr: masterWallet.avaxAddress, chain: 'avalanche' },
+      { addr: masterWallet.solanaAddress, chain: 'solana' },
+      { addr: masterWallet.stellarAddress, chain: 'stellar' },
+      { addr: masterWallet.bitcoinAddress, chain: 'bitcoin' },
+    ];
+
+    masterBalances = {};
+    await Promise.all(
+      toFetch.map(async ({ addr, chain }) => {
+        if (!addr) return;
+        try {
+          const resp = await fetch(`${PUBLIC_API_URL}/wallet-balance?address=${addr}&chain=${chain}`);
+          const data = await resp.json();
+          if (data.balanceEth !== undefined) {
+            masterBalances[chain] = `${parseFloat(data.balanceEth).toFixed(6)} ETH`;
+          } else if (data.balanceAvax !== undefined) {
+            masterBalances[chain] = `${parseFloat(data.balanceAvax).toFixed(6)} AVAX`;
+          } else if (data.balanceSol !== undefined) {
+            masterBalances[chain] = `${parseFloat(data.balanceSol).toFixed(6)} SOL`;
+          } else if (data.balanceXlm !== undefined) {
+            masterBalances[chain] = `${parseFloat(data.balanceXlm).toFixed(6)} XLM`;
+          } else if (data.balanceBtc !== undefined) {
+            masterBalances[chain] = `${parseFloat(data.balanceBtc).toFixed(8)} BTC`;
+          }
+        } catch (err) {
+          console.error(`Failed to fetch balance for ${chain}:`, err);
+        }
+      })
+    );
+  }
+
   // Fetch master wallet when user changes
   $effect(() => {
     if (user && $authStore.accessToken) {
       fetchMasterWallet();
     }
   });
+
+  // whenever master wallet is visible and section expanded, fetch balances
+  $effect(() => {
+    if (masterWallet && masterWalletExpanded) {
+      fetchMasterBalances();
+    }
+  });
+
 
   let usdcHint = $state<string | null>(null);
 
@@ -414,12 +462,23 @@
         <!-- Wallet Section -->
         <div class="divider"></div>
         <div class="flex items-center justify-between">
-          <div>
-            <h3 class="text-lg font-semibold mb-1 flex items-center gap-2">
-              <Wallet size={18} class="text-primary" />
-              Master Wallet
-            </h3>
-            <p class="text-sm text-base-content/70">Your blockchain wallet addresses</p>
+          <div class="flex items-center gap-2">
+            <Wallet size={18} class="text-primary" />
+            <h3 class="text-lg font-semibold mb-1">Master Wallet</h3>
+            {#if masterWallet}
+              <button
+                class="btn btn-ghost btn-xs"
+                onclick={() => (masterWalletExpanded = !masterWalletExpanded)}
+                aria-label={masterWalletExpanded ? 'Collapse' : 'Expand'}
+              >
+                {#if masterWalletExpanded}
+                  <ChevronDown size={16} />
+                {:else}
+                  <ChevronRight size={16} />
+                {/if}
+              </button>
+            {/if}
+            <p class="text-sm text-base-content/70 ml-4">Your blockchain wallet addresses</p>
           </div>
           <div class="flex gap-2">
             {#if !masterWallet}
@@ -464,7 +523,7 @@
             <div class="h-12 skeleton"></div>
             <div class="h-12 skeleton"></div>
           </div>
-        {:else if masterWallet}
+        {:else if masterWallet && masterWalletExpanded}
           <div class="space-y-3">
             <!-- Ethereum Address -->
             <div class="flex items-start gap-3 p-4 rounded-lg bg-base-200/50 border border-primary/20">
@@ -472,6 +531,9 @@
               <div class="flex-1">
                 <div class="text-xs text-base-content/60 mb-1 font-semibold">ETHEREUM SEPOLIA</div>
                 <div class="font-mono text-sm break-all">{masterWallet.ethAddress || 'N/A'}</div>
+                {#if masterBalances.ethereum}
+                  <div class="text-xs opacity-60 mt-1">Balance: {masterBalances.ethereum}</div>
+                {/if}
               </div>
               <button 
                 class="btn btn-ghost btn-xs"
@@ -490,6 +552,9 @@
               <div class="flex-1">
                 <div class="text-xs text-base-content/60 mb-1 font-semibold">AVALANCHE FUJI</div>
                 <div class="font-mono text-sm break-all">{masterWallet.avaxAddress || 'N/A'}</div>
+                {#if masterBalances.avalanche}
+                  <div class="text-xs opacity-60 mt-1">Balance: {masterBalances.avalanche}</div>
+                {/if}
               </div>
               <button 
                 class="btn btn-ghost btn-xs"
@@ -508,6 +573,9 @@
               <div class="flex-1">
                 <div class="text-xs text-base-content/60 mb-1 font-semibold">SOLANA</div>
                 <div class="font-mono text-sm break-all">{masterWallet.solanaAddress || 'N/A'}</div>
+                {#if masterBalances.solana}
+                  <div class="text-xs opacity-60 mt-1">Balance: {masterBalances.solana}</div>
+                {/if}
               </div>
               <button 
                 class="btn btn-ghost btn-xs"
@@ -526,6 +594,9 @@
               <div class="flex-1">
                 <div class="text-xs text-base-content/60 mb-1 font-semibold">STELLAR</div>
                 <div class="font-mono text-sm break-all">{masterWallet.stellarAddress || 'N/A'}</div>
+                {#if masterBalances.stellar}
+                  <div class="text-xs opacity-60 mt-1">Balance: {masterBalances.stellar}</div>
+                {/if}
               </div>
               <button 
                 class="btn btn-ghost btn-xs"
@@ -544,6 +615,9 @@
               <div class="flex-1">
                 <div class="text-xs text-base-content/60 mb-1 font-semibold">BITCOIN</div>
                 <div class="font-mono text-sm break-all">{masterWallet.bitcoinAddress || 'N/A'}</div>
+                {#if masterBalances.bitcoin}
+                  <div class="text-xs opacity-60 mt-1">Balance: {masterBalances.bitcoin}</div>
+                {/if}
               </div>
               <button 
                 class="btn btn-ghost btn-xs"
