@@ -214,6 +214,10 @@
 				balanceVal = data.balanceEth;
 			} else if (selectedChain === 'avalanche') {
 				balanceVal = data.balanceAvax;
+			} else if (selectedChain === 'solana') {
+				balanceVal = data.balanceSol;
+			} else if (selectedChain === 'stellar') {
+				balanceVal = data.balanceXlm;
 			} else if (selectedChain === 'bitcoin') {
 				balanceVal = data.balanceBtc || '0';
 			}
