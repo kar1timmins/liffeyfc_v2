@@ -384,13 +384,7 @@
 									{#if chain.address}
 										<code class="text-xs font-mono break-all opacity-90">{chain.address}</code>
 									{:else}
-										<span class="text-xs opacity-40 italic">
-											Not yet derived —
-											<button
-												class="link link-primary"
-												onclick={() => goto('/buy-crypto')}
-											>upgrade wallet</button>
-										</span>
+										<span class="text-xs opacity-40 italic">Not available (wallet imported via private key)</span>
 									{/if}
 								</div>
 

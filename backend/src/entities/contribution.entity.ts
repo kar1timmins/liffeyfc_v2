@@ -26,12 +26,12 @@ export class Contribution {
   @JoinColumn({ name: 'userId' })
   user: User;
 
-  @Column({ type: 'varchar' })
-  escrowDeploymentId: string;
+  @Column({ type: 'varchar', nullable: true })
+  escrowDeploymentId: string | null;
 
-  @ManyToOne(() => EscrowDeployment)
+  @ManyToOne(() => EscrowDeployment, { nullable: true })
   @JoinColumn({ name: 'escrowDeploymentId' })
-  escrowDeployment: EscrowDeployment;
+  escrowDeployment: EscrowDeployment | null;
 
   @Column({ type: 'varchar' })
   wishlistItemId: string;
@@ -40,23 +40,40 @@ export class Contribution {
   @JoinColumn({ name: 'wishlistItemId' })
   wishlistItem: WishlistItem;
 
-  @Column({ type: 'varchar', length: 42 })
-  contractAddress: string;
+  /** For EVM chains: the escrow contract address.
+   *  For non-EVM chains: the company child wallet address that received funds. */
+  @Column({ type: 'varchar', length: 66, nullable: true })
+  contractAddress: string | null;
 
+  /** 'ethereum', 'avalanche', 'solana', 'stellar', 'bitcoin' */
   @Column({ type: 'varchar', length: 20 })
-  chain: string; // 'ethereum' or 'avalanche'
+  chain: string;
 
   @Column({ type: 'varchar', length: 66, nullable: true })
   transactionHash: string;
 
-  @Column({ type: 'varchar' })
-  amountWei: string; // Store as string to preserve precision
+  /** EVM-only: amount in Wei as string (null for non-EVM chains). */
+  @Column({ type: 'varchar', nullable: true })
+  amountWei: string | null;
 
-  @Column({ type: 'decimal', precision: 18, scale: 8 })
-  amountEth: number;
+  /** EVM-only: amount in ETH/AVAX (null for non-EVM chains). */
+  @Column({ type: 'decimal', precision: 18, scale: 8, nullable: true })
+  amountEth: number | null;
+
+  /** Native currency symbol: ETH, AVAX, SOL, XLM, BTC */
+  @Column({ type: 'varchar', length: 10, nullable: true })
+  currencySymbol: string | null;
+
+  /** Amount in the native currency of the chain (e.g. 1.5 SOL). */
+  @Column({ type: 'decimal', precision: 18, scale: 8, nullable: true })
+  nativeAmount: number | null;
+
+  /** EUR equivalent at time of contribution (used for cross-chain totals). */
+  @Column({ type: 'decimal', precision: 14, scale: 2, nullable: true })
+  amountEur: number | null;
 
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
-  amountUsd: number; // USD equivalent at time of contribution
+  amountUsd: number | null; // USD equivalent at time of contribution
 
   @CreateDateColumn()
   contributedAt: Date;

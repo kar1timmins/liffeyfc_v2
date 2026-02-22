@@ -10,7 +10,7 @@ import {
   Logger,
   Query,
 } from '@nestjs/common';
-import { IsString, IsNumber, IsOptional, IsNotEmpty } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsNotEmpty, IsIn, Min } from 'class-validator';
 import { BountiesService } from './bounties.service';
 import { UsersService } from '../users/users.service';
 import { GcpStorageService } from '../common/gcp-storage.service';
@@ -39,6 +39,20 @@ class CreateBountyDto {
   @IsString()
   @IsOptional()
   campaignDescription?: string;
+}
+
+class ManualContributionDto {
+  @IsString()
+  @IsIn(['solana', 'stellar', 'bitcoin'])
+  chain: string;
+
+  @IsNumber()
+  @Min(0.000001)
+  nativeAmount: number;
+
+  @IsString()
+  @IsNotEmpty()
+  transactionHash: string;
 }
 
 @Controller('bounties')
@@ -297,6 +311,36 @@ export class BountiesController {
       throw new HttpException(
         error.message || 'Failed to fetch bounty history',
         HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * Record a manual (off-chain) contribution for a non-EVM chain.
+   * The investor sends SOL / XLM / BTC directly to the company's child wallet
+   * and then reports it here with the transaction hash.
+   */
+  @Post(':id/contributions/manual')
+  @UseGuards(AuthGuard('jwt'))
+  async recordManualContribution(
+    @Param('id') id: string,
+    @Body() dto: ManualContributionDto,
+    @CurrentUser() user: any,
+  ) {
+    try {
+      await this.bountiesService.recordManualContribution(
+        id,
+        dto.chain as 'solana' | 'stellar' | 'bitcoin',
+        dto.nativeAmount,
+        dto.transactionHash,
+        user.sub,
+      );
+      return { success: true, message: 'Contribution recorded successfully' };
+    } catch (error) {
+      this.logger.error('❌ Failed to record manual contribution:', error);
+      throw new HttpException(
+        error.message || 'Failed to record contribution',
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }

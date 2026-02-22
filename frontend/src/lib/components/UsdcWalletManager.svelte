@@ -16,7 +16,8 @@
   let isLoading = $state(false);
   let walletAddress = $state(usdcWallet || '');
   let showRemoveConfirm = $state(false);
-  let selectedChain = $state<'ethereum' | 'avalanche'>('ethereum');
+  // allow selecting any of the wallet chains (balance only available for EVM)
+  let selectedChain = $state<'ethereum' | 'avalanche' | 'solana' | 'stellar' | 'bitcoin'>('ethereum');
   let balance = $state<string | null>(null);
   let isLoadingBalance = $state(false);
 
@@ -26,13 +27,25 @@
       return;
     }
 
-    // Basic validation for Ethereum/Avalanche address
-    if (!/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
-      toastStore.add({ 
-        message: 'Invalid wallet address. Must be a valid Ethereum/Avalanche address (0x...)', 
-        type: 'error' 
-      });
-      return;
+    // Basic validation for Ethereum/Avalanche address formats only;
+    // for other chains we accept any non-empty string (frontend can't verify).
+    if (selectedChain === 'ethereum' || selectedChain === 'avalanche') {
+      if (!/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
+        toastStore.add({ 
+          message: 'Invalid wallet address. Must be a valid Ethereum/Avalanche address (0x...)', 
+          type: 'error' 
+        });
+        return;
+      }
+    } else {
+      // simple length check for non-EVM
+      if (walletAddress.trim().length < 10) {
+        toastStore.add({ 
+          message: 'Please enter a valid wallet address', 
+          type: 'error' 
+        });
+        return;
+      }
     }
 
     isLoading = true;
@@ -119,6 +132,11 @@
   async function fetchBalance() {
     if (!usdcWallet) return;
     
+    // only EVM chains support balance proxy
+    if (selectedChain !== 'ethereum' && selectedChain !== 'avalanche') {
+      balance = 'Not available';
+      return;
+    }
     isLoadingBalance = true;
     try {
       const response = await fetch(`${PUBLIC_API_URL}/wallet-balance?address=${usdcWallet}&chain=${selectedChain}`);
@@ -212,7 +230,10 @@
             >
               <option value="ethereum">🔷 Ethereum Sepolia</option>
               <option value="avalanche">🔺 Avalanche Fuji</option>
-            </select>
+              <option value="solana">◎ Solana</option>
+              <option value="stellar">✧ Stellar</option>
+              <option value="bitcoin">₿ Bitcoin</option>
+            </select>  
             <button
               class="btn btn-sm btn-outline gap-1"
               onclick={fetchBalance}
@@ -293,18 +314,38 @@
         <div class="form-control">
           <label class="label" for="usdc-wallet-input">
             <span class="label-text text-sm">Enter wallet address</span>
-            <span class="label-text-alt text-xs opacity-60">0x...</span>
+            <span class="label-text-alt text-xs opacity-60">
+              {selectedChain === 'ethereum' || selectedChain === 'avalanche'
+                ? '0x...'
+                : selectedChain === 'solana'
+                  ? 'Solana public key'
+                  : selectedChain === 'stellar'
+                    ? 'G...'
+                    : selectedChain === 'bitcoin'
+                      ? 'bc1...' : ''}
+            </span>
           </label>
           <input
             id="usdc-wallet-input"
             type="text"
             bind:value={walletAddress}
-            placeholder="0x1234567890abcdef..."
+            placeholder={
+              selectedChain === 'ethereum' || selectedChain === 'avalanche'
+                ? '0x1234567890abcdef...'
+                : selectedChain === 'solana'
+                  ? 'Enter Solana address'
+                  : selectedChain === 'stellar'
+                    ? 'Enter Stellar address'
+                    : selectedChain === 'bitcoin'
+                      ? 'Enter Bitcoin address' : ''
+            }
             class="input input-bordered focus:ring-2 focus:ring-primary"
             disabled={isLoading}
           />
           <p class="text-xs opacity-60 mt-1">
-            Must be a valid Ethereum or Avalanche address format
+            {selectedChain === 'ethereum' || selectedChain === 'avalanche'
+              ? 'Must be a valid Ethereum or Avalanche address format'
+              : 'Any valid address for the selected network'}
           </p>
         </div>
 

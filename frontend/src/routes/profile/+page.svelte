@@ -501,6 +501,60 @@
                 📋
               </button>
             </div>
+
+            <!-- Solana Address -->
+            <div class="flex items-start gap-3 p-4 rounded-lg bg-base-200/50 border border-secondary/20">
+              <div class="text-xl">◎</div>
+              <div class="flex-1">
+                <div class="text-xs text-base-content/60 mb-1 font-semibold">SOLANA</div>
+                <div class="font-mono text-sm break-all">{masterWallet.solanaAddress || 'N/A'}</div>
+              </div>
+              <button 
+                class="btn btn-ghost btn-xs"
+                onclick={() => {
+                  navigator.clipboard.writeText(masterWallet.solanaAddress || '');
+                }}
+                title="Copy address"
+              >
+                📋
+              </button>
+            </div>
+
+            <!-- Stellar Address -->
+            <div class="flex items-start gap-3 p-4 rounded-lg bg-base-200/50 border border-accent/20">
+              <div class="text-xl">✧</div>
+              <div class="flex-1">
+                <div class="text-xs text-base-content/60 mb-1 font-semibold">STELLAR</div>
+                <div class="font-mono text-sm break-all">{masterWallet.stellarAddress || 'N/A'}</div>
+              </div>
+              <button 
+                class="btn btn-ghost btn-xs"
+                onclick={() => {
+                  navigator.clipboard.writeText(masterWallet.stellarAddress || '');
+                }}
+                title="Copy address"
+              >
+                📋
+              </button>
+            </div>
+
+            <!-- Bitcoin Address -->
+            <div class="flex items-start gap-3 p-4 rounded-lg bg-base-200/50 border border-warning/20">
+              <div class="text-xl">₿</div>
+              <div class="flex-1">
+                <div class="text-xs text-base-content/60 mb-1 font-semibold">BITCOIN</div>
+                <div class="font-mono text-sm break-all">{masterWallet.bitcoinAddress || 'N/A'}</div>
+              </div>
+              <button 
+                class="btn btn-ghost btn-xs"
+                onclick={() => {
+                  navigator.clipboard.writeText(masterWallet.bitcoinAddress || '');
+                }}
+                title="Copy address"
+              >
+                📋
+              </button>
+            </div>
           </div>
         {:else}
           <div class="alert alert-info">

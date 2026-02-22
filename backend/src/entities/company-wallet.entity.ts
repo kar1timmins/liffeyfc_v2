@@ -26,6 +26,15 @@ export class CompanyWallet {
   @Column({ type: 'varchar', length: 42, unique: true })
   avaxAddress: string;
 
+  @Column({ type: 'varchar', length: 66, nullable: true })
+  solanaAddress: string | null;
+
+  @Column({ type: 'varchar', length: 66, nullable: true })
+  stellarAddress: string | null;
+
+  @Column({ type: 'varchar', length: 66, nullable: true })
+  bitcoinAddress: string | null;
+
   // Encrypted private key for this child wallet
   @Column({ type: 'text' })
   encryptedPrivateKey: string;
