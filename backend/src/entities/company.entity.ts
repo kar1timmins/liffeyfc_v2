@@ -1,4 +1,14 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, OneToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  OneToMany,
+  OneToOne,
+  JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { User } from './user.entity';
 import { WishlistItem } from './wishlist-item.entity';
 import { CompanyWallet } from './company-wallet.entity';
@@ -9,7 +19,7 @@ export enum CompanyStage {
   EARLY_STAGE = 'early_stage',
   GROWTH = 'growth',
   SCALE = 'scale',
-  ESTABLISHED = 'established'
+  ESTABLISHED = 'established',
 }
 
 export enum FundingStage {
@@ -18,7 +28,7 @@ export enum FundingStage {
   SEED = 'seed',
   SERIES_A = 'series_a',
   SERIES_B = 'series_b',
-  SERIES_C_PLUS = 'series_c_plus'
+  SERIES_C_PLUS = 'series_c_plus',
 }
 
 @Entity({ name: 'companies' })
@@ -44,7 +54,11 @@ export class Company {
   @Column({ type: 'enum', enum: CompanyStage, default: CompanyStage.IDEA })
   stage: CompanyStage;
 
-  @Column({ type: 'enum', enum: FundingStage, default: FundingStage.BOOTSTRAPPED })
+  @Column({
+    type: 'enum',
+    enum: FundingStage,
+    default: FundingStage.BOOTSTRAPPED,
+  })
   fundingStage: FundingStage;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
@@ -87,7 +101,9 @@ export class Company {
   @OneToMany(() => WishlistItem, (item) => item.company)
   wishlistItems: WishlistItem[];
 
-  @OneToOne(() => CompanyWallet, (w: CompanyWallet) => w.company, { cascade: true })
+  @OneToOne(() => CompanyWallet, (w: CompanyWallet) => w.company, {
+    cascade: true,
+  })
   companyWallet?: CompanyWallet;
 
   @CreateDateColumn()

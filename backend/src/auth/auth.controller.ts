@@ -1,7 +1,22 @@
-import { Body, Controller, Get, Param, Post, UseGuards, Req, Res, HttpException, HttpStatus, Ip } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  UseGuards,
+  Req,
+  Res,
+  HttpException,
+  HttpStatus,
+  Ip,
+} from '@nestjs/common';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
-import { SecurityMonitoringService, SecurityEventType } from './security-monitoring.service';
+import {
+  SecurityMonitoringService,
+  SecurityEventType,
+} from './security-monitoring.service';
 import { TokenCleanupService } from './token-cleanup.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { UsersService } from '../users/users.service';
@@ -20,7 +35,7 @@ import type { Response, Request } from 'express';
 export class AuthController {
   // inject UsersService to resolve the current user for /me
   constructor(
-    private authService: AuthService, 
+    private authService: AuthService,
     private usersService: UsersService,
     private gcpStorageService: GcpStorageService,
     private emailService: EmailService,
@@ -28,9 +43,12 @@ export class AuthController {
     private tokenCleanupService: TokenCleanupService,
   ) {
     // Run cleanup every 10 minutes
-    setInterval(() => {
-      this.securityMonitoring.cleanupOldEntries();
-    }, 10 * 60 * 1000);
+    setInterval(
+      () => {
+        this.securityMonitoring.cleanupOldEntries();
+      },
+      10 * 60 * 1000,
+    );
   }
 
   /**
@@ -38,7 +56,10 @@ export class AuthController {
    * Key: random code, Value: { accessToken, expiresAt }
    * In production, use Redis for multi-instance deployments
    */
-  private oauthTokenExchange = new Map<string, { accessToken: string; expiresAt: number }>();
+  private oauthTokenExchange = new Map<
+    string,
+    { accessToken: string; expiresAt: number }
+  >();
 
   /**
    * Helper method to set refresh token as httpOnly cookie
@@ -71,14 +92,14 @@ export class AuthController {
     const code = crypto.randomBytes(32).toString('hex');
     const expiresAt = Date.now() + 60000; // 60 seconds expiry
     this.oauthTokenExchange.set(code, { accessToken, expiresAt });
-    
+
     // Clean up expired codes (simple cleanup on each generation)
     for (const [key, value] of this.oauthTokenExchange.entries()) {
       if (value.expiresAt < Date.now()) {
         this.oauthTokenExchange.delete(key);
       }
     }
-    
+
     return code;
   }
 
@@ -99,12 +120,21 @@ export class AuthController {
 
   @Post('register')
   @Throttle({ default: { limit: 3, ttl: 3600000 } }) // 3 registrations per hour
-  async register(@Body() body: RegisterDto, @Res({ passthrough: true }) res: Response, @Ip() ip: string, @Req() req: Request) {
+  async register(
+    @Body() body: RegisterDto,
+    @Res({ passthrough: true }) res: Response,
+    @Ip() ip: string,
+    @Req() req: Request,
+  ) {
     try {
-      const result = await this.authService.register(body.email, body.password, body.name);
+      const result = await this.authService.register(
+        body.email,
+        body.password,
+        body.name,
+      );
       // Set refresh token in httpOnly cookie
       this.setRefreshTokenCookie(res, result.refreshToken);
-      
+
       // Log successful registration
       this.securityMonitoring.logEvent({
         type: SecurityEventType.REGISTRATION_SUCCESS,
@@ -114,9 +144,12 @@ export class AuthController {
         userAgent: req.headers['user-agent'],
         timestamp: new Date(),
       });
-      
+
       // Return user and access token (not refresh token)
-      return { success: true, data: { user: result.user, accessToken: result.accessToken } };
+      return {
+        success: true,
+        data: { user: result.user, accessToken: result.accessToken },
+      };
     } catch (error) {
       // Log failed registration
       this.securityMonitoring.logEvent({
@@ -133,7 +166,12 @@ export class AuthController {
 
   @Post('login')
   @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 login attempts per minute
-  async login(@Body() body: LoginDto, @Res({ passthrough: true }) res: Response, @Ip() ip: string, @Req() req: Request) {
+  async login(
+    @Body() body: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+    @Ip() ip: string,
+    @Req() req: Request,
+  ) {
     // Check if account is locked
     if (this.securityMonitoring.isAccountLocked(body.email)) {
       const remaining = this.securityMonitoring.getLockoutRemaining(body.email);
@@ -150,7 +188,7 @@ export class AuthController {
           message: `Account temporarily locked due to multiple failed login attempts. Try again in ${Math.ceil(remaining / 60)} minutes.`,
           remainingSeconds: remaining,
         },
-        HttpStatus.TOO_MANY_REQUESTS
+        HttpStatus.TOO_MANY_REQUESTS,
       );
     }
 
@@ -158,11 +196,11 @@ export class AuthController {
       const result = await this.authService.login(body.email, body.password);
       // Set refresh token in httpOnly cookie
       this.setRefreshTokenCookie(res, result.refreshToken);
-      
+
       // Reset failed attempts on successful login
       this.securityMonitoring.resetFailedAttempts(body.email);
       this.securityMonitoring.resetFailedAttempts(ip);
-      
+
       // Log successful login
       this.securityMonitoring.logEvent({
         type: SecurityEventType.LOGIN_SUCCESS,
@@ -172,14 +210,17 @@ export class AuthController {
         userAgent: req.headers['user-agent'],
         timestamp: new Date(),
       });
-      
+
       // Return user and access token (not refresh token)
-      return { success: true, data: { user: result.user, accessToken: result.accessToken } };
+      return {
+        success: true,
+        data: { user: result.user, accessToken: result.accessToken },
+      };
     } catch (error) {
       // Record failed login attempt
       const shouldLock = this.securityMonitoring.recordFailedLogin(body.email);
       this.securityMonitoring.recordFailedLogin(ip);
-      
+
       // Log failed login
       this.securityMonitoring.logEvent({
         type: SecurityEventType.LOGIN_FAILED,
@@ -189,18 +230,22 @@ export class AuthController {
         timestamp: new Date(),
         details: {
           error: error.message,
-          attemptCount: this.securityMonitoring.getFailedAttemptCount(body.email),
+          attemptCount: this.securityMonitoring.getFailedAttemptCount(
+            body.email,
+          ),
           locked: shouldLock,
         },
       });
-      
+
       throw new HttpException(
         {
           success: false,
           message: 'Invalid email or password',
-          attemptsRemaining: shouldLock ? 0 : (5 - this.securityMonitoring.getFailedAttemptCount(body.email)),
+          attemptsRemaining: shouldLock
+            ? 0
+            : 5 - this.securityMonitoring.getFailedAttemptCount(body.email),
         },
-        HttpStatus.UNAUTHORIZED
+        HttpStatus.UNAUTHORIZED,
       );
     }
   }
@@ -214,10 +259,18 @@ export class AuthController {
 
   @Post('siwe/verify')
   @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 SIWE attempts per minute
-  async siweVerify(@Body() body: SiweVerifyDto, @Res({ passthrough: true }) res: Response, @Ip() ip: string, @Req() req: Request) {
+  async siweVerify(
+    @Body() body: SiweVerifyDto,
+    @Res({ passthrough: true }) res: Response,
+    @Ip() ip: string,
+    @Req() req: Request,
+  ) {
     try {
-      const result = await this.authService.verifySiwe(body.address, body.signature);
-      
+      const result = await this.authService.verifySiwe(
+        body.address,
+        body.signature,
+      );
+
       // Log successful SIWE login
       this.securityMonitoring.logEvent({
         type: SecurityEventType.LOGIN_SUCCESS,
@@ -227,11 +280,14 @@ export class AuthController {
         timestamp: new Date(),
         details: { method: 'SIWE', address: body.address },
       });
-      
+
       // SIWE currently returns { user, token } without refresh token
       // For consistency with other auth methods, we should generate a refresh token
       // For now, just return the token (JWT access token)
-      return { success: true, data: { user: result.user, accessToken: result.token } };
+      return {
+        success: true,
+        data: { user: result.user, accessToken: result.token },
+      };
     } catch (error) {
       // Log failed SIWE attempt
       this.securityMonitoring.logEvent({
@@ -258,27 +314,27 @@ export class AuthController {
   async googleAuthRedirect(@Req() req, @Res() res: Response, @Ip() ip: string) {
     try {
       const { accessToken, refreshToken } = req.user;
-      
+
       if (!accessToken || !refreshToken) {
         throw new Error('Missing tokens from OAuth provider');
       }
-      
+
       // Set refresh token in httpOnly cookie
       this.setRefreshTokenCookie(res, refreshToken);
-      
+
       // Generate one-time code for access token exchange (valid for 60 seconds)
       const code = this.generateOAuthCode(accessToken);
-      
+
       // Get frontend URL with fallback
-      const frontendUrl = process.env.FRONTEND_URL || 'https://www.liffeyfoundersclub.com';
-      
+      const frontendUrl =
+        process.env.FRONTEND_URL || 'https://www.liffeyfoundersclub.com';
+
       // Redirect with only the one-time code (no tokens in URL)
-      res.redirect(
-        `${frontendUrl}/login/callback?code=${code}`,
-      );
+      res.redirect(`${frontendUrl}/login/callback?code=${code}`);
     } catch (error) {
       console.error('❌ Google OAuth callback error:', error);
-      const frontendUrl = process.env.FRONTEND_URL || 'https://www.liffeyfoundersclub.com';
+      const frontendUrl =
+        process.env.FRONTEND_URL || 'https://www.liffeyfoundersclub.com';
       res.redirect(`${frontendUrl}/auth?error=oauth_failed`);
     }
   }
@@ -289,7 +345,11 @@ export class AuthController {
    */
   @Post('oauth/exchange')
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 exchanges per minute
-  async exchangeOAuthCode(@Body('code') code: string, @Ip() ip: string, @Req() req: Request) {
+  async exchangeOAuthCode(
+    @Body('code') code: string,
+    @Ip() ip: string,
+    @Req() req: Request,
+  ) {
     if (!code) {
       this.securityMonitoring.logEvent({
         type: SecurityEventType.OAUTH_FAILED,
@@ -300,7 +360,7 @@ export class AuthController {
       });
       throw new HttpException('No code provided', HttpStatus.BAD_REQUEST);
     }
-    
+
     const accessToken = this.consumeOAuthCode(code);
     if (!accessToken) {
       this.securityMonitoring.logEvent({
@@ -310,15 +370,22 @@ export class AuthController {
         timestamp: new Date(),
         details: { error: 'Invalid or expired code' },
       });
-      throw new HttpException('Invalid or expired code', HttpStatus.UNAUTHORIZED);
+      throw new HttpException(
+        'Invalid or expired code',
+        HttpStatus.UNAUTHORIZED,
+      );
     }
-    
+
     return { success: true, data: { accessToken } };
   }
 
   @Post('refresh')
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 refreshes per minute
-  async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Ip() ip: string) {
+  async refresh(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Ip() ip: string,
+  ) {
     // Read refresh token from httpOnly cookie
     const refreshToken = req.cookies?.refreshToken;
     if (!refreshToken) {
@@ -329,9 +396,12 @@ export class AuthController {
         timestamp: new Date(),
         details: { error: 'No refresh token provided' },
       });
-      throw new HttpException('No refresh token provided', HttpStatus.UNAUTHORIZED);
+      throw new HttpException(
+        'No refresh token provided',
+        HttpStatus.UNAUTHORIZED,
+      );
     }
-    
+
     try {
       const result = await this.authService.refresh(refreshToken);
       // Set new refresh token in cookie (token rotation)
@@ -372,31 +442,34 @@ export class AuthController {
     // JwtAuthGuard attaches payload to req.user with { sub: userId, userType }
     const userId = req.user?.sub;
     const userType = req.user?.userType || 'user';
-    
+
     if (!userId) return { success: false, data: null };
-    
+
     // Query unified users table (single table with roles)
     const user = await this.usersService.findById(userId);
-    
+
     if (!user) {
-      return { 
-        success: false, 
-        data: null, 
-        message: 'User not found. Your account may have been upgraded. Please log in again.' 
+      return {
+        success: false,
+        data: null,
+        message:
+          'User not found. Your account may have been upgraded. Please log in again.',
       };
     }
-    
+
     // Generate fresh signed URL for profile photo if it exists
     if (user.profilePhotoUrl && !user.profilePhotoUrl.startsWith('http')) {
       try {
-        const freshUrl = await this.gcpStorageService.generateSignedUrl(user.profilePhotoUrl);
+        const freshUrl = await this.gcpStorageService.generateSignedUrl(
+          user.profilePhotoUrl,
+        );
         user.profilePhotoUrl = freshUrl;
       } catch (error) {
         console.error('Failed to generate fresh signed URL:', error);
         // Keep the existing URL if regeneration fails
       }
     }
-    
+
     // Return sanitized full profile (user accessing their own data)
     const fullProfile = this.usersService.getFullProfile(user);
     return { success: true, data: fullProfile };
@@ -405,7 +478,7 @@ export class AuthController {
   /**
    * Manually trigger token cleanup
    * Useful for testing or emergency cleanup
-   * 
+   *
    * In production, consider protecting this with admin authentication
    */
   @Post('admin/cleanup-tokens')
@@ -426,7 +499,7 @@ export class AuthController {
   /**
    * Get token statistics
    * Useful for monitoring token accumulation
-   * 
+   *
    * In production, consider protecting this with admin authentication
    */
   @Get('admin/token-stats')
@@ -453,11 +526,11 @@ export class AuthController {
   ) {
     try {
       const result = await this.authService.requestPasswordReset(dto.email);
-      
+
       // If we have a reset token, send email
       if ((result as any).resetToken) {
         const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${(result as any).resetToken}`;
-        
+
         // Send email via SMTP
         try {
           await this.emailService.sendPasswordResetEmail(dto.email, resetUrl);
@@ -484,7 +557,8 @@ export class AuthController {
     } catch (error) {
       return {
         success: true,
-        message: 'If an account with that email exists, a password reset link has been sent.',
+        message:
+          'If an account with that email exists, a password reset link has been sent.',
       };
     }
   }
@@ -501,7 +575,10 @@ export class AuthController {
     @Ip() ip: string,
   ) {
     try {
-      const result = await this.authService.resetPassword(dto.token, dto.newPassword);
+      const result = await this.authService.resetPassword(
+        dto.token,
+        dto.newPassword,
+      );
 
       // Log security event
       await this.securityMonitoring.logEvent({
@@ -554,4 +631,3 @@ export class AuthController {
     }
   }
 }
-

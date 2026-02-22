@@ -6,16 +6,16 @@ import { RefreshToken } from '../entities/refresh-token.entity';
 
 /**
  * Token Cleanup Service
- * 
+ *
  * Automatically removes expired and revoked refresh tokens from the database
  * to prevent accumulation and maintain optimal performance.
- * 
+ *
  * Why this is important:
  * - Performance: Prevents token table from growing indefinitely
  * - Security: Removes old tokens that are no longer needed
  * - Compliance: GDPR requires data minimization (don't keep data longer than necessary)
  * - Storage: Reduces database size and improves query performance
- * 
+ *
  * Cleanup strategy:
  * - Runs daily at 3 AM (low traffic time)
  * - Deletes revoked tokens older than 7 days (keeps audit trail)
@@ -32,17 +32,20 @@ export class TokenCleanupService {
 
   /**
    * Clean up expired and old revoked tokens
-   * 
+   *
    * Runs daily at 3:00 AM (server time)
    * Uses CronExpression.EVERY_DAY_AT_3AM for clarity
-   * 
+   *
    * Can also be triggered manually via /auth/cleanup endpoint if needed
    */
   @Cron(CronExpression.EVERY_DAY_AT_3AM, {
     name: 'token-cleanup',
     timeZone: 'UTC', // Use UTC for consistency across deployments
   })
-  async cleanupTokens(): Promise<{ deletedExpired: number; deletedRevoked: number }> {
+  async cleanupTokens(): Promise<{
+    deletedExpired: number;
+    deletedRevoked: number;
+  }> {
     this.logger.log('🧹 Starting token cleanup job...');
 
     try {
@@ -65,7 +68,9 @@ export class TokenCleanupService {
         .delete()
         .from(RefreshToken)
         .where('revoked = :revoked', { revoked: true })
-        .andWhere('revokedAt < :sevenDaysAgo', { sevenDaysAgo: new Date(sevenDaysAgo) })
+        .andWhere('revokedAt < :sevenDaysAgo', {
+          sevenDaysAgo: new Date(sevenDaysAgo),
+        })
         .execute();
 
       const deletedRevoked = revokedResult.affected || 0;
@@ -79,7 +84,10 @@ export class TokenCleanupService {
         deletedRevoked,
       };
     } catch (error) {
-      this.logger.error(`❌ Token cleanup failed: ${error.message}`, error.stack);
+      this.logger.error(
+        `❌ Token cleanup failed: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }

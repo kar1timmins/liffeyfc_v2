@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateCompaniesAndWishlist1762294500000 implements MigrationInterface {
+export class CreateCompaniesAndWishlist1762294500000
+  implements MigrationInterface
+{
   name = 'CreateCompaniesAndWishlist1762294500000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -49,13 +51,27 @@ export class CreateCompaniesAndWishlist1762294500000 implements MigrationInterfa
     `);
 
     // Create indexes for better query performance (only if they don't exist)
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_companies_ownerId" ON "companies" ("ownerId")`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_companies_stage" ON "companies" ("stage")`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_companies_fundingStage" ON "companies" ("fundingStage")`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_companies_isPublic" ON "companies" ("isPublic")`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_companies_industry" ON "companies" ("industry")`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_wishlist_companyId" ON "wishlist_items" ("companyId")`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_wishlist_category" ON "wishlist_items" ("category")`);
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_companies_ownerId" ON "companies" ("ownerId")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_companies_stage" ON "companies" ("stage")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_companies_fundingStage" ON "companies" ("fundingStage")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_companies_isPublic" ON "companies" ("isPublic")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_companies_industry" ON "companies" ("industry")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_wishlist_companyId" ON "wishlist_items" ("companyId")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_wishlist_category" ON "wishlist_items" ("category")`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

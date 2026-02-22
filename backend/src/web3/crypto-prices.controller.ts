@@ -1,4 +1,11 @@
-import { Controller, Get, Post, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  HttpException,
+  HttpStatus,
+  Logger,
+} from '@nestjs/common';
 import { CryptoPricesService } from './crypto-prices.service';
 
 @Controller('crypto-prices')
@@ -13,13 +20,13 @@ export class CryptoPricesController {
       const prices = await this.pricesService.getPrices();
       return {
         success: true,
-        data: prices
+        data: prices,
       };
     } catch (error) {
       this.logger.error('Failed to get crypto prices:', error);
       throw new HttpException(
         'Failed to fetch crypto prices',
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -32,13 +39,13 @@ export class CryptoPricesController {
       return {
         success: true,
         message: 'Prices refreshed from Chainlink',
-        data: prices
+        data: prices,
       };
     } catch (error) {
       this.logger.error('Failed to refresh prices:', error);
       throw new HttpException(
         'Failed to refresh crypto prices',
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -47,7 +54,7 @@ export class CryptoPricesController {
   async testChainlink() {
     this.logger.log('🧪 Manual Chainlink test triggered...');
     await this.pricesService.clearCache();
-    
+
     try {
       const result = await this.pricesService.testChainlinkRaw();
       this.logger.log('✅ Test completed successfully');
@@ -56,9 +63,9 @@ export class CryptoPricesController {
         message: 'Chainlink test completed successfully',
         data: {
           ethEur: result.ethEur,
-          avaxEur: result.avaxEur
+          avaxEur: result.avaxEur,
         },
-        debug: result.debug
+        debug: result.debug,
       };
     } catch (error) {
       this.logger.error('❌ Test failed:', error);
@@ -69,8 +76,8 @@ export class CryptoPricesController {
           message: error.message,
           name: error.name,
           code: error.code,
-          stack: error.stack
-        }
+          stack: error.stack,
+        },
       };
     }
   }

@@ -4,11 +4,11 @@ import { ethers } from 'ethers';
 
 /**
  * Platform Wallet Service
- * 
+ *
  * Manages platform-owned wallets for paying gas fees on contract deployments.
  * Users pay in USDC to the platform, then the platform deploys contracts using
  * its own wallets (which have ETH/AVAX for gas).
- * 
+ *
  * Security Notes:
  * - Private keys stored in environment variables (PLATFORM_ETH_PRIVATE_KEY, PLATFORM_AVAX_PRIVATE_KEY)
  * - Keys should be encrypted at rest in production (use secrets management like AWS Secrets Manager)
@@ -37,13 +37,13 @@ export class PlatformWalletService {
     'https://sepolia-rpc.publicnode.com',
     'https://ethereum-sepolia.publicnode.com',
     'https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
-    'https://rpc.sepolia.org'
+    'https://rpc.sepolia.org',
   ];
 
   private avalancheRPCEndpoints = [
     'https://api.avax-test.network/ext/bc/C/rpc',
     'https://avalanche-fuji-c-chain.publicnode.com',
-    'https://avalanche-fuji.drpc.org'
+    'https://avalanche-fuji.drpc.org',
   ];
 
   // Throttle timestamps to avoid repeated RPC warnings
@@ -52,8 +52,10 @@ export class PlatformWalletService {
 
   constructor(private configService: ConfigService) {
     // Load platform private keys from environment
-    let ethKey = this.configService.get<string>('PLATFORM_ETH_PRIVATE_KEY') || '';
-    let avaxKey = this.configService.get<string>('PLATFORM_AVAX_PRIVATE_KEY') || '';
+    const ethKey =
+      this.configService.get<string>('PLATFORM_ETH_PRIVATE_KEY') || '';
+    const avaxKey =
+      this.configService.get<string>('PLATFORM_AVAX_PRIVATE_KEY') || '';
 
     // Normalize private keys (add 0x prefix if missing, as MetaMask exports without it)
     this.ethereumPrivateKey = this.normalizePrivateKey(ethKey);
@@ -61,20 +63,35 @@ export class PlatformWalletService {
 
     // Validate that keys are configured
     if (!this.ethereumPrivateKey || !this.avalanchePrivateKey) {
-      this.logger.warn('⚠️  Platform wallet private keys not fully configured.');
-      this.logger.warn('   Missing: ' +
-        (!this.ethereumPrivateKey ? 'PLATFORM_ETH_PRIVATE_KEY ' : '') +
-        (!this.avalanchePrivateKey ? 'PLATFORM_AVAX_PRIVATE_KEY' : '')
+      this.logger.warn(
+        '⚠️  Platform wallet private keys not fully configured.',
       );
-      this.logger.warn('   X402 payment deployments will not work until keys are configured.');
+      this.logger.warn(
+        '   Missing: ' +
+          (!this.ethereumPrivateKey ? 'PLATFORM_ETH_PRIVATE_KEY ' : '') +
+          (!this.avalanchePrivateKey ? 'PLATFORM_AVAX_PRIVATE_KEY' : ''),
+      );
+      this.logger.warn(
+        '   X402 payment deployments will not work until keys are configured.',
+      );
     }
 
     // Validate key formats (must be 64 hex characters with or without 0x prefix)
-    if (this.ethereumPrivateKey && !this.isValidPrivateKey(this.ethereumPrivateKey)) {
-      throw new Error('PLATFORM_ETH_PRIVATE_KEY has invalid format (must be 64 hex characters)');
+    if (
+      this.ethereumPrivateKey &&
+      !this.isValidPrivateKey(this.ethereumPrivateKey)
+    ) {
+      throw new Error(
+        'PLATFORM_ETH_PRIVATE_KEY has invalid format (must be 64 hex characters)',
+      );
     }
-    if (this.avalanchePrivateKey && !this.isValidPrivateKey(this.avalanchePrivateKey)) {
-      throw new Error('PLATFORM_AVAX_PRIVATE_KEY has invalid format (must be 64 hex characters)');
+    if (
+      this.avalanchePrivateKey &&
+      !this.isValidPrivateKey(this.avalanchePrivateKey)
+    ) {
+      throw new Error(
+        'PLATFORM_AVAX_PRIVATE_KEY has invalid format (must be 64 hex characters)',
+      );
     }
 
     // Derive wallet addresses from private keys
@@ -83,7 +100,7 @@ export class PlatformWalletService {
       this.ethereumAddress = ethWallet.address;
       this.logger.log(`🔑 Platform Ethereum wallet: ${this.ethereumAddress}`);
     }
-    
+
     if (this.avalanchePrivateKey) {
       const avaxWallet = new ethers.Wallet(this.avalanchePrivateKey);
       this.avalancheAddress = avaxWallet.address;
@@ -91,8 +108,12 @@ export class PlatformWalletService {
     }
 
     // Initialize RPC providers
-    const ethereumRpcUrl = this.configService.get<string>('ETHEREUM_RPC_URL') || this.ethereumRPCEndpoints[0];
-    const avalancheRpcUrl = this.configService.get<string>('AVALANCHE_RPC_URL') || this.avalancheRPCEndpoints[0];
+    const ethereumRpcUrl =
+      this.configService.get<string>('ETHEREUM_RPC_URL') ||
+      this.ethereumRPCEndpoints[0];
+    const avalancheRpcUrl =
+      this.configService.get<string>('AVALANCHE_RPC_URL') ||
+      this.avalancheRPCEndpoints[0];
 
     this.ethereumProvider = new ethers.JsonRpcProvider(ethereumRpcUrl);
     this.avalancheProvider = new ethers.JsonRpcProvider(avalancheRpcUrl);
@@ -116,7 +137,11 @@ export class PlatformWalletService {
    */
   private isValidPrivateKey(key: string): boolean {
     // After normalization, should be 0x + 64 hex chars = 66 total
-    return key.startsWith('0x') && key.length === 66 && /^0x[0-9a-fA-F]{64}$/.test(key);
+    return (
+      key.startsWith('0x') &&
+      key.length === 66 &&
+      /^0x[0-9a-fA-F]{64}$/.test(key)
+    );
   }
 
   /**
@@ -129,7 +154,9 @@ export class PlatformWalletService {
     } catch (error) {
       const now = Date.now();
       if (now - this.lastEthereumRpcWarn > 60_000) {
-        this.logger.warn('⚠️  Current Ethereum RPC endpoint failed, trying fallbacks...');
+        this.logger.warn(
+          '⚠️  Current Ethereum RPC endpoint failed, trying fallbacks...',
+        );
         this.lastEthereumRpcWarn = now;
       }
 
@@ -137,7 +164,9 @@ export class PlatformWalletService {
         try {
           const provider = new ethers.JsonRpcProvider(rpcUrl);
           await provider.getNetwork();
-          this.logger.log(`✅ Successfully switched to Ethereum RPC: ${rpcUrl}`);
+          this.logger.log(
+            `✅ Successfully switched to Ethereum RPC: ${rpcUrl}`,
+          );
           this.ethereumProvider = provider;
           this.lastEthereumRpcWarn = 0;
           return provider;
@@ -159,7 +188,9 @@ export class PlatformWalletService {
     } catch (error) {
       const now = Date.now();
       if (now - this.lastAvalancheRpcWarn > 60_000) {
-        this.logger.warn('⚠️  Current Avalanche RPC endpoint failed, trying fallbacks...');
+        this.logger.warn(
+          '⚠️  Current Avalanche RPC endpoint failed, trying fallbacks...',
+        );
         this.lastAvalancheRpcWarn = now;
       }
 
@@ -167,7 +198,9 @@ export class PlatformWalletService {
         try {
           const provider = new ethers.JsonRpcProvider(rpcUrl);
           await provider.getNetwork();
-          this.logger.log(`✅ Successfully switched to Avalanche RPC: ${rpcUrl}`);
+          this.logger.log(
+            `✅ Successfully switched to Avalanche RPC: ${rpcUrl}`,
+          );
           this.avalancheProvider = provider;
           this.lastAvalancheRpcWarn = 0;
           return provider;
@@ -184,7 +217,9 @@ export class PlatformWalletService {
    */
   async getEthereumSigner(): Promise<ethers.Wallet> {
     if (!this.ethereumPrivateKey) {
-      throw new Error('Platform Ethereum wallet not configured (PLATFORM_ETH_PRIVATE_KEY missing)');
+      throw new Error(
+        'Platform Ethereum wallet not configured (PLATFORM_ETH_PRIVATE_KEY missing)',
+      );
     }
 
     const provider = await this.getWorkingEthereumProvider();
@@ -196,7 +231,9 @@ export class PlatformWalletService {
    */
   async getAvalancheSigner(): Promise<ethers.Wallet> {
     if (!this.avalanchePrivateKey) {
-      throw new Error('Platform Avalanche wallet not configured (PLATFORM_AVAX_PRIVATE_KEY missing)');
+      throw new Error(
+        'Platform Avalanche wallet not configured (PLATFORM_AVAX_PRIVATE_KEY missing)',
+      );
     }
 
     const provider = await this.getWorkingAvalancheProvider();
@@ -256,7 +293,7 @@ export class PlatformWalletService {
     chain: 'ethereum' | 'avalanche',
     to: string,
     data: string,
-    value: bigint = 0n
+    value: bigint = 0n,
   ): Promise<{
     gasLimit: bigint;
     gasPrice: bigint;
@@ -294,7 +331,7 @@ export class PlatformWalletService {
    */
   async hasSufficientGas(
     chain: 'ethereum' | 'avalanche',
-    requiredGasWei: bigint
+    requiredGasWei: bigint,
   ): Promise<boolean> {
     const balance = await this.getPlatformBalance(chain);
     return BigInt(balance.balanceWei) >= requiredGasWei;
@@ -307,29 +344,35 @@ export class PlatformWalletService {
     chain: 'ethereum' | 'avalanche',
     to: string,
     data: string,
-    value: bigint = 0n
+    value: bigint = 0n,
   ): Promise<ethers.TransactionResponse> {
     const signer = await this.getSigner(chain);
 
     this.logger.log(`📤 Sending transaction on ${chain}`);
     this.logger.log(`   From: ${signer.address}`);
     this.logger.log(`   To: ${to}`);
-    this.logger.log(`   Value: ${ethers.formatEther(value)} ${chain === 'ethereum' ? 'ETH' : 'AVAX'}`);
+    this.logger.log(
+      `   Value: ${ethers.formatEther(value)} ${chain === 'ethereum' ? 'ETH' : 'AVAX'}`,
+    );
 
     // Get current balance
     const balance = await signer.provider!.getBalance(signer.address);
-    this.logger.log(`   Platform Balance: ${ethers.formatEther(balance)} ${chain === 'ethereum' ? 'ETH' : 'AVAX'}`);
+    this.logger.log(
+      `   Platform Balance: ${ethers.formatEther(balance)} ${chain === 'ethereum' ? 'ETH' : 'AVAX'}`,
+    );
 
     // Estimate gas
     const gasEstimate = await this.estimateGasCost(chain, to, data, value);
-    this.logger.log(`   Estimated Gas Cost: ${gasEstimate.estimatedCostEth} ${chain === 'ethereum' ? 'ETH' : 'AVAX'}`);
+    this.logger.log(
+      `   Estimated Gas Cost: ${gasEstimate.estimatedCostEth} ${chain === 'ethereum' ? 'ETH' : 'AVAX'}`,
+    );
 
     // Check sufficient balance
     if (balance < gasEstimate.estimatedCostWei + value) {
       throw new Error(
         `Insufficient platform wallet balance. ` +
-        `Required: ${ethers.formatEther(gasEstimate.estimatedCostWei + value)} ${chain === 'ethereum' ? 'ETH' : 'AVAX'}, ` +
-        `Available: ${ethers.formatEther(balance)} ${chain === 'ethereum' ? 'ETH' : 'AVAX'}`
+          `Required: ${ethers.formatEther(gasEstimate.estimatedCostWei + value)} ${chain === 'ethereum' ? 'ETH' : 'AVAX'}, ` +
+          `Available: ${ethers.formatEther(balance)} ${chain === 'ethereum' ? 'ETH' : 'AVAX'}`,
       );
     }
 
@@ -351,21 +394,26 @@ export class PlatformWalletService {
   async waitForTransaction(
     chain: 'ethereum' | 'avalanche',
     txHash: string,
-    confirmations: number = 1
+    confirmations: number = 1,
   ): Promise<ethers.TransactionReceipt | null> {
-    const provider = chain === 'ethereum' 
-      ? await this.getWorkingEthereumProvider()
-      : await this.getWorkingAvalancheProvider();
+    const provider =
+      chain === 'ethereum'
+        ? await this.getWorkingEthereumProvider()
+        : await this.getWorkingAvalancheProvider();
 
-    this.logger.log(`⏳ Waiting for transaction ${txHash} (${confirmations} confirmations)...`);
-    
+    this.logger.log(
+      `⏳ Waiting for transaction ${txHash} (${confirmations} confirmations)...`,
+    );
+
     const receipt = await provider.waitForTransaction(txHash, confirmations);
-    
+
     if (receipt) {
       this.logger.log(`✅ Transaction confirmed: ${txHash}`);
       this.logger.log(`   Block: ${receipt.blockNumber}`);
       this.logger.log(`   Gas Used: ${receipt.gasUsed.toString()}`);
-      this.logger.log(`   Status: ${receipt.status === 1 ? 'Success' : 'Failed'}`);
+      this.logger.log(
+        `   Status: ${receipt.status === 1 ? 'Success' : 'Failed'}`,
+      );
     }
 
     return receipt;

@@ -35,10 +35,7 @@ export class PaymentsController {
    */
   @Post('create')
   @UseGuards(AuthGuard('jwt'))
-  async createPayment(
-    @Body() dto: CreatePaymentDto,
-    @CurrentUser() user: any
-  ) {
+  async createPayment(@Body() dto: CreatePaymentDto, @CurrentUser() user: any) {
     try {
       this.logger.log(`💳 Payment creation request from user ${user.sub}`);
 
@@ -47,10 +44,12 @@ export class PaymentsController {
 
       // 2. Queue deployment job
       this.logger.log(`📋 Queuing deployment job for payment ${payment.id}`);
-      
+
       // Get wishlist item to extract company wallet info
-      const wishlistItem = await this.paymentsService.getWishlistItemById(dto.wishlistItemId);
-      
+      const wishlistItem = await this.paymentsService.getWishlistItemById(
+        dto.wishlistItemId,
+      );
+
       const jobId = await this.deploymentQueue.queueDeployment({
         paymentId: payment.id,
         userId: user.sub,
@@ -82,7 +81,7 @@ export class PaymentsController {
       this.logger.error(`❌ Payment creation failed: ${error.message}`);
       throw new HttpException(
         error.message || 'Failed to create payment',
-        error.status || HttpStatus.BAD_REQUEST
+        error.status || HttpStatus.BAD_REQUEST,
       );
     }
   }
@@ -95,7 +94,7 @@ export class PaymentsController {
   @UseGuards(AuthGuard('jwt'))
   async createMasterWalletPayment(
     @Body() dto: CreateMasterWalletPaymentDto,
-    @CurrentUser() user: any
+    @CurrentUser() user: any,
   ) {
     try {
       this.logger.log(`💳 Master wallet payment request from user ${user.sub}`);
@@ -105,10 +104,15 @@ export class PaymentsController {
         throw new Error('Master wallet not configured for user');
       }
 
-      const payment = await this.paymentsService.createMasterWalletPayment(user.sub, dto);
+      const payment = await this.paymentsService.createMasterWalletPayment(
+        user.sub,
+        dto,
+      );
 
       // Queue deployment job
-      const wishlistItem = await this.paymentsService.getWishlistItemById(dto.wishlistItemId);
+      const wishlistItem = await this.paymentsService.getWishlistItemById(
+        dto.wishlistItemId,
+      );
 
       const jobId = await this.deploymentQueue.queueDeployment({
         paymentId: payment.id,
@@ -136,7 +140,7 @@ export class PaymentsController {
       this.logger.error(`❌ Master wallet payment failed: ${error.message}`);
       throw new HttpException(
         error.message || 'Failed to process master wallet payment',
-        error.status || HttpStatus.BAD_REQUEST
+        error.status || HttpStatus.BAD_REQUEST,
       );
     }
   }
@@ -150,7 +154,9 @@ export class PaymentsController {
   async verifyPayment(@Body() dto: VerifyPaymentDto) {
     try {
       // Check if already used
-      const existingPayment = await this.paymentsService.getPaymentByTxHash(dto.txHash);
+      const existingPayment = await this.paymentsService.getPaymentByTxHash(
+        dto.txHash,
+      );
       if (existingPayment) {
         return {
           success: false,
@@ -160,14 +166,16 @@ export class PaymentsController {
       }
 
       // Get platform address
-      const platformAddress = this.usdcValidator.getPlatformUSDCAddress(dto.chain);
+      const platformAddress = this.usdcValidator.getPlatformUSDCAddress(
+        dto.chain,
+      );
 
       // Validate (with minimal expected amount for verification)
       const result = await this.usdcValidator.validateUSDCPayment(
         dto.txHash,
         dto.chain,
         0.01, // Minimal amount just to verify it's a valid USDC tx
-        platformAddress
+        platformAddress,
       );
 
       return {
@@ -197,10 +205,7 @@ export class PaymentsController {
    */
   @Get(':id')
   @UseGuards(AuthGuard('jwt'))
-  async getPayment(
-    @Param('id') paymentId: string,
-    @CurrentUser() user: any
-  ) {
+  async getPayment(@Param('id') paymentId: string, @CurrentUser() user: any) {
     try {
       const payment = await this.paymentsService.getPaymentById(paymentId);
 
@@ -216,7 +221,7 @@ export class PaymentsController {
     } catch (error) {
       throw new HttpException(
         error.message || 'Failed to get payment',
-        error.status || HttpStatus.BAD_REQUEST
+        error.status || HttpStatus.BAD_REQUEST,
       );
     }
   }
@@ -237,7 +242,7 @@ export class PaymentsController {
     } catch (error) {
       throw new HttpException(
         error.message || 'Failed to get payments',
-        error.status || HttpStatus.INTERNAL_SERVER_ERROR
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -247,18 +252,21 @@ export class PaymentsController {
    * Provides real-time gas cost estimates
    */
   @Post('estimate')
-  async estimateDeploymentCosts(@Body() body: { chains: ('ethereum' | 'avalanche')[] }) {
+  async estimateDeploymentCosts(
+    @Body() body: { chains: ('ethereum' | 'avalanche')[] },
+  ) {
     try {
       const { chains } = body;
 
       if (!chains || chains.length === 0) {
         throw new HttpException(
           'At least one chain must be specified',
-          HttpStatus.BAD_REQUEST
+          HttpStatus.BAD_REQUEST,
         );
       }
 
-      const estimate = await this.paymentsService.estimateDeploymentCosts(chains);
+      const estimate =
+        await this.paymentsService.estimateDeploymentCosts(chains);
 
       return {
         success: true,
@@ -268,7 +276,7 @@ export class PaymentsController {
       this.logger.error('Failed to estimate deployment costs:', error.message);
       throw new HttpException(
         error.message || 'Failed to estimate costs',
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -287,10 +295,13 @@ export class PaymentsController {
         data: jobStatus,
       };
     } catch (error) {
-      this.logger.error(`Failed to get job status for ${jobId}:`, error.message);
+      this.logger.error(
+        `Failed to get job status for ${jobId}:`,
+        error.message,
+      );
       throw new HttpException(
         error.message || 'Failed to get job status',
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -316,7 +327,7 @@ export class PaymentsController {
     } catch (error) {
       throw new HttpException(
         error.message || 'Failed to get payment info',
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }

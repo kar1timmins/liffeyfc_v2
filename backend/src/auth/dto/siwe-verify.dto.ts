@@ -2,7 +2,7 @@ import { IsString, IsNotEmpty, Matches, IsOptional } from 'class-validator';
 
 /**
  * SIWE (Sign-In with Ethereum) Verification DTO
- * 
+ *
  * Security Requirements:
  * - Address: Valid Ethereum address (0x + 40 hex chars)
  * - Signature: Valid hex signature
@@ -17,7 +17,8 @@ export class SiweVerifyDto {
   @IsString({ message: 'Address must be a string' })
   @IsNotEmpty({ message: 'Wallet address is required' })
   @Matches(/^0x[a-fA-F0-9]{40}$/, {
-    message: 'Invalid Ethereum address format (must be 0x followed by 40 hex characters)',
+    message:
+      'Invalid Ethereum address format (must be 0x followed by 40 hex characters)',
   })
   address: string;
 

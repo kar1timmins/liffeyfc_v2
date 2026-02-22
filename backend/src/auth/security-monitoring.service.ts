@@ -30,7 +30,7 @@ export interface SecurityEvent {
 
 /**
  * Security monitoring service for tracking authentication events
- * 
+ *
  * Features:
  * - Logs security events (failed logins, token reuse, rate limiting)
  * - Tracks failed login attempts by IP and email
@@ -40,20 +40,23 @@ export interface SecurityEvent {
 @Injectable()
 export class SecurityMonitoringService {
   private readonly logger = new Logger(SecurityMonitoringService.name);
-  
+
   /**
    * In-memory storage for failed login attempts
    * Key: email or IP address
    * Value: { count, firstAttempt, lastAttempt, lockedUntil? }
-   * 
+   *
    * Production: Move to Redis for persistence and multi-instance support
    */
-  private failedLoginAttempts = new Map<string, {
-    count: number;
-    firstAttempt: Date;
-    lastAttempt: Date;
-    lockedUntil?: Date;
-  }>();
+  private failedLoginAttempts = new Map<
+    string,
+    {
+      count: number;
+      firstAttempt: Date;
+      lastAttempt: Date;
+      lockedUntil?: Date;
+    }
+  >();
 
   // Configuration
   private readonly MAX_FAILED_ATTEMPTS = 5;
@@ -81,19 +84,19 @@ export class SecurityMonitoringService {
       case SecurityEventType.JWT_VERIFICATION_FAILED:
         this.logger.warn('Security Event:', logData);
         break;
-      
+
       case SecurityEventType.REFRESH_TOKEN_REUSE:
       case SecurityEventType.RATE_LIMIT_EXCEEDED:
       case SecurityEventType.ACCOUNT_LOCKED:
       case SecurityEventType.SUSPICIOUS_ACTIVITY:
         this.logger.error('Security Alert:', logData);
         break;
-      
+
       case SecurityEventType.LOGIN_SUCCESS:
       case SecurityEventType.REGISTRATION_SUCCESS:
         this.logger.log('Security Event:', logData);
         break;
-      
+
       default:
         this.logger.debug('Security Event:', logData);
     }
@@ -141,7 +144,7 @@ export class SecurityMonitoringService {
     if (existing.count >= this.MAX_FAILED_ATTEMPTS) {
       existing.lockedUntil = new Date(now.getTime() + this.LOCKOUT_DURATION);
       this.failedLoginAttempts.set(identifier, existing);
-      
+
       this.logEvent({
         type: SecurityEventType.ACCOUNT_LOCKED,
         email: identifier,
@@ -152,7 +155,7 @@ export class SecurityMonitoringService {
           lockedUntil: existing.lockedUntil.toISOString(),
         },
       });
-      
+
       return true;
     }
 
@@ -185,7 +188,10 @@ export class SecurityMonitoringService {
     if (!existing?.lockedUntil) return 0;
 
     const now = new Date();
-    const remaining = Math.max(0, existing.lockedUntil.getTime() - now.getTime());
+    const remaining = Math.max(
+      0,
+      existing.lockedUntil.getTime() - now.getTime(),
+    );
     return Math.ceil(remaining / 1000);
   }
 
@@ -221,6 +227,8 @@ export class SecurityMonitoringService {
       }
     }
 
-    this.logger.debug(`Cleanup: ${this.failedLoginAttempts.size} entries remaining`);
+    this.logger.debug(
+      `Cleanup: ${this.failedLoginAttempts.size} entries remaining`,
+    );
   }
 }

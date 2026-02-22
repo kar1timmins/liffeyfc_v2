@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddEscrowTrackingTables1734000000000 implements MigrationInterface {
+export class AddEscrowTrackingTables1734000000000
+  implements MigrationInterface
+{
   name = 'AddEscrowTrackingTables1734000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -72,11 +74,21 @@ export class AddEscrowTrackingTables1734000000000 implements MigrationInterface 
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_contribution_escrow_deployment"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_contribution_wishlist_item"`);
-    await queryRunner.query(`DROP INDEX IF NOT EXISTS "IDX_contribution_contributor_address"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_escrow_deployment_wishlist_item"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_escrow_deployment_contract_address"`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_contribution_escrow_deployment"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_contribution_wishlist_item"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF NOT EXISTS "IDX_contribution_contributor_address"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_escrow_deployment_wishlist_item"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_escrow_deployment_contract_address"`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS "contributions"`);
     await queryRunner.query(`DROP TABLE IF EXISTS "escrow_deployments"`);
   }

@@ -1,4 +1,12 @@
-import { IsString, IsNotEmpty, IsNumber, IsArray, IsOptional, Min, IsIn } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsNumber,
+  IsArray,
+  IsOptional,
+  Min,
+  IsIn,
+} from 'class-validator';
 
 export class CreateMasterWalletPaymentDto {
   @IsString()

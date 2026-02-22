@@ -16,20 +16,20 @@ export const SkipCsrf = () => Reflector.createDecorator<boolean>();
 
 /**
  * CSRF Protection Guard
- * 
+ *
  * Implements Double-Submit Cookie pattern:
  * 1. CSRF token stored in cookie (SameSite=Strict, httpOnly=false)
  * 2. Client must send same token in X-XSRF-TOKEN header
  * 3. Server validates cookie matches header
- * 
+ *
  * This is defense-in-depth on top of SameSite cookies and JSON API.
  * Only applied to state-changing operations (POST/PUT/PATCH/DELETE).
- * 
+ *
  * Note: This guard is OPTIONAL. Our current implementation relies on:
  * - SameSite=Lax cookies (primary CSRF protection)
  * - JSON API with Content-Type validation (secondary)
  * - Origin validation via CORS (tertiary)
- * 
+ *
  * Enable this guard if you need maximum CSRF protection.
  */
 @Injectable()
@@ -80,18 +80,18 @@ export class CsrfGuard implements CanActivate {
 
 /**
  * Usage Example:
- * 
+ *
  * 1. Apply globally in app.module.ts:
  *    {
  *      provide: APP_GUARD,
  *      useClass: CsrfGuard,
  *    }
- * 
+ *
  * 2. Skip for specific endpoints:
  *    @SkipCsrf()
  *    @Get('public-data')
  *    getPublicData() { ... }
- * 
+ *
  * 3. Client must include token in header:
  *    fetch('/api/auth/register', {
  *      method: 'POST',

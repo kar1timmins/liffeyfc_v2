@@ -10,7 +10,14 @@ import {
   Logger,
   Query,
 } from '@nestjs/common';
-import { IsString, IsNumber, IsOptional, IsNotEmpty, IsIn, Min } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsNotEmpty,
+  IsIn,
+  Min,
+} from 'class-validator';
 import { BountiesService } from './bounties.service';
 import { UsersService } from '../users/users.service';
 import { GcpStorageService } from '../common/gcp-storage.service';
@@ -92,10 +99,15 @@ export class BountiesController {
                 let profileUrl = user.profilePhotoUrl ?? null;
                 if (profileUrl && !profileUrl.startsWith('http')) {
                   try {
-                    profileUrl = await this.gcpStorageService.generateSignedUrl(profileUrl);
+                    profileUrl =
+                      await this.gcpStorageService.generateSignedUrl(
+                        profileUrl,
+                      );
                   } catch (err) {
                     // keep original path if signed url generation fails
-                    this.logger.warn(`Failed to generate signed URL for user ${ownerId}: ${err.message}`);
+                    this.logger.warn(
+                      `Failed to generate signed URL for user ${ownerId}: ${err.message}`,
+                    );
                   }
                 }
                 bounty.company.owner = {
@@ -106,7 +118,9 @@ export class BountiesController {
               }
             }
           } catch (err) {
-            this.logger.warn(`Failed to attach owner data for bounty ${bounty.id}: ${err.message}`);
+            this.logger.warn(
+              `Failed to attach owner data for bounty ${bounty.id}: ${err.message}`,
+            );
           }
         }),
       );
@@ -165,9 +179,12 @@ export class BountiesController {
           let profileUrl = owner.profilePhotoUrl ?? null;
           if (profileUrl && !profileUrl.startsWith('http')) {
             try {
-              profileUrl = await this.gcpStorageService.generateSignedUrl(profileUrl);
+              profileUrl =
+                await this.gcpStorageService.generateSignedUrl(profileUrl);
             } catch (err) {
-              this.logger.warn(`Failed to generate signed URL for user ${owner.id}: ${err.message}`);
+              this.logger.warn(
+                `Failed to generate signed URL for user ${owner.id}: ${err.message}`,
+              );
             }
           }
           bounty.company.owner = {
@@ -196,10 +213,7 @@ export class BountiesController {
    */
   @Post()
   @UseGuards(AuthGuard('jwt'))
-  async createBounty(
-    @Body() dto: CreateBountyDto,
-    @CurrentUser() user: any,
-  ) {
+  async createBounty(@Body() dto: CreateBountyDto, @CurrentUser() user: any) {
     try {
       const bounty = await this.bountiesService.createFromWishlistItem(
         dto.wishlistItemId,
@@ -258,14 +272,19 @@ export class BountiesController {
       await Promise.all(
         contributors.map(async (contributor) => {
           try {
-            const user = await this.usersService.findByWallet(contributor.address);
+            const user = await this.usersService.findByWallet(
+              contributor.address,
+            );
             if (user) {
               let profileUrl = user.profilePhotoUrl ?? null;
               if (profileUrl && !profileUrl.startsWith('http')) {
                 try {
-                  profileUrl = await this.gcpStorageService.generateSignedUrl(profileUrl);
+                  profileUrl =
+                    await this.gcpStorageService.generateSignedUrl(profileUrl);
                 } catch (err) {
-                  this.logger.warn(`Failed to generate signed URL for contributor ${user.id}: ${err.message}`);
+                  this.logger.warn(
+                    `Failed to generate signed URL for contributor ${user.id}: ${err.message}`,
+                  );
                 }
               }
               contributor.user = {
@@ -275,7 +294,9 @@ export class BountiesController {
               } as any;
             }
           } catch (err) {
-            this.logger.warn(`Failed to enrich contributor ${contributor.address}: ${err.message}`);
+            this.logger.warn(
+              `Failed to enrich contributor ${contributor.address}: ${err.message}`,
+            );
           }
         }),
       );
@@ -364,9 +385,14 @@ export class BountiesController {
                 let profileUrl = user.profilePhotoUrl ?? null;
                 if (profileUrl && !profileUrl.startsWith('http')) {
                   try {
-                    profileUrl = await this.gcpStorageService.generateSignedUrl(profileUrl);
+                    profileUrl =
+                      await this.gcpStorageService.generateSignedUrl(
+                        profileUrl,
+                      );
                   } catch (err) {
-                    this.logger.warn(`Failed to generate signed URL for user ${ownerId}: ${err.message}`);
+                    this.logger.warn(
+                      `Failed to generate signed URL for user ${ownerId}: ${err.message}`,
+                    );
                   }
                 }
                 bounty.company.owner = {
@@ -377,7 +403,9 @@ export class BountiesController {
               }
             }
           } catch (err) {
-            this.logger.warn(`Failed to attach owner data for bounty ${bounty.id}: ${err.message}`);
+            this.logger.warn(
+              `Failed to attach owner data for bounty ${bounty.id}: ${err.message}`,
+            );
           }
         }),
       );

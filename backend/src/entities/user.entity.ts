@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, OneToOne } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  OneToMany,
+  OneToOne,
+} from 'typeorm';
 import { Wallet } from './wallet.entity';
 import { RefreshToken } from './refresh-token.entity';
 import { Company } from './company.entity';
@@ -8,14 +16,14 @@ import { UserWallet } from './user-wallet.entity';
  * User Role Enum
  */
 export enum UserRole {
-  USER = 'user',           // Regular users/founders
-  INVESTOR = 'investor',   // Investors/VCs
-  STAFF = 'staff',        // LFC staff/admin
+  USER = 'user', // Regular users/founders
+  INVESTOR = 'investor', // Investors/VCs
+  STAFF = 'staff', // LFC staff/admin
 }
 
 /**
  * Unified User Entity
- * 
+ *
  * Represents all types of users in the system:
  * - Regular users/founders (role: 'user')
  * - Investors/VCs (role: 'investor')
@@ -39,10 +47,10 @@ export class User {
   profilePhotoUrl?: string;
 
   // Role determines user type and permissions
-  @Column({ 
-    type: 'enum', 
-    enum: UserRole, 
-    default: UserRole.USER 
+  @Column({
+    type: 'enum',
+    enum: UserRole,
+    default: UserRole.USER,
   })
   role: UserRole;
 
@@ -105,4 +113,3 @@ export class User {
   @UpdateDateColumn()
   updatedAt: Date;
 }
-

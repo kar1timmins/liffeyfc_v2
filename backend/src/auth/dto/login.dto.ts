@@ -2,7 +2,7 @@ import { IsEmail, IsString, IsNotEmpty } from 'class-validator';
 
 /**
  * Login DTO with validation
- * 
+ *
  * Security Requirements:
  * - Email: Valid format, required
  * - Password: Required (no complexity check here - already validated at registration)

@@ -9,7 +9,14 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { IsString, IsNumber, IsOptional, IsArray, IsNotEmpty, IsIn } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsArray,
+  IsNotEmpty,
+  IsIn,
+} from 'class-validator';
 import { AuthGuard } from '@nestjs/passport';
 import { ethers } from 'ethers';
 import { EscrowContractService } from './escrow-contract.service';
@@ -74,10 +81,7 @@ export class EscrowController {
    */
   @Post('create')
   @UseGuards(AuthGuard('jwt'))
-  async createEscrow(
-    @Body() dto: CreateEscrowDto,
-    @CurrentUser() user: any
-  ) {
+  async createEscrow(@Body() dto: CreateEscrowDto, @CurrentUser() user: any) {
     try {
       // Verify wishlist item exists
       const wishlistItem = await this.wishlistRepo.findOne({
@@ -86,7 +90,10 @@ export class EscrowController {
       });
 
       if (!wishlistItem) {
-        throw new HttpException('Wishlist item not found', HttpStatus.NOT_FOUND);
+        throw new HttpException(
+          'Wishlist item not found',
+          HttpStatus.NOT_FOUND,
+        );
       }
 
       // Verify user owns the company
@@ -97,62 +104,81 @@ export class EscrowController {
       if (!company || company.ownerId !== user.sub) {
         throw new HttpException(
           'You do not have permission to create escrow for this company',
-          HttpStatus.FORBIDDEN
+          HttpStatus.FORBIDDEN,
         );
       }
 
       // Check if company has wallet addresses
       if (!company.ethAddress && !company.avaxAddress) {
-        this.logger.warn(`⚠️  Company ${company.id} has no wallet addresses. Attempting to generate...`);
-        
+        this.logger.warn(
+          `⚠️  Company ${company.id} has no wallet addresses. Attempting to generate...`,
+        );
+
         // Try to auto-generate company wallet
         try {
-          const walletResult = await this.walletService.generateCompanyWallet(user.sub, company.id);
-          this.logger.log(`✅ Auto-generated company wallet: ETH=${walletResult.ethAddress}, AVAX=${walletResult.avaxAddress}`);
-          
+          const walletResult = await this.walletService.generateCompanyWallet(
+            user.sub,
+            company.id,
+          );
+          this.logger.log(
+            `✅ Auto-generated company wallet: ETH=${walletResult.ethAddress}, AVAX=${walletResult.avaxAddress}`,
+          );
+
           // Refresh company data
           company.ethAddress = walletResult.ethAddress;
           company.avaxAddress = walletResult.avaxAddress;
         } catch (walletError) {
-          this.logger.error(`❌ Failed to auto-generate company wallet: ${walletError.message}`);
+          this.logger.error(
+            `❌ Failed to auto-generate company wallet: ${walletError.message}`,
+          );
           throw new HttpException(
             'Company wallet generation failed. Please ensure you have a master wallet and try generating the company wallet manually.',
-            HttpStatus.BAD_REQUEST
+            HttpStatus.BAD_REQUEST,
           );
         }
       }
 
-      this.logger.log(`📋 Company wallet addresses - ETH: ${company.ethAddress || 'none'}, AVAX: ${company.avaxAddress || 'none'}`);
+      this.logger.log(
+        `📋 Company wallet addresses - ETH: ${company.ethAddress || 'none'}, AVAX: ${company.avaxAddress || 'none'}`,
+      );
 
       // Validate company wallet addresses are properly formatted
       if (company.ethAddress && !ethers.isAddress(company.ethAddress)) {
-        this.logger.error(`❌ Invalid ETH address format for company ${company.id}`);
+        this.logger.error(
+          `❌ Invalid ETH address format for company ${company.id}`,
+        );
         throw new HttpException(
           `Company ETH wallet address is malformed. Expected 42 characters (0x + 40 hex). Please regenerate the company wallet.`,
-          HttpStatus.BAD_REQUEST
+          HttpStatus.BAD_REQUEST,
         );
       }
       if (company.avaxAddress && !ethers.isAddress(company.avaxAddress)) {
-        this.logger.error(`❌ Invalid AVAX address format for company ${company.id}`);
+        this.logger.error(
+          `❌ Invalid AVAX address format for company ${company.id}`,
+        );
         throw new HttpException(
           `Company AVAX wallet address is malformed. Expected 42 characters (0x + 40 hex). Please regenerate the company wallet.`,
-          HttpStatus.BAD_REQUEST
+          HttpStatus.BAD_REQUEST,
         );
       }
-      
+
       // Extra validation - ensure addresses are exactly 42 characters
       if (company.ethAddress && company.ethAddress.length !== 42) {
-        this.logger.error(`❌ ETH address has wrong length: ${company.ethAddress.length} chars for company ${company.id}`);
+        this.logger.error(
+          `❌ ETH address has wrong length: ${company.ethAddress.length} chars for company ${company.id}`,
+        );
         throw new HttpException(
           `Company ETH wallet address has incorrect length (${company.ethAddress.length} chars instead of 42). This indicates data corruption. Please regenerate the company wallet.`,
-          HttpStatus.BAD_REQUEST
+          HttpStatus.BAD_REQUEST,
         );
       }
       if (company.avaxAddress && company.avaxAddress.length !== 42) {
-        this.logger.error(`❌ AVAX address has wrong length: ${company.avaxAddress.length} chars for company ${company.id}`);
+        this.logger.error(
+          `❌ AVAX address has wrong length: ${company.avaxAddress.length} chars for company ${company.id}`,
+        );
         throw new HttpException(
           `Company AVAX wallet address has incorrect length (${company.avaxAddress.length} chars instead of 42). This indicates data corruption. Please regenerate the company wallet.`,
-          HttpStatus.BAD_REQUEST
+          HttpStatus.BAD_REQUEST,
         );
       }
 
@@ -165,71 +191,97 @@ export class EscrowController {
       if (!user_ || !user_.userWallet) {
         throw new HttpException(
           'User does not have a master wallet configured',
-          HttpStatus.BAD_REQUEST
+          HttpStatus.BAD_REQUEST,
         );
       }
 
-      this.logger.log(`👤 Master wallet addresses - ETH: ${user_.userWallet.ethAddress || 'none'}, AVAX: ${user_.userWallet.avaxAddress || 'none'}`);
+      this.logger.log(
+        `👤 Master wallet addresses - ETH: ${user_.userWallet.ethAddress || 'none'}, AVAX: ${user_.userWallet.avaxAddress || 'none'}`,
+      );
 
       // Validate master wallet addresses too
-      if (user_.userWallet.ethAddress && !ethers.isAddress(user_.userWallet.ethAddress)) {
+      if (
+        user_.userWallet.ethAddress &&
+        !ethers.isAddress(user_.userWallet.ethAddress)
+      ) {
         this.logger.error(`❌ Invalid master ETH address`);
         throw new HttpException(
           `Your master wallet ETH address is malformed. Please regenerate your master wallet.`,
-          HttpStatus.BAD_REQUEST
+          HttpStatus.BAD_REQUEST,
         );
       }
-      if (user_.userWallet.avaxAddress && !ethers.isAddress(user_.userWallet.avaxAddress)) {
+      if (
+        user_.userWallet.avaxAddress &&
+        !ethers.isAddress(user_.userWallet.avaxAddress)
+      ) {
         this.logger.error(`❌ Invalid master AVAX address`);
         throw new HttpException(
           `Your master wallet AVAX address is malformed. Please regenerate your master wallet.`,
-          HttpStatus.BAD_REQUEST
+          HttpStatus.BAD_REQUEST,
         );
       }
 
       // Use user's master wallet (prefer ETH, fallback to AVAX) for fund forwarding
-      const masterWalletAddress = user_.userWallet.ethAddress || user_.userWallet.avaxAddress!;
+      const masterWalletAddress =
+        user_.userWallet.ethAddress || user_.userWallet.avaxAddress;
 
       // Use company's primary wallet address (prefer ETH, fallback to AVAX)
       let walletAddress = company.ethAddress || company.avaxAddress!;
 
-      this.logger.log(`🔍 Initial addresses - Company: ${walletAddress}, Master: ${masterWalletAddress}, Same: ${walletAddress.toLowerCase() === masterWalletAddress.toLowerCase()}`);
-      
+      this.logger.log(
+        `🔍 Initial addresses - Company: ${walletAddress}, Master: ${masterWalletAddress}, Same: ${walletAddress.toLowerCase() === masterWalletAddress.toLowerCase()}`,
+      );
+
       // Check if company wallet is mistakenly set to master wallet
       if (walletAddress.toLowerCase() === masterWalletAddress.toLowerCase()) {
-        this.logger.error(`❌ Company ${company.id} wallet is incorrectly set to master wallet ${masterWalletAddress}`);
+        this.logger.error(
+          `❌ Company ${company.id} wallet is incorrectly set to master wallet ${masterWalletAddress}`,
+        );
         this.logger.log(`🔄 Attempting to regenerate company child wallet...`);
-        
+
         // Force regenerate by deleting existing company wallet first
         try {
           await this.dataSource.query(
             'DELETE FROM company_wallets WHERE "companyId" = $1',
-            [company.id]
+            [company.id],
           );
           this.logger.log(`🗑️  Deleted incorrect company wallet record`);
-          
+
           // Generate new child wallet
-          const walletResult = await this.walletService.generateCompanyWallet(user.sub, company.id);
-          this.logger.log(`✅ Regenerated company wallet: ETH=${walletResult.ethAddress}, AVAX=${walletResult.avaxAddress}`);
-          
+          const walletResult = await this.walletService.generateCompanyWallet(
+            user.sub,
+            company.id,
+          );
+          this.logger.log(
+            `✅ Regenerated company wallet: ETH=${walletResult.ethAddress}, AVAX=${walletResult.avaxAddress}`,
+          );
+
           // Update company with new addresses
           company.ethAddress = walletResult.ethAddress;
           company.avaxAddress = walletResult.avaxAddress;
-          
+
           // Recalculate wallet address with new values
-          walletAddress = company.ethAddress || company.avaxAddress!;
-          
+          walletAddress = company.ethAddress || company.avaxAddress;
+
           // Verify they're different now
-          if (walletAddress.toLowerCase() === masterWalletAddress.toLowerCase()) {
-            throw new Error('Regenerated wallet is still the same as master wallet. This should not happen.');
+          if (
+            walletAddress.toLowerCase() === masterWalletAddress.toLowerCase()
+          ) {
+            throw new Error(
+              'Regenerated wallet is still the same as master wallet. This should not happen.',
+            );
           }
-          
-          this.logger.log(`✅ Successfully regenerated different child wallet: ${walletAddress}`);
+
+          this.logger.log(
+            `✅ Successfully regenerated different child wallet: ${walletAddress}`,
+          );
         } catch (regenError) {
-          this.logger.error(`❌ Failed to regenerate company wallet: ${regenError.message}`);
+          this.logger.error(
+            `❌ Failed to regenerate company wallet: ${regenError.message}`,
+          );
           throw new HttpException(
             'Company wallet is incorrectly configured and auto-fix failed. Please delete the company and recreate it.',
-            HttpStatus.BAD_REQUEST
+            HttpStatus.BAD_REQUEST,
           );
         }
       }
@@ -244,7 +296,7 @@ export class EscrowController {
         dto.durationInDays,
         dto.chains,
         dto.campaignName || wishlistItem.title,
-        dto.campaignDescription || wishlistItem.description || ''
+        dto.campaignDescription || wishlistItem.description || '',
       );
 
       // Save deployment records to database
@@ -255,13 +307,13 @@ export class EscrowController {
       if (!result.ethereumAddress && !result.avalancheAddress) {
         throw new HttpException(
           'No contracts were deployed. Factory addresses may not be configured properly.',
-          HttpStatus.INTERNAL_SERVER_ERROR
+          HttpStatus.INTERNAL_SERVER_ERROR,
         );
       }
 
       const deploymentRecords: EscrowDeployment[] = [];
 
-        if (result.ethereumAddress) {
+      if (result.ethereumAddress) {
         const ethDeployment = this.escrowDeploymentRepo.create({
           contractAddress: result.ethereumAddress,
           chain: 'ethereum',
@@ -273,14 +325,16 @@ export class EscrowController {
           deployedById: user.sub,
           wishlistItemId: dto.wishlistItemId,
           campaignName: dto.campaignName || wishlistItem.title,
-          campaignDescription: dto.campaignDescription || wishlistItem.description || '',
+          campaignDescription:
+            dto.campaignDescription || wishlistItem.description || '',
           status: 'active',
         });
-        const savedDeployment = await this.escrowDeploymentRepo.save(ethDeployment);
+        const savedDeployment =
+          await this.escrowDeploymentRepo.save(ethDeployment);
         deploymentRecords.push(savedDeployment);
       }
 
-        if (result.avalancheAddress) {
+      if (result.avalancheAddress) {
         const avaxDeployment = this.escrowDeploymentRepo.create({
           contractAddress: result.avalancheAddress,
           chain: 'avalanche',
@@ -292,22 +346,28 @@ export class EscrowController {
           deployedById: user.sub,
           wishlistItemId: dto.wishlistItemId,
           campaignName: dto.campaignName || wishlistItem.title,
-          campaignDescription: dto.campaignDescription || wishlistItem.description || '',
+          campaignDescription:
+            dto.campaignDescription || wishlistItem.description || '',
           status: 'active',
         });
-        const savedDeployment = await this.escrowDeploymentRepo.save(avaxDeployment);
+        const savedDeployment =
+          await this.escrowDeploymentRepo.save(avaxDeployment);
         deploymentRecords.push(savedDeployment);
       }
 
       // Update wishlist item with contract addresses
-      wishlistItem.ethereumEscrowAddress = result.ethereumAddress || wishlistItem.ethereumEscrowAddress;
-      wishlistItem.avalancheEscrowAddress = result.avalancheAddress || wishlistItem.avalancheEscrowAddress;
+      wishlistItem.ethereumEscrowAddress =
+        result.ethereumAddress || wishlistItem.ethereumEscrowAddress;
+      wishlistItem.avalancheEscrowAddress =
+        result.avalancheAddress || wishlistItem.avalancheEscrowAddress;
       wishlistItem.campaignDeadline = deadline;
       wishlistItem.campaignDurationDays = dto.durationInDays;
       wishlistItem.isEscrowActive = true;
       await this.wishlistRepo.save(wishlistItem);
 
-      this.logger.log(`✅ Escrow contracts deployed and tracked for wishlist item: ${dto.wishlistItemId}`);
+      this.logger.log(
+        `✅ Escrow contracts deployed and tracked for wishlist item: ${dto.wishlistItemId}`,
+      );
 
       return {
         success: true,
@@ -315,7 +375,9 @@ export class EscrowController {
         data: result,
       };
     } catch (error) {
-      this.logger.error(`❌ Failed to create escrow: ${error?.message || error}`);
+      this.logger.error(
+        `❌ Failed to create escrow: ${error?.message || error}`,
+      );
       this.logger.error(error?.stack);
 
       // User-friendly error messages without exposing infrastructure details
@@ -327,25 +389,52 @@ export class EscrowController {
       }
 
       // Check for common blockchain/RPC errors
-      if (error.message?.includes('factories are not configured') || error.message?.includes('factory contracts configured')) {
-        userMessage = 'Smart contract deployment is not yet configured on this network. Please contact support.';
+      if (
+        error.message?.includes('factories are not configured') ||
+        error.message?.includes('factory contracts configured')
+      ) {
+        userMessage =
+          'Smart contract deployment is not yet configured on this network. Please contact support.';
       } else if (error.message?.includes('No contract code found')) {
-        userMessage = 'Smart contract factory is not deployed on the requested network. Please contact support.';
-      } else if (error.message?.includes('No working') || error.message?.includes('RPC')) {
-        userMessage = 'Blockchain service temporarily unavailable. Please try again in a few moments.';
-      } else if (error.message?.includes('Insufficient funds') || error.message?.includes('insufficient funds') || error.message?.includes('zero balance')) {
-        userMessage = 'Insufficient funds in wallet. Please ensure you have enough balance for gas fees.';
-      } else if (error.message?.includes('Factory contract rejected') || error.message?.includes('rejected the deployment')) {
-        userMessage = 'Factory rejected the deployment during validation. Please check the parameters and try again.';
+        userMessage =
+          'Smart contract factory is not deployed on the requested network. Please contact support.';
+      } else if (
+        error.message?.includes('No working') ||
+        error.message?.includes('RPC')
+      ) {
+        userMessage =
+          'Blockchain service temporarily unavailable. Please try again in a few moments.';
+      } else if (
+        error.message?.includes('Insufficient funds') ||
+        error.message?.includes('insufficient funds') ||
+        error.message?.includes('zero balance')
+      ) {
+        userMessage =
+          'Insufficient funds in wallet. Please ensure you have enough balance for gas fees.';
+      } else if (
+        error.message?.includes('Factory contract rejected') ||
+        error.message?.includes('rejected the deployment')
+      ) {
+        userMessage =
+          'Factory rejected the deployment during validation. Please check the parameters and try again.';
         statusCode = HttpStatus.BAD_REQUEST;
-      } else if (error.message?.includes('Invalid') || error.message?.includes('invalid address')) {
-        userMessage = 'Invalid wallet address. Please check your wallet configuration.';
-      } else if (error.message?.includes('Simulation failed') || error.message?.includes('reverted')) {
-        userMessage = 'Contract deployment validation failed. This may be due to incorrect parameters or network issues.';
+      } else if (
+        error.message?.includes('Invalid') ||
+        error.message?.includes('invalid address')
+      ) {
+        userMessage =
+          'Invalid wallet address. Please check your wallet configuration.';
+      } else if (
+        error.message?.includes('Simulation failed') ||
+        error.message?.includes('reverted')
+      ) {
+        userMessage =
+          'Contract deployment validation failed. This may be due to incorrect parameters or network issues.';
       } else if (error.message?.includes('nonce')) {
         userMessage = 'Transaction ordering issue. Please try again.';
       } else if (error.code === 'ETIMEDOUT' || error.code === 'ECONNREFUSED') {
-        userMessage = 'Network connection error. Please check your internet connection and try again.';
+        userMessage =
+          'Network connection error. Please check your internet connection and try again.';
       } else if (error.message?.includes('wallet not found')) {
         userMessage = error.message;
         statusCode = HttpStatus.BAD_REQUEST;
@@ -356,9 +445,10 @@ export class EscrowController {
           statusCode,
           message: userMessage,
           error: 'DeploymentFailed',
-          details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+          details:
+            process.env.NODE_ENV === 'development' ? error.message : undefined,
         },
-        statusCode
+        statusCode,
       );
     }
   }
@@ -368,11 +458,10 @@ export class EscrowController {
    */
   @Post('estimate-gas')
   @UseGuards(AuthGuard('jwt'))
-  async estimateGas(
-    @Body() dto: CreateEscrowDto,
-    @CurrentUser() user: any
-  ) {
-    this.logger.log(`📊 Estimating gas for wishlist item: ${dto.wishlistItemId} by user: ${user.sub}`);
+  async estimateGas(@Body() dto: CreateEscrowDto, @CurrentUser() user: any) {
+    this.logger.log(
+      `📊 Estimating gas for wishlist item: ${dto.wishlistItemId} by user: ${user.sub}`,
+    );
     this.logger.debug(`DTO: ${JSON.stringify(dto)}`);
 
     try {
@@ -387,28 +476,41 @@ export class EscrowController {
         });
 
         if (!wishlistItem) {
-          throw new HttpException('Wishlist item not found', HttpStatus.NOT_FOUND);
+          throw new HttpException(
+            'Wishlist item not found',
+            HttpStatus.NOT_FOUND,
+          );
         }
 
-        company = await this.companyRepo.findOne({ where: { id: wishlistItem.companyId } });
+        company = await this.companyRepo.findOne({
+          where: { id: wishlistItem.companyId },
+        });
 
         if (!company || company.ownerId !== user.sub) {
           throw new HttpException(
             'You do not have permission to estimate gas for this company',
-            HttpStatus.FORBIDDEN
+            HttpStatus.FORBIDDEN,
           );
         }
       } else if (dto.companyId) {
         // Estimating for a new wishlist item; use provided companyId
-        company = await this.companyRepo.findOne({ where: { id: dto.companyId } });
+        company = await this.companyRepo.findOne({
+          where: { id: dto.companyId },
+        });
         if (!company) {
           throw new HttpException('Company not found', HttpStatus.NOT_FOUND);
         }
         if (company.ownerId !== user.sub) {
-          throw new HttpException('You do not have permission to estimate gas for this company', HttpStatus.FORBIDDEN);
+          throw new HttpException(
+            'You do not have permission to estimate gas for this company',
+            HttpStatus.FORBIDDEN,
+          );
         }
       } else {
-        throw new HttpException('Either wishlistItemId or companyId must be provided', HttpStatus.BAD_REQUEST);
+        throw new HttpException(
+          'Either wishlistItemId or companyId must be provided',
+          HttpStatus.BAD_REQUEST,
+        );
       }
 
       // Get user's master wallet
@@ -420,15 +522,15 @@ export class EscrowController {
       if (!user_ || !user_.userWallet) {
         throw new HttpException(
           'User does not have a master wallet configured. Please generate a wallet first.',
-          HttpStatus.BAD_REQUEST
+          HttpStatus.BAD_REQUEST,
         );
       }
 
       // Check if company has wallet addresses
-      if (!company!.ethAddress && !company!.avaxAddress) {
+      if (!company.ethAddress && !company.avaxAddress) {
         throw new HttpException(
           'Company must have at least one wallet address configured',
-          HttpStatus.BAD_REQUEST
+          HttpStatus.BAD_REQUEST,
         );
       }
 
@@ -436,12 +538,16 @@ export class EscrowController {
       const gasEstimate = await this.escrowService.estimateDeploymentGas(
         user.sub,
         dto.wishlistItemId || 'N/A',
-        company!.ethAddress || company!.avaxAddress!,
+        company.ethAddress || company.avaxAddress!,
         dto.targetAmountEth,
         dto.durationInDays,
         dto.chains,
-        dto.campaignName || (wishlistItem ? wishlistItem.title : dto.campaignName || ''),
-        dto.campaignDescription || (wishlistItem ? wishlistItem.description || '' : dto.campaignDescription || '')
+        dto.campaignName ||
+          (wishlistItem ? wishlistItem.title : dto.campaignName || ''),
+        dto.campaignDescription ||
+          (wishlistItem
+            ? wishlistItem.description || ''
+            : dto.campaignDescription || ''),
       );
 
       return {
@@ -449,7 +555,9 @@ export class EscrowController {
         data: gasEstimate,
       };
     } catch (error) {
-      this.logger.error(`❌ Failed to estimate gas: ${error?.message || error}`);
+      this.logger.error(
+        `❌ Failed to estimate gas: ${error?.message || error}`,
+      );
       this.logger.error(error?.stack);
 
       if (error instanceof HttpException) {
@@ -458,13 +566,15 @@ export class EscrowController {
 
       // Return more specific error messages
       let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
-      let message = error?.message || 'Failed to estimate gas costs';
+      const message = error?.message || 'Failed to estimate gas costs';
 
       // Check for validation/setup errors (400)
-      if (message.includes('wallet not found') || 
-          message.includes('wallet configured') ||
-          message.includes('Invalid') ||
-          message.includes('must have')) {
+      if (
+        message.includes('wallet not found') ||
+        message.includes('wallet configured') ||
+        message.includes('Invalid') ||
+        message.includes('must have')
+      ) {
         statusCode = HttpStatus.BAD_REQUEST;
       }
 
@@ -489,7 +599,7 @@ export class EscrowController {
       this.logger.error('❌ Failed to backfill addresses:', error);
       throw new HttpException(
         error.message || 'Failed to backfill escrow addresses',
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -505,7 +615,10 @@ export class EscrowController {
       });
 
       if (!wishlistItem) {
-        throw new HttpException('Wishlist item not found', HttpStatus.NOT_FOUND);
+        throw new HttpException(
+          'Wishlist item not found',
+          HttpStatus.NOT_FOUND,
+        );
       }
 
       const result: any = {
@@ -519,7 +632,7 @@ export class EscrowController {
         try {
           result.ethereum = await this.escrowService.getCampaignStatus(
             wishlistItem.ethereumEscrowAddress,
-            'ethereum'
+            'ethereum',
           );
         } catch (error) {
           this.logger.error('Failed to get Ethereum status:', error);
@@ -531,7 +644,7 @@ export class EscrowController {
         try {
           result.avalanche = await this.escrowService.getCampaignStatus(
             wishlistItem.avalancheEscrowAddress,
-            'avalanche'
+            'avalanche',
           );
         } catch (error) {
           this.logger.error('Failed to get Avalanche status:', error);
@@ -546,7 +659,7 @@ export class EscrowController {
       this.logger.error('❌ Failed to get campaign status:', error);
       throw new HttpException(
         error.message || 'Failed to get campaign status',
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -572,7 +685,7 @@ export class EscrowController {
       this.logger.error('❌ Failed to sync wishlist:', error);
       throw new HttpException(
         error.message || 'Failed to sync wishlist',
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -602,7 +715,7 @@ export class EscrowController {
         try {
           result.ethereum = await this.escrowService.getCompanyEscrows(
             company.ethAddress,
-            'ethereum'
+            'ethereum',
           );
         } catch (error) {
           this.logger.error('Failed to get Ethereum escrows:', error);
@@ -614,7 +727,7 @@ export class EscrowController {
         try {
           result.avalanche = await this.escrowService.getCompanyEscrows(
             company.avaxAddress,
-            'avalanche'
+            'avalanche',
           );
         } catch (error) {
           this.logger.error('Failed to get Avalanche escrows:', error);
@@ -629,7 +742,7 @@ export class EscrowController {
       this.logger.error('❌ Failed to get company escrows:', error);
       throw new HttpException(
         error.message || 'Failed to get company escrows',
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }

@@ -1,4 +1,9 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Payment, PaymentStatus } from '../entities/payment.entity';
@@ -26,10 +31,7 @@ export class PaymentsService {
   /**
    * Create and validate a payment for contract deployment
    */
-  async createPayment(
-    userId: string,
-    dto: CreatePaymentDto
-  ): Promise<Payment> {
+  async createPayment(userId: string, dto: CreatePaymentDto): Promise<Payment> {
     this.logger.log(`💳 Creating payment for user ${userId}`);
 
     // 1. Verify wishlist item exists and user owns the company
@@ -48,7 +50,7 @@ export class PaymentsService {
 
     if (!company || company.ownerId !== userId) {
       throw new BadRequestException(
-        'You do not have permission to create deployments for this company'
+        'You do not have permission to create deployments for this company',
       );
     }
 
@@ -59,12 +61,14 @@ export class PaymentsService {
 
     if (existingPayment) {
       throw new BadRequestException(
-        'This transaction has already been used for a payment'
+        'This transaction has already been used for a payment',
       );
     }
 
     // 3. Get platform's USDC receiver address
-    const platformAddress = this.usdcValidator.getPlatformUSDCAddress(dto.chain);
+    const platformAddress = this.usdcValidator.getPlatformUSDCAddress(
+      dto.chain,
+    );
 
     // 4. Validate USDC payment on-chain
     this.logger.log(`🔍 Validating USDC payment on ${dto.chain}...`);
@@ -72,7 +76,7 @@ export class PaymentsService {
       dto.usdcTxHash,
       dto.chain,
       dto.usdcAmount,
-      platformAddress
+      platformAddress,
     );
 
     if (!validationResult.valid) {
@@ -123,20 +127,33 @@ export class PaymentsService {
       throw new NotFoundException('Wishlist item not found');
     }
 
-    const company = await this.companyRepo.findOne({ where: { id: wishlistItem.companyId } });
+    const company = await this.companyRepo.findOne({
+      where: { id: wishlistItem.companyId },
+    });
 
     if (!company || company.ownerId !== userId) {
-      throw new BadRequestException('You do not have permission to create deployments for this company');
+      throw new BadRequestException(
+        'You do not have permission to create deployments for this company',
+      );
     }
 
     // Prevent duplicate confirmed payments for same wishlist item
-    const existing = await this.paymentRepo.findOne({ where: { wishlistItemId: dto.wishlistItemId, status: PaymentStatus.CONFIRMED } });
+    const existing = await this.paymentRepo.findOne({
+      where: {
+        wishlistItemId: dto.wishlistItemId,
+        status: PaymentStatus.CONFIRMED,
+      },
+    });
     if (existing) {
-      throw new BadRequestException('A confirmed payment already exists for this wishlist item');
+      throw new BadRequestException(
+        'A confirmed payment already exists for this wishlist item',
+      );
     }
 
     // Platform receiver address for record keeping
-    const platformAddress = this.usdcValidator.getPlatformUSDCAddress(dto.chain);
+    const platformAddress = this.usdcValidator.getPlatformUSDCAddress(
+      dto.chain,
+    );
 
     const payment = this.paymentRepo.create({
       userId,
@@ -205,7 +222,7 @@ export class PaymentsService {
       errorMessage?: string;
       deployedContracts?: { ethereum?: string; avalanche?: string };
       deploymentTxHashes?: { ethereum?: string; avalanche?: string };
-    }
+    },
   ): Promise<Payment> {
     const payment = await this.getPaymentById(paymentId);
 
@@ -266,10 +283,12 @@ export class PaymentsService {
     platformFeeUSD: number;
     grandTotalUSD: number;
   }> {
-    this.logger.log(`📊 Estimating deployment costs for chains: ${chains.join(', ')}`);
+    this.logger.log(
+      `📊 Estimating deployment costs for chains: ${chains.join(', ')}`,
+    );
 
     const ETH_TO_USD = 3800; // Approximate rate (in production, fetch from price oracle like Chainlink)
-    const AVAX_TO_USD = 40;  // Approximate rate (in production, fetch from price oracle)
+    const AVAX_TO_USD = 40; // Approximate rate (in production, fetch from price oracle)
     const PLATFORM_FEE_USD = 0; // No platform fee currently
 
     // Historical gas cost estimates for contract deployment
@@ -279,7 +298,11 @@ export class PaymentsService {
       avalanche: '0.01', // Avalanche is cheaper per gas but deployment cost is similar
     };
 
-    const breakdown: { chain: string; gasCostETH: string; gasCostUSD: number }[] = [];
+    const breakdown: {
+      chain: string;
+      gasCostETH: string;
+      gasCostUSD: number;
+    }[] = [];
 
     for (const chain of chains) {
       const gasCostETH = GAS_ESTIMATES[chain];
@@ -292,13 +315,17 @@ export class PaymentsService {
         gasCostUSD: Math.round(gasCostUSD * 100) / 100,
       });
 
-      this.logger.log(`   ${chain}: ${gasCostETH} ${chain === 'ethereum' ? 'ETH' : 'AVAX'} (~$${gasCostUSD.toFixed(2)})`);
+      this.logger.log(
+        `   ${chain}: ${gasCostETH} ${chain === 'ethereum' ? 'ETH' : 'AVAX'} (~$${gasCostUSD.toFixed(2)})`,
+      );
     }
 
     const totalUSD = breakdown.reduce((sum, item) => sum + item.gasCostUSD, 0);
     const grandTotalUSD = Math.round((totalUSD + PLATFORM_FEE_USD) * 100) / 100;
 
-    this.logger.log(`💰 Total estimated cost: $${grandTotalUSD.toFixed(2)} USDC`);
+    this.logger.log(
+      `💰 Total estimated cost: $${grandTotalUSD.toFixed(2)} USDC`,
+    );
 
     return {
       breakdown,

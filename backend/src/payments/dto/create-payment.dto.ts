@@ -1,4 +1,13 @@
-import { IsString, IsNotEmpty, IsNumber, IsArray, IsOptional, Min, Matches, IsIn } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsNumber,
+  IsArray,
+  IsOptional,
+  Min,
+  Matches,
+  IsIn,
+} from 'class-validator';
 
 export class CreatePaymentDto {
   @IsString()
@@ -8,7 +17,8 @@ export class CreatePaymentDto {
   @IsString()
   @IsNotEmpty()
   @Matches(/^0x[a-fA-F0-9]{64}$/, {
-    message: 'USDC transaction hash must be a valid transaction hash (0x followed by 64 hex characters)',
+    message:
+      'USDC transaction hash must be a valid transaction hash (0x followed by 64 hex characters)',
   })
   usdcTxHash: string;
 

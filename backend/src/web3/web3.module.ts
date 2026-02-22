@@ -40,13 +40,47 @@ const nonceProvider: Provider = {
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([UserWallet, CompanyWallet, WishlistItem, User, Company, EscrowDeployment, Contribution, ContractDeploymentHistory]),
+    TypeOrmModule.forFeature([
+      UserWallet,
+      CompanyWallet,
+      WishlistItem,
+      User,
+      Company,
+      EscrowDeployment,
+      Contribution,
+      ContractDeploymentHistory,
+    ]),
     ConfigModule,
     UsersModule,
     CommonModule,
   ],
-  controllers: [Web3Controller, WalletController, EscrowController, BountiesController, WalletBalanceController, CryptoPricesController],
-  providers: [Web3Service, WalletGenerationService, EscrowContractService, BountiesService, CryptoPricesService, PlatformWalletService, ContractHistoryService, nonceProvider],
-  exports: [Web3Service, WalletGenerationService, EscrowContractService, BountiesService, CryptoPricesService, PlatformWalletService, ContractHistoryService, NonceService],
+  controllers: [
+    Web3Controller,
+    WalletController,
+    EscrowController,
+    BountiesController,
+    WalletBalanceController,
+    CryptoPricesController,
+  ],
+  providers: [
+    Web3Service,
+    WalletGenerationService,
+    EscrowContractService,
+    BountiesService,
+    CryptoPricesService,
+    PlatformWalletService,
+    ContractHistoryService,
+    nonceProvider,
+  ],
+  exports: [
+    Web3Service,
+    WalletGenerationService,
+    EscrowContractService,
+    BountiesService,
+    CryptoPricesService,
+    PlatformWalletService,
+    ContractHistoryService,
+    NonceService,
+  ],
 })
 export class Web3Module {}

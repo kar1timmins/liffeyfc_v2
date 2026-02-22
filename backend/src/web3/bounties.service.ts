@@ -7,7 +7,10 @@ import { Company } from '../entities/company.entity';
 import { CompanyWallet } from '../entities/company-wallet.entity';
 import { Contribution } from '../entities/contribution.entity';
 import { EscrowDeployment } from '../entities/escrow-deployment.entity';
-import { EscrowContractService, ContributorInfo } from './escrow-contract.service';
+import {
+  EscrowContractService,
+  ContributorInfo,
+} from './escrow-contract.service';
 import { CryptoPricesService } from './crypto-prices.service';
 
 export interface BountyFilters {
@@ -50,7 +53,11 @@ export interface BountyResponse {
     industry: string;
     avatar?: string;
     ownerId: string;
-    owner?: { id: string; name?: string | null; profilePhotoUrl?: string | null };
+    owner?: {
+      id: string;
+      name?: string | null;
+      profilePhotoUrl?: string | null;
+    };
   };
   isEscrowActive: boolean;
   ethereumEscrowAddress: string | null;
@@ -188,7 +195,9 @@ export class BountiesService {
         wishlistItems.map((item) => this.enrichWithBlockchainData(item)),
       );
 
-      this.logger.log(`🏢 Found ${bounties.length} bounties for company ${companyId}`);
+      this.logger.log(
+        `🏢 Found ${bounties.length} bounties for company ${companyId}`,
+      );
 
       return bounties;
     } catch (error) {
@@ -214,7 +223,10 @@ export class BountiesService {
       });
 
       if (!wishlistItem) {
-        throw new HttpException('Wishlist item not found', HttpStatus.NOT_FOUND);
+        throw new HttpException(
+          'Wishlist item not found',
+          HttpStatus.NOT_FOUND,
+        );
       }
 
       // Check if bounty already exists
@@ -291,7 +303,7 @@ export class BountiesService {
         const status = await this.escrowService.getCampaignStatus(
           wishlistItem.ethereumEscrowAddress,
           'ethereum',
-          true
+          true,
         );
         contributors = status.contributors || [];
       }
@@ -300,19 +312,24 @@ export class BountiesService {
         const status = await this.escrowService.getCampaignStatus(
           wishlistItem.avalancheEscrowAddress,
           'avalanche',
-          true
+          true,
         );
         contributors = status.contributors || [];
       }
 
-      this.logger.log(`📋 Found ${contributors.length} contributors for bounty ${id}`);
+      this.logger.log(
+        `📋 Found ${contributors.length} contributors for bounty ${id}`,
+      );
 
       // Sync contributors to database
       await this.syncContributorsToDatabase(id, contributors);
 
       return contributors;
     } catch (error) {
-      this.logger.error(`❌ Failed to get contributors for bounty ${id}:`, error);
+      this.logger.error(
+        `❌ Failed to get contributors for bounty ${id}:`,
+        error,
+      );
       throw error;
     }
   }
@@ -338,7 +355,7 @@ export class BountiesService {
 
       for (const contributor of contributors) {
         const address = contributor.address.toLowerCase();
-        
+
         // Determine which chain this contribution is from
         let chain: string;
         let contractAddress: string;
@@ -347,11 +364,15 @@ export class BountiesService {
         if (wishlistItem.ethereumEscrowAddress) {
           chain = 'ethereum';
           contractAddress = wishlistItem.ethereumEscrowAddress;
-          escrowDeployment = escrowDeployments.find(d => d.chain === 'ethereum');
+          escrowDeployment = escrowDeployments.find(
+            (d) => d.chain === 'ethereum',
+          );
         } else if (wishlistItem.avalancheEscrowAddress) {
           chain = 'avalanche';
           contractAddress = wishlistItem.avalancheEscrowAddress;
-          escrowDeployment = escrowDeployments.find(d => d.chain === 'avalanche');
+          escrowDeployment = escrowDeployments.find(
+            (d) => d.chain === 'avalanche',
+          );
         } else {
           continue;
         }
@@ -381,7 +402,9 @@ export class BountiesService {
           });
 
           await this.contributionRepository.save(contribution);
-          this.logger.log(`💾 Saved contribution from ${address}: ${contributor.amountEth} ETH`);
+          this.logger.log(
+            `💾 Saved contribution from ${address}: ${contributor.amountEth} ETH`,
+          );
         } else {
           // Update existing contribution if amount changed
           if (existing.amountWei !== contributor.amount) {
@@ -389,7 +412,9 @@ export class BountiesService {
             existing.amountEth = parseFloat(contributor.amountEth);
             existing.updatedAt = new Date();
             await this.contributionRepository.save(existing);
-            this.logger.log(`🔄 Updated contribution from ${address}: ${contributor.amountEth} ETH`);
+            this.logger.log(
+              `🔄 Updated contribution from ${address}: ${contributor.amountEth} ETH`,
+            );
           }
         }
       }
@@ -431,7 +456,9 @@ export class BountiesService {
         (sum, c) => sum + parseFloat((c.amountEth ?? 0).toString()),
         0,
       );
-      const uniqueContributors = new Set(contributions.map(c => c.contributorAddress)).size;
+      const uniqueContributors = new Set(
+        contributions.map((c) => c.contributorAddress),
+      ).size;
 
       return {
         wishlistItem: {
@@ -442,7 +469,7 @@ export class BountiesService {
             name: wishlistItem.company.name,
           },
         },
-        deployments: deployments.map(d => ({
+        deployments: deployments.map((d) => ({
           id: d.id,
           contractAddress: d.contractAddress,
           chain: d.chain,
@@ -450,21 +477,25 @@ export class BountiesService {
           deploymentTxHash: d.deploymentTxHash,
           targetAmountEth: d.targetAmountEth,
           deadline: d.deadline,
-          deployedBy: d.deployedBy ? {
-            id: d.deployedBy.id,
-            name: d.deployedBy.name,
-            email: d.deployedBy.email,
-          } : null,
+          deployedBy: d.deployedBy
+            ? {
+                id: d.deployedBy.id,
+                name: d.deployedBy.name,
+                email: d.deployedBy.email,
+              }
+            : null,
           deployedAt: d.createdAt,
           status: d.status,
         })),
-        contributions: contributions.map(c => ({
+        contributions: contributions.map((c) => ({
           id: c.id,
           contributorAddress: c.contributorAddress,
-          user: c.user ? {
-            id: c.user.id,
-            name: c.user.name,
-          } : null,
+          user: c.user
+            ? {
+                id: c.user.id,
+                name: c.user.name,
+              }
+            : null,
           contractAddress: c.contractAddress,
           chain: c.chain,
           transactionHash: c.transactionHash,
@@ -509,7 +540,10 @@ export class BountiesService {
       });
 
       deployments = escrowDeployments.map((deployment) => ({
-        chain: (deployment.chain.toLowerCase() === 'ethereum' ? 'ethereum' : 'avalanche') as 'ethereum' | 'avalanche',
+        chain:
+          deployment.chain.toLowerCase() === 'ethereum'
+            ? 'ethereum'
+            : 'avalanche',
         network: deployment.network,
         contractAddress: deployment.contractAddress,
         deploymentTxHash: deployment.deploymentTxHash,
@@ -519,11 +553,17 @@ export class BountiesService {
         targetAmountEth: deployment.targetAmountEth ?? null,
       }));
     } catch (error) {
-      this.logger.warn(`⚠️  Failed to fetch deployments for ${wishlistItem.id}:`, error.message);
+      this.logger.warn(
+        `⚠️  Failed to fetch deployments for ${wishlistItem.id}:`,
+        error.message,
+      );
     }
 
     // Fetch blockchain data if contracts exist
-    if (wishlistItem.ethereumEscrowAddress || wishlistItem.avalancheEscrowAddress) {
+    if (
+      wishlistItem.ethereumEscrowAddress ||
+      wishlistItem.avalancheEscrowAddress
+    ) {
       try {
         if (wishlistItem.ethereumEscrowAddress) {
           const ethStatus = await this.escrowService.getCampaignStatus(
@@ -588,19 +628,31 @@ export class BountiesService {
         0,
       );
       if (manualContribs.length > 0) {
-        contributorCount += new Set(manualContribs.map(c => c.userId ?? c.contractAddress)).size;
+        contributorCount += new Set(
+          manualContribs.map((c) => c.userId ?? c.contractAddress),
+        ).size;
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
 
     const totalRaisedEur = evmRaisedEur + manualRaisedEur;
 
     // Progress percentage: EUR-based when we have a EUR target, otherwise fall back to on-chain
-    const ethTargetFromDeployment = deployments.find(d => d.targetAmountEth != null)?.targetAmountEth ?? null;
+    const ethTargetFromDeployment =
+      deployments.find((d) => d.targetAmountEth != null)?.targetAmountEth ??
+      null;
     let progressPercentage: number;
     if (targetAmountEur > 0) {
-      progressPercentage = Math.min((totalRaisedEur / targetAmountEur) * 100, 100);
+      progressPercentage = Math.min(
+        (totalRaisedEur / targetAmountEur) * 100,
+        100,
+      );
     } else if (ethTargetFromDeployment && ethTargetFromDeployment > 0) {
-      progressPercentage = Math.min((evmRaisedEth / ethTargetFromDeployment) * 100, 100);
+      progressPercentage = Math.min(
+        (evmRaisedEth / ethTargetFromDeployment) * 100,
+        100,
+      );
     } else {
       progressPercentage = 0;
     }
@@ -619,7 +671,9 @@ export class BountiesService {
         stellarWalletAddress = cw.stellarAddress ?? null;
         bitcoinWalletAddress = cw.bitcoinAddress ?? null;
       }
-    } catch { /* missing wallet is not fatal */ }
+    } catch {
+      /* missing wallet is not fatal */
+    }
 
     // ---- Determine final status -----------------------------------------
     const now = new Date();
@@ -684,9 +738,16 @@ export class BountiesService {
       throw new HttpException('Bounty not found', HttpStatus.NOT_FOUND);
     }
 
-    const symbolMap: Record<string, string> = { solana: 'SOL', stellar: 'XLM', bitcoin: 'BTC' };
+    const symbolMap: Record<string, string> = {
+      solana: 'SOL',
+      stellar: 'XLM',
+      bitcoin: 'BTC',
+    };
     const currencySymbol = symbolMap[chain];
-    const amountEur = await this.pricesService.toEur(currencySymbol, nativeAmount);
+    const amountEur = await this.pricesService.toEur(
+      currencySymbol,
+      nativeAmount,
+    );
 
     // Get receiving wallet address
     let receivingAddress: string | null = null;
@@ -699,7 +760,9 @@ export class BountiesService {
         else if (chain === 'stellar') receivingAddress = cw.stellarAddress;
         else if (chain === 'bitcoin') receivingAddress = cw.bitcoinAddress;
       }
-    } catch { /* not fatal if wallet lookup fails */ }
+    } catch {
+      /* not fatal if wallet lookup fails */
+    }
 
     const contribution = this.contributionRepository.create({
       contributorAddress: 'manual',

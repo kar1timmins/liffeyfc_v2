@@ -68,6 +68,13 @@
 							<div class="text-xs opacity-70">Public network</div>
 						</div>
 					</div>
+					<div class="flex items-center gap-3">
+						<div class="badge badge-lg">₿</div>
+						<div>
+							<div class="font-semibold text-sm">Bitcoin Testnet</div>
+							<div class="text-xs opacity-70">Testnet network</div>
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>

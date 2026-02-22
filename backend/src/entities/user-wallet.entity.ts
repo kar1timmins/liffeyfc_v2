@@ -1,9 +1,17 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToOne,
+  JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { User } from './user.entity';
 
 /**
  * UserWallet Entity
- * 
+ *
  * Stores the master HD wallet for a user
  * Each user can only have ONE master wallet
  * Company wallets are derived from this master wallet

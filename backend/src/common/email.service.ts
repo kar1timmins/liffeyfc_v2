@@ -14,7 +14,9 @@ export class EmailService {
     const apiKey = process.env.RESEND_API_KEY;
 
     if (!apiKey) {
-      this.logger.warn('RESEND_API_KEY not configured - email sending disabled');
+      this.logger.warn(
+        'RESEND_API_KEY not configured - email sending disabled',
+      );
       return;
     }
 
@@ -35,7 +37,8 @@ export class EmailService {
       return false;
     }
 
-    const fromEmail = process.env.EMAIL_FROM || 'noreply@liffeyfoundersclub.com';
+    const fromEmail =
+      process.env.EMAIL_FROM || 'noreply@liffeyfoundersclub.com';
 
     try {
       const { data, error } = await this.resend.emails.send({
@@ -67,7 +70,8 @@ export class EmailService {
       return false;
     }
 
-    const fromEmail = process.env.EMAIL_FROM || 'noreply@liffeyfoundersclub.com';
+    const fromEmail =
+      process.env.EMAIL_FROM || 'noreply@liffeyfoundersclub.com';
 
     try {
       const { data, error } = await this.resend.emails.send({

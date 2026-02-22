@@ -48,7 +48,11 @@ function parseDatabaseUrl() {
 function validateDatabaseConfig() {
   const dbFromUrl = parseDatabaseUrl();
   const hasDbUrl = process.env.DATABASE_URL;
-  const hasIndividualVars = process.env.POSTGRES_HOST && process.env.POSTGRES_USER && process.env.POSTGRES_PASSWORD && process.env.POSTGRES_DB;
+  const hasIndividualVars =
+    process.env.POSTGRES_HOST &&
+    process.env.POSTGRES_USER &&
+    process.env.POSTGRES_PASSWORD &&
+    process.env.POSTGRES_DB;
 
   if (!hasDbUrl && !hasIndividualVars) {
     console.error(`
@@ -103,21 +107,25 @@ function validateDatabaseConfig() {
     // Schedule module for cron jobs
     ScheduleModule.forRoot(),
     // Database configuration with validation
-    TypeOrmModule.forRoot((() => {
-      const dbConfig = validateDatabaseConfig();
-      return {
-        type: 'postgres',
-        host: dbConfig.host,
-        port: dbConfig.port,
-        username: dbConfig.username,
-        password: dbConfig.password,
-        database: dbConfig.database,
-        entities: Object.values(entities),
-        // Prefer explicit TYPEORM_SYNCHRONIZE env var; otherwise enable synchronize for non-production
-        synchronize: process.env.TYPEORM_SYNCHRONIZE ? process.env.TYPEORM_SYNCHRONIZE === 'true' : process.env.NODE_ENV !== 'production',
-        logging: false,
-      };
-    })()),
+    TypeOrmModule.forRoot(
+      (() => {
+        const dbConfig = validateDatabaseConfig();
+        return {
+          type: 'postgres',
+          host: dbConfig.host,
+          port: dbConfig.port,
+          username: dbConfig.username,
+          password: dbConfig.password,
+          database: dbConfig.database,
+          entities: Object.values(entities),
+          // Prefer explicit TYPEORM_SYNCHRONIZE env var; otherwise enable synchronize for non-production
+          synchronize: process.env.TYPEORM_SYNCHRONIZE
+            ? process.env.TYPEORM_SYNCHRONIZE === 'true'
+            : process.env.NODE_ENV !== 'production',
+          logging: false,
+        };
+      })(),
+    ),
     ContactModule,
     Web3Module,
     UsersModule,

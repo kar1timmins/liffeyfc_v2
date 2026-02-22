@@ -1,6 +1,6 @@
 /**
  * Cookie Security Configuration
- * 
+ *
  * This module defines secure cookie settings for authentication tokens
  * following OWASP best practices.
  */
@@ -15,18 +15,18 @@ export const CookieSecurityConfig = {
    */
   refreshToken: {
     name: 'refreshToken',
-    
+
     // Security flags
-    httpOnly: true,  // Prevents JavaScript access (XSS protection)
-    secure: process.env.NODE_ENV === 'production',  // HTTPS only in production
-    sameSite: 'lax' as const,  // CSRF protection (allows navigation)
-    
+    httpOnly: true, // Prevents JavaScript access (XSS protection)
+    secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+    sameSite: 'lax' as const, // CSRF protection (allows navigation)
+
     // Scope
-    path: '/auth',  // Only sent to auth endpoints (reduces exposure)
-    domain: undefined,  // Same domain only (don't set for localhost)
-    
+    path: '/auth', // Only sent to auth endpoints (reduces exposure)
+    domain: undefined, // Same domain only (don't set for localhost)
+
     // Lifetime
-    maxAge: 2 * 60 * 60 * 1000,  // 2 hours (more secure than days)
+    maxAge: 2 * 60 * 60 * 1000, // 2 hours (more secure than days)
   },
 
   /**
@@ -35,46 +35,46 @@ export const CookieSecurityConfig = {
    */
   csrfToken: {
     name: 'XSRF-TOKEN',
-    
+
     // Security flags
-    httpOnly: false,  // Must be readable by JavaScript (for header inclusion)
+    httpOnly: false, // Must be readable by JavaScript (for header inclusion)
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict' as const,  // Stricter CSRF protection for CSRF token itself
-    
+    sameSite: 'strict' as const, // Stricter CSRF protection for CSRF token itself
+
     // Scope
-    path: '/',  // Available to all routes
+    path: '/', // Available to all routes
     domain: undefined,
-    
+
     // Lifetime
-    maxAge: 60 * 60 * 1000,  // 1 hour
+    maxAge: 60 * 60 * 1000, // 1 hour
   },
 } as const;
 
 /**
  * CSRF Protection Strategy
- * 
+ *
  * We use a multi-layered approach:
- * 
+ *
  * 1. SameSite Cookie Attribute (Primary Defense)
  *    - refreshToken uses SameSite=Lax (allows safe navigation, blocks cross-site POST)
  *    - Protects against most CSRF attacks automatically
  *    - Compatible with OAuth flows (allows top-level navigation)
- * 
+ *
  * 2. JSON API with Custom Headers (Secondary Defense)
  *    - All state-changing endpoints use JSON (not form-encoded)
  *    - Require Content-Type: application/json
  *    - Browsers won't send this header in cross-origin form submissions
- * 
+ *
  * 3. Origin Validation (Tertiary Defense)
  *    - CORS configured to only allow trusted origins
  *    - Validates Origin/Referer headers on sensitive operations
- * 
+ *
  * 4. Double-Submit Cookie Pattern (Optional, for maximum protection)
  *    - Generate random CSRF token on login
  *    - Store in cookie (SameSite=Strict, httpOnly=false)
  *    - Require token in X-XSRF-TOKEN header for state-changing requests
  *    - Server validates cookie matches header
- * 
+ *
  * Why SameSite=Lax vs Strict:
  * - Lax: Allows cookies in top-level navigation (GET requests from links)
  * - Strict: Blocks cookies in all cross-site requests (including navigation)
@@ -104,18 +104,18 @@ export class CsrfTokenGenerator {
     if (!expected || !actual || expected.length !== actual.length) {
       return false;
     }
-    
+
     const crypto = require('crypto');
     return crypto.timingSafeEqual(
       Buffer.from(expected, 'utf8'),
-      Buffer.from(actual, 'utf8')
+      Buffer.from(actual, 'utf8'),
     );
   }
 }
 
 /**
  * Cookie Security Best Practices Checklist
- * 
+ *
  * ✅ HttpOnly: Set for auth tokens (prevents XSS)
  * ✅ Secure: Enabled in production (HTTPS only)
  * ✅ SameSite: Lax/Strict (CSRF protection)
@@ -130,17 +130,17 @@ export class CsrfTokenGenerator {
 
 /**
  * Security Considerations by Browser
- * 
+ *
  * Modern Browsers (Chrome 80+, Firefox 69+, Safari 13.1+):
  * - Full SameSite support
  * - SameSite=Lax is default if not specified
  * - Secure cookies work correctly
- * 
+ *
  * Older Browsers:
  * - May ignore SameSite attribute
  * - Fallback: Origin validation + JSON API pattern
  * - Consider dropping support for very old browsers (security risk)
- * 
+ *
  * Mobile Apps:
  * - WebView may have different cookie behavior
  * - Test thoroughly in production environment
@@ -149,12 +149,12 @@ export class CsrfTokenGenerator {
 
 /**
  * Deployment Checklist
- * 
+ *
  * Development:
  * - ✅ Secure=false (allow HTTP for localhost)
  * - ✅ SameSite=Lax (test OAuth flows)
  * - ✅ CORS allows localhost origins
- * 
+ *
  * Production:
  * - ✅ Secure=true (require HTTPS)
  * - ✅ SameSite=Lax or Strict

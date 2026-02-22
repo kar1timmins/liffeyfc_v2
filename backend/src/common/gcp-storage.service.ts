@@ -12,13 +12,18 @@ export class GcpStorageService {
   constructor(private configService: ConfigService) {
     try {
       const projectId = this.configService.get<string>('GCP_PROJECT_ID');
-      const keyFilename = this.configService.get<string>('GCP_KEY_FILE_PATH') || 
-                          this.configService.get<string>('GCP_KEY_FILENAME');
-      const credentialsJson = this.configService.get<string>('GOOGLE_APPLICATION_CREDENTIALS_JSON');
+      const keyFilename =
+        this.configService.get<string>('GCP_KEY_FILE_PATH') ||
+        this.configService.get<string>('GCP_KEY_FILENAME');
+      const credentialsJson = this.configService.get<string>(
+        'GOOGLE_APPLICATION_CREDENTIALS_JSON',
+      );
       const bucketName = this.configService.get<string>('GCP_BUCKET_NAME');
 
       if (!bucketName) {
-        this.logger.warn('GCP_BUCKET_NAME not configured. File uploads will fail.');
+        this.logger.warn(
+          'GCP_BUCKET_NAME not configured. File uploads will fail.',
+        );
         this.isConfigured = false;
         return;
       }
@@ -29,7 +34,9 @@ export class GcpStorageService {
       // Check if keyFilename is actually JSON (misconfiguration detection)
       let jsonCredentials = credentialsJson;
       if (!jsonCredentials && keyFilename?.startsWith('{')) {
-        this.logger.warn('Detected JSON in GCP_KEY_FILE_PATH - using as credentials instead of file path');
+        this.logger.warn(
+          'Detected JSON in GCP_KEY_FILE_PATH - using as credentials instead of file path',
+        );
         jsonCredentials = keyFilename;
       }
 
@@ -42,7 +49,10 @@ export class GcpStorageService {
             credentials,
           });
         } catch (parseError) {
-          this.logger.error('Failed to parse GOOGLE_APPLICATION_CREDENTIALS_JSON:', parseError);
+          this.logger.error(
+            'Failed to parse GOOGLE_APPLICATION_CREDENTIALS_JSON:',
+            parseError,
+          );
           throw parseError;
         }
       } else if (keyFilename) {
@@ -52,7 +62,9 @@ export class GcpStorageService {
           keyFilename,
         });
       } else {
-        this.logger.log('Using Application Default Credentials (ADC) for GCP Storage');
+        this.logger.log(
+          'Using Application Default Credentials (ADC) for GCP Storage',
+        );
         this.storage = new Storage({ projectId });
       }
 
@@ -64,9 +76,14 @@ export class GcpStorageService {
     }
   }
 
-  async uploadFile(file: Express.Multer.File, filename: string): Promise<string> {
+  async uploadFile(
+    file: Express.Multer.File,
+    filename: string,
+  ): Promise<string> {
     if (!this.isConfigured) {
-      throw new Error('GCP Storage is not configured. Please check environment variables.');
+      throw new Error(
+        'GCP Storage is not configured. Please check environment variables.',
+      );
     }
 
     try {
@@ -120,9 +137,14 @@ export class GcpStorageService {
     }
   }
 
-  async generateSignedUrl(filename: string, expiresIn: number = 7 * 24 * 60 * 60 * 1000): Promise<string> {
+  async generateSignedUrl(
+    filename: string,
+    expiresIn: number = 7 * 24 * 60 * 60 * 1000,
+  ): Promise<string> {
     if (!this.isConfigured) {
-      throw new Error('GCP Storage is not configured. Cannot generate signed URL.');
+      throw new Error(
+        'GCP Storage is not configured. Cannot generate signed URL.',
+      );
     }
 
     try {
@@ -138,7 +160,10 @@ export class GcpStorageService {
       this.logger.debug(`Generated signed URL for: ${filename}`);
       return url;
     } catch (error) {
-      this.logger.error(`Failed to generate signed URL for ${filename}:`, error);
+      this.logger.error(
+        `Failed to generate signed URL for ${filename}:`,
+        error,
+      );
       throw error;
     }
   }

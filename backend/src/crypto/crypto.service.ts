@@ -53,14 +53,14 @@ export class CryptoService {
         transactionDetails.wallet_addresses = { ethereum: wallet_address };
       }
 
-      const session = await this.stripe.rawRequest(
+      const session = (await this.stripe.rawRequest(
         'POST',
         '/v1/crypto/onramp_sessions',
         {
           transaction_details: transactionDetails,
           customer_ip_address: customerIp,
         },
-      ) as unknown as OnrampSession;
+      )) as unknown as OnrampSession;
 
       this.logger.log(
         `Created onramp session ${session.id} for ${destination_exchange_amount} ${destination_currency} on ${destination_network}`,
@@ -70,11 +70,10 @@ export class CryptoService {
     } catch (error) {
       this.logger.error('Failed to create Stripe onramp session', error);
       const errorMessage =
-        error instanceof Error ? error.message : 'Failed to create onramp session';
-      throw new HttpException(
-        errorMessage,
-        HttpStatus.BAD_GATEWAY,
-      );
+        error instanceof Error
+          ? error.message
+          : 'Failed to create onramp session';
+      throw new HttpException(errorMessage, HttpStatus.BAD_GATEWAY);
     }
   }
 }

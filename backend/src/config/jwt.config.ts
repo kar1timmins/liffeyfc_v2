@@ -27,8 +27,8 @@ export class JwtConfig {
     if (!secret) {
       throw new Error(
         'FATAL: JWT_SECRET environment variable is not set. ' +
-        'Please set a secure random secret (at least 32 bytes). ' +
-        'You can generate one using: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"'
+          'Please set a secure random secret (at least 32 bytes). ' +
+          "You can generate one using: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
       );
     }
 
@@ -36,8 +36,8 @@ export class JwtConfig {
     if (secret.length < this.MIN_SECRET_LENGTH) {
       throw new Error(
         `FATAL: JWT_SECRET is too short (${secret.length} characters). ` +
-        `Minimum length is ${this.MIN_SECRET_LENGTH} characters for security. ` +
-        'Please generate a strong secret using: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"'
+          `Minimum length is ${this.MIN_SECRET_LENGTH} characters for security. ` +
+          "Please generate a strong secret using: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
       );
     }
 
@@ -45,8 +45,8 @@ export class JwtConfig {
     if (this.isWeakSecret(secret)) {
       console.warn(
         '⚠️  WARNING: JWT_SECRET appears to be weak. ' +
-        'Consider using a cryptographically random secret. ' +
-        'Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"'
+          'Consider using a cryptographically random secret. ' +
+          "Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
       );
     }
 
@@ -62,10 +62,12 @@ export class JwtConfig {
     try {
       const secret = this.getSecret();
       const isDevelopment = process.env.NODE_ENV !== 'production';
-      
+
       if (isDevelopment) {
         console.log('✅ JWT_SECRET validated successfully');
-        console.log(`   Length: ${secret.length} characters (minimum: ${this.MIN_SECRET_LENGTH})`);
+        console.log(
+          `   Length: ${secret.length} characters (minimum: ${this.MIN_SECRET_LENGTH})`,
+        );
         console.log(`   Algorithm: HS256`);
       }
     } catch (error) {
@@ -87,10 +89,10 @@ export class JwtConfig {
 
     // Check for common weak patterns
     const weakPatterns = [
-      /^(.)\1+$/,                // Repeated character (e.g., "aaaaaaa")
+      /^(.)\1+$/, // Repeated character (e.g., "aaaaaaa")
       /^(password|secret|key)/i, // Common words
-      /^[0-9]+$/,                // Only numbers (not hex)
-      /^[a-z]+$/i,               // Only letters (no numbers or special chars)
+      /^[0-9]+$/, // Only numbers (not hex)
+      /^[a-z]+$/i, // Only letters (no numbers or special chars)
     ];
 
     // Check if it has variety in character types
@@ -99,10 +101,17 @@ export class JwtConfig {
     const hasNumbers = /[0-9]/.test(secret);
     const hasSpecialChars = /[^a-zA-Z0-9]/.test(secret);
 
-    const varietyCount = [hasLowerCase, hasUpperCase, hasNumbers, hasSpecialChars].filter(Boolean).length;
+    const varietyCount = [
+      hasLowerCase,
+      hasUpperCase,
+      hasNumbers,
+      hasSpecialChars,
+    ].filter(Boolean).length;
 
     // Weak if matches a weak pattern or has very low variety (only 1 type)
-    return weakPatterns.some(pattern => pattern.test(secret)) || varietyCount < 2;
+    return (
+      weakPatterns.some((pattern) => pattern.test(secret)) || varietyCount < 2
+    );
   }
 
   /**

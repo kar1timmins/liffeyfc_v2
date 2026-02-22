@@ -1,7 +1,21 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { CompaniesService } from './companies.service';
-import type { CreateCompanyDto, UpdateCompanyDto, CreateWishlistItemDto } from './companies.service';
+import type {
+  CreateCompanyDto,
+  UpdateCompanyDto,
+  CreateWishlistItemDto,
+} from './companies.service';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { CompanyStage, FundingStage } from '../entities/company.entity';
 
@@ -16,10 +30,16 @@ export class CompaniesController {
     @CurrentUser() currentUser: any,
   ) {
     try {
-      const company = await this.companiesService.createCompany(currentUser.sub, data);
+      const company = await this.companiesService.createCompany(
+        currentUser.sub,
+        data,
+      );
       return { success: true, data: company };
     } catch (error) {
-      return { success: false, message: error.message || 'Failed to create company' };
+      return {
+        success: false,
+        message: error.message || 'Failed to create company',
+      };
     }
   }
 
@@ -38,10 +58,14 @@ export class CompaniesController {
         tags: tags ? tags.split(',') : undefined,
       };
 
-      const companies = await this.companiesService.getAllPublicCompanies(filters);
+      const companies =
+        await this.companiesService.getAllPublicCompanies(filters);
       return { success: true, data: companies };
     } catch (error) {
-      return { success: false, message: error.message || 'Failed to fetch companies' };
+      return {
+        success: false,
+        message: error.message || 'Failed to fetch companies',
+      };
     }
   }
 
@@ -49,10 +73,15 @@ export class CompaniesController {
   @UseGuards(AuthGuard('jwt'))
   async getMyCompanies(@CurrentUser() currentUser: any) {
     try {
-      const companies = await this.companiesService.getCompaniesByUser(currentUser.sub);
+      const companies = await this.companiesService.getCompaniesByUser(
+        currentUser.sub,
+      );
       return { success: true, data: companies };
     } catch (error) {
-      return { success: false, message: error.message || 'Failed to fetch companies' };
+      return {
+        success: false,
+        message: error.message || 'Failed to fetch companies',
+      };
     }
   }
 
@@ -64,7 +93,7 @@ export class CompaniesController {
     try {
       const company = await this.companiesService.getCompanyById(
         id,
-        includeWishlist === 'true'
+        includeWishlist === 'true',
       );
 
       if (!company) {
@@ -73,7 +102,10 @@ export class CompaniesController {
 
       return { success: true, data: company };
     } catch (error) {
-      return { success: false, message: error.message || 'Failed to fetch company' };
+      return {
+        success: false,
+        message: error.message || 'Failed to fetch company',
+      };
     }
   }
 
@@ -85,15 +117,22 @@ export class CompaniesController {
     @CurrentUser() currentUser: any,
   ) {
     try {
-      const company = await this.companiesService.updateCompany(id, currentUser.sub, data);
-      
+      const company = await this.companiesService.updateCompany(
+        id,
+        currentUser.sub,
+        data,
+      );
+
       if (!company) {
         return { success: false, message: 'Company not found or unauthorized' };
       }
 
       return { success: true, data: company };
     } catch (error) {
-      return { success: false, message: error.message || 'Failed to update company' };
+      return {
+        success: false,
+        message: error.message || 'Failed to update company',
+      };
     }
   }
 
@@ -104,15 +143,21 @@ export class CompaniesController {
     @CurrentUser() currentUser: any,
   ) {
     try {
-      const deleted = await this.companiesService.deleteCompany(id, currentUser.sub);
-      
+      const deleted = await this.companiesService.deleteCompany(
+        id,
+        currentUser.sub,
+      );
+
       if (!deleted) {
         return { success: false, message: 'Company not found or unauthorized' };
       }
 
       return { success: true, message: 'Company deleted successfully' };
     } catch (error) {
-      return { success: false, message: error.message || 'Failed to delete company' };
+      return {
+        success: false,
+        message: error.message || 'Failed to delete company',
+      };
     }
   }
 
@@ -125,15 +170,22 @@ export class CompaniesController {
     @CurrentUser() currentUser: any,
   ) {
     try {
-      const item = await this.companiesService.addWishlistItem(companyId, currentUser.sub, data);
-      
+      const item = await this.companiesService.addWishlistItem(
+        companyId,
+        currentUser.sub,
+        data,
+      );
+
       if (!item) {
         return { success: false, message: 'Company not found or unauthorized' };
       }
 
       return { success: true, data: item };
     } catch (error) {
-      return { success: false, message: error.message || 'Failed to add wishlist item' };
+      return {
+        success: false,
+        message: error.message || 'Failed to add wishlist item',
+      };
     }
   }
 
@@ -143,7 +195,10 @@ export class CompaniesController {
       const items = await this.companiesService.getCompanyWishlist(companyId);
       return { success: true, data: items };
     } catch (error) {
-      return { success: false, message: error.message || 'Failed to fetch wishlist' };
+      return {
+        success: false,
+        message: error.message || 'Failed to fetch wishlist',
+      };
     }
   }
 
@@ -160,16 +215,22 @@ export class CompaniesController {
         itemId,
         companyId,
         currentUser.sub,
-        data
+        data,
       );
-      
+
       if (!item) {
-        return { success: false, message: 'Wishlist item not found or unauthorized' };
+        return {
+          success: false,
+          message: 'Wishlist item not found or unauthorized',
+        };
       }
 
       return { success: true, data: item };
     } catch (error) {
-      return { success: false, message: error.message || 'Failed to update wishlist item' };
+      return {
+        success: false,
+        message: error.message || 'Failed to update wishlist item',
+      };
     }
   }
 
@@ -184,16 +245,22 @@ export class CompaniesController {
       const deleted = await this.companiesService.deleteWishlistItem(
         itemId,
         companyId,
-        currentUser.sub
+        currentUser.sub,
       );
-      
+
       if (!deleted) {
-        return { success: false, message: 'Wishlist item not found or unauthorized' };
+        return {
+          success: false,
+          message: 'Wishlist item not found or unauthorized',
+        };
       }
 
       return { success: true, message: 'Wishlist item deleted successfully' };
     } catch (error) {
-      return { success: false, message: error.message || 'Failed to delete wishlist item' };
+      return {
+        success: false,
+        message: error.message || 'Failed to delete wishlist item',
+      };
     }
   }
 
@@ -220,16 +287,27 @@ export class CompaniesController {
         itemId,
         companyId,
         currentUser.sub,
-        data.amount
+        data.amount,
       );
-      
+
       if (!item) {
-        return { success: false, message: 'Wishlist item not found or you cannot donate to your own company' };
+        return {
+          success: false,
+          message:
+            'Wishlist item not found or you cannot donate to your own company',
+        };
       }
 
-      return { success: true, data: item, message: 'Donation recorded successfully' };
+      return {
+        success: true,
+        data: item,
+        message: 'Donation recorded successfully',
+      };
     } catch (error) {
-      return { success: false, message: error.message || 'Failed to record donation' };
+      return {
+        success: false,
+        message: error.message || 'Failed to record donation',
+      };
     }
   }
 }
