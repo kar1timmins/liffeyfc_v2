@@ -282,9 +282,19 @@ export class WalletController {
         dto.amountEth,
       );
 
+      const chainName = dto.chain === 'ethereum'
+        ? 'Ethereum Sepolia'
+        : dto.chain === 'avalanche'
+        ? 'Avalanche Fuji'
+        : dto.chain === 'solana'
+        ? 'Solana (mainnet)' // or devnet depending on configuration
+        : dto.chain === 'stellar'
+        ? 'Stellar (public)'
+        : dto.chain;
+
       return {
         success: true,
-        message: `Transaction sent successfully on ${dto.chain === 'ethereum' ? 'Ethereum Sepolia' : 'Avalanche Fuji'}`,
+        message: `Transaction sent successfully on ${chainName}`,
         data: {
           transactionHash: result.transactionHash,
           from: result.from,

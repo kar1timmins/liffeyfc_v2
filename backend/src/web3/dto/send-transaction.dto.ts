@@ -2,13 +2,12 @@ import { IsString, IsNumber, IsEthereumAddress, IsIn } from 'class-validator';
 
 export class SendTransactionDto {
   @IsString()
-  @IsEthereumAddress()
   recipientAddress: string;
 
   @IsString()
-  @IsIn(['ethereum', 'avalanche'])
-  chain: 'ethereum' | 'avalanche';
+  @IsIn(['ethereum', 'avalanche', 'solana', 'stellar'])
+  chain: 'ethereum' | 'avalanche' | 'solana' | 'stellar';
 
   @IsNumber()
-  amountEth: number; // Amount in ETH/AVAX (not Wei)
+  amountEth: number; // Amount in native token (ETH, AVAX, SOL, XLM)
 }

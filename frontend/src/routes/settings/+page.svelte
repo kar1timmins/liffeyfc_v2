@@ -165,7 +165,7 @@
             </div>
           </div>
           <div>
-            <p class="text-xs opacity-70">Private key (keep offline):</p>
+            <p class="text-xs opacity-70">Ethereum / Avalanche private key:</p>
             <div class="flex gap-2 items-center">
               <code class="break-words w-full p-2 bg-base-200 rounded">{secrets.privateKey}</code>
               <button class="btn btn-ghost btn-xs" onclick={() => copy(secrets.privateKey)} title="Copy">
@@ -173,6 +173,50 @@
               </button>
             </div>
           </div>
+          {#if secrets.avaxPrivateKey && secrets.avaxPrivateKey !== secrets.privateKey}
+            <div>
+              <p class="text-xs opacity-70">Avalanche private key:</p>
+              <div class="flex gap-2 items-center">
+                <code class="break-words w-full p-2 bg-base-200 rounded">{secrets.avaxPrivateKey}</code>
+                <button class="btn btn-ghost btn-xs" onclick={() => copy(secrets.avaxPrivateKey)} title="Copy">
+                  <Copy class="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          {/if}
+          {#if secrets.solanaPrivateKey}
+            <div>
+              <p class="text-xs opacity-70">Solana private key (hex):</p>
+              <div class="flex gap-2 items-center">
+                <code class="break-words w-full p-2 bg-base-200 rounded">{secrets.solanaPrivateKey}</code>
+                <button class="btn btn-ghost btn-xs" onclick={() => copy(secrets.solanaPrivateKey)} title="Copy">
+                  <Copy class="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          {/if}
+          {#if secrets.stellarPrivateKey}
+            <div>
+              <p class="text-xs opacity-70">Stellar secret seed:</p>
+              <div class="flex gap-2 items-center">
+                <code class="break-words w-full p-2 bg-base-200 rounded">{secrets.stellarPrivateKey}</code>
+                <button class="btn btn-ghost btn-xs" onclick={() => copy(secrets.stellarPrivateKey)} title="Copy">
+                  <Copy class="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          {/if}
+          {#if secrets.bitcoinPrivateKey}
+            <div>
+              <p class="text-xs opacity-70">Bitcoin private key (WIF):</p>
+              <div class="flex gap-2 items-center">
+                <code class="break-words w-full p-2 bg-base-200 rounded">{secrets.bitcoinPrivateKey}</code>
+                <button class="btn btn-ghost btn-xs" onclick={() => copy(secrets.bitcoinPrivateKey)} title="Copy">
+                  <Copy class="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          {/if}
         </div>
       </div>
     {/if}

@@ -40,6 +40,11 @@ export interface WalletDownloadData {
   bitcoinAddress?: string;
   mnemonic: string;
   privateKey: string;
+  // Derived private keys for each chain (same mnemonic under the hood)
+  avaxPrivateKey?: string;
+  solanaPrivateKey?: string;
+  stellarPrivateKey?: string;
+  bitcoinPrivateKey?: string;
   derivationPath: string;
   warning: string;
   createdAt: string;
@@ -183,6 +188,38 @@ export class WalletGenerationService {
   }
 
   /**
+   * Derive private keys/seed for non‑EVM chains from the mnemonic.
+   */
+  public deriveNonEvmKeys(mnemonic: string, childIndex = 0): {
+    solanaPrivateKey: string;
+    stellarPrivateKey: string;
+    bitcoinPrivateKey: string;
+  } {
+    const mnemonicObj = Mnemonic.fromPhrase(mnemonic);
+    const seedHex = mnemonicObj.computeSeed();
+
+    const solPath = `m/44'/501'/${childIndex}'/0'`;
+    const xlmPath = `m/44'/148'/${childIndex}'`;
+
+    // Solana seed/private key
+    const { key: solKey } = derivePath(solPath, seedHex);
+    const solKeypair = nacl.sign.keyPair.fromSeed(new Uint8Array(solKey));
+    // secretKey contains 64 bytes (private + public); represent as hex for users
+    const solanaPrivateKey = Buffer.from(solKeypair.secretKey).toString('hex');
+
+    // Stellar seed (starts with 'S')
+    const { key: xlmKey } = derivePath(xlmPath, seedHex);
+    const stellarKeypair = StellarKeypair.fromRawEd25519Seed(Buffer.from(xlmKey));
+    const stellarPrivateKey = stellarKeypair.secret();
+
+    // Bitcoin private key
+    const btcWallet = HDNodeWallet.fromPhrase(mnemonic, undefined, `${this.BTC_DERIVATION_BASE}/${childIndex}`);
+    const bitcoinPrivateKey = btcWallet.privateKey;
+
+    return { solanaPrivateKey, stellarPrivateKey, bitcoinPrivateKey };
+  }
+
+  /**
    * Generate a new master HD wallet for a user
    * Can only be called once per user
    */
@@ -212,6 +249,7 @@ export class WalletGenerationService {
 
     // Derive non-EVM addresses (Solana, Stellar, Bitcoin) from the same mnemonic
     const { solanaAddress, stellarAddress, bitcoinAddress } = this.deriveNonEvmAddresses(mnemonic);
+    const { solanaPrivateKey, stellarPrivateKey, bitcoinPrivateKey } = this.deriveNonEvmKeys(mnemonic);
 
     // Encrypt sensitive data
     const encryptedMnemonic = this.encrypt(mnemonic);
@@ -252,6 +290,10 @@ export class WalletGenerationService {
       bitcoinAddress,
       mnemonic,
       privateKey: ethWallet.privateKey,
+      avaxPrivateKey: ethWallet.privateKey,
+      solanaPrivateKey,
+      stellarPrivateKey,
+      bitcoinPrivateKey,
       derivationPath: `${this.ETH_DERIVATION_BASE}/0`,
       warning: 'CRITICAL: Store this information securely offline. Never share your private key or mnemonic phrase. Loss of this data means permanent loss of access to your funds.',
       createdAt: new Date().toISOString(),
@@ -313,12 +355,17 @@ export class WalletGenerationService {
     let solanaAddress: string | null = null;
     let stellarAddress: string | null = null;
     let bitcoinAddress: string | null = null;
+    let solanaPrivateKey = '';
+    let stellarPrivateKey = '';
+    let bitcoinPrivateKey = '';
+
     if (mnemonic) {
       try {
         ({ solanaAddress, stellarAddress, bitcoinAddress } = this.deriveNonEvmAddresses(mnemonic));
+        ({ solanaPrivateKey, stellarPrivateKey, bitcoinPrivateKey } = this.deriveNonEvmKeys(mnemonic));
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : String(err);
-        devLog.warn('Could not derive non-EVM addresses during restore:', errorMessage);
+        devLog.warn('Could not derive non-EVM addresses/keys during restore:', errorMessage);
       }
     }
 
@@ -424,6 +471,10 @@ export class WalletGenerationService {
       ...(bitcoinAddress && { bitcoinAddress }),
       mnemonic: mnemonic || '[Private Key - No Mnemonic]',
       privateKey: ethWallet.privateKey,
+      avaxPrivateKey: ethWallet.privateKey,
+      ...(mnemonic && { solanaPrivateKey }),
+      ...(mnemonic && { stellarPrivateKey }),
+      ...(mnemonic && { bitcoinPrivateKey }),
       derivationPath: `${this.ETH_DERIVATION_BASE}/0`,
       warning: 'CRITICAL: Wallet successfully restored. All previously derived company wallets will regenerate with the same addresses.',
       createdAt: new Date().toISOString(),
@@ -623,6 +674,7 @@ export class WalletGenerationService {
       }
     }
 
+    // simply return the public addresses; no secrets here
     return {
       ethAddress: wallet.ethAddress,
       avaxAddress: wallet.avaxAddress,
@@ -658,6 +710,24 @@ export class WalletGenerationService {
       }
     }
 
+    // derive additional keys from mnemonic where available
+    let solanaPrivateKey: string | undefined;
+    let stellarPrivateKey: string | undefined;
+    let bitcoinPrivateKey: string | undefined;
+    let avaxPrivateKey: string | undefined;
+
+    if (mnemonic) {
+      try {
+        ({ solanaPrivateKey, stellarPrivateKey, bitcoinPrivateKey } = this.deriveNonEvmKeys(mnemonic));
+      } catch (err) {
+        devLog.warn('Failed to derive non-EVM private keys for download:', err);
+      }
+    }
+    if (privateKey) {
+      // same key used for Avax
+      avaxPrivateKey = privateKey;
+    }
+
     return {
       address: wallet.ethAddress,
       ethAddress: wallet.ethAddress,
@@ -667,6 +737,10 @@ export class WalletGenerationService {
       bitcoinAddress: wallet.bitcoinAddress || undefined,
       mnemonic: mnemonic || '[unavailable]',
       privateKey: privateKey || '[unavailable]',
+      avaxPrivateKey,
+      solanaPrivateKey,
+      stellarPrivateKey,
+      bitcoinPrivateKey,
       derivationPath: wallet.derivationPath || '',
       warning: 'This information is sensitive. Do not share it. Download and store securely.',
       createdAt: new Date().toISOString(),

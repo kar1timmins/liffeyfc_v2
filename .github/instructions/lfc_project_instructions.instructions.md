@@ -649,7 +649,7 @@ pnpm run migration:run
 - `/auth` - Combined login/register page with animated toggle
 - `/dashboard` - User dashboard with personalized content
 - `/profile` - User profile management with avatar upload
-- `/settings` - User settings page where master wallet mnemonic and private key can be revealed and downloaded
+- `/settings` - User settings page where master wallet mnemonic and private key (plus derived private keys for ETH/AVAX/SOL/XLM/BTC) can be revealed and downloaded
 - `/companies` - Browse all companies
 - `/companies/[id]` - Company detail page with wishlist and contribution UI
 - `/bounties` - Browse all bounties/crowdfunding campaigns

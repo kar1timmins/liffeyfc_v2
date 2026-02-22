@@ -7,7 +7,7 @@
 	import { toastStore } from '$lib/stores/toast';
 
 	// Form state
-	let selectedChain = $state<'ethereum' | 'avalanche'>('ethereum');
+	let selectedChain = $state<'ethereum' | 'avalanche' | 'solana' | 'stellar'>('ethereum');
 	let recipientAddress = $state('');
 	let amount = $state<number | ''>('');
 	let isSubmitting = $state(false);
@@ -17,8 +17,8 @@
 	let explorerUrl = $state<string | null>(null);
 
 	// Display state
-	let userBalance = $state<{ ethereum: string; avalanche: string }>({ ethereum: '0', avalanche: '0' });
-	let userWalletAddress = $state<{ ethereum?: string; avalanche?: string } | null>(null);
+	let userBalance = $state<{ ethereum: string; avalanche: string; solana?: string; stellar?: string }>({ ethereum: '0', avalanche: '0' });
+	let userWalletAddress = $state<{ ethereum?: string; avalanche?: string; solana?: string; stellar?: string } | null>(null);
 	let isLoadingWallet = $state(false);
 	let isLoadingBalance = $state(false);
 	let totalCost = $state<number>(0);
@@ -64,7 +64,7 @@
 	// Transaction history
 	interface Transaction {
 		id: string;
-		chain: 'ethereum' | 'avalanche';
+		chain: 'ethereum' | 'avalanche' | 'solana' | 'stellar';
 		amount: number;
 		recipient: string;
 		hash: string;
@@ -79,14 +79,18 @@
 	// Step tracking
 	let currentStep = $state<'check' | 'form' | 'submitting' | 'success'>('check');
 
-	const CHAIN_NAMES: { [K in 'ethereum' | 'avalanche']: string } = {
+	const CHAIN_NAMES: { [K in 'ethereum' | 'avalanche' | 'solana' | 'stellar']: string } = {
 		ethereum: 'Ethereum Sepolia',
-		avalanche: 'Avalanche Fuji'
+		avalanche: 'Avalanche Fuji',
+		solana: 'Solana',
+		stellar: 'Stellar'
 	};
 
-	const EXPLORER_URLS: { [K in 'ethereum' | 'avalanche']: string } = {
+	const EXPLORER_URLS: { [K in 'ethereum' | 'avalanche' | 'solana' | 'stellar']: string } = {
 		ethereum: 'https://sepolia.etherscan.io/tx/',
-		avalanche: 'https://testnet.snowtrace.io/tx/'
+		avalanche: 'https://testnet.snowtrace.io/tx/',
+		solana: 'https://explorer.solana.com/tx/',
+		stellar: 'https://stellarscan.io/tx/'
 	};
 
 	// Reactive effect: Update recipient address when bounty is selected
@@ -118,10 +122,12 @@
 
 			const result = await response.json();
 			if (result.success && result.data) {
-				// Map backend keys (ethAddress, avaxAddress) to component keys (ethereum, avalanche)
+				// Map backend keys to component keys
 				userWalletAddress = {
 					ethereum: result.data.ethAddress,
-					avalanche: result.data.avaxAddress
+					avalanche: result.data.avaxAddress,
+					solana: result.data.solanaAddress,
+					stellar: result.data.stellarAddress,
 				};
 			devLog('Wallet addresses loaded:', userWalletAddress);
 			currentStep = 'form';
@@ -223,7 +229,17 @@
 	}
 
 	function validateAddress(addr: string): boolean {
-		return /^0x[a-fA-F0-9]{40}$/.test(addr);
+		switch (selectedChain) {
+			case 'ethereum':
+			case 'avalanche':
+				return /^0x[a-fA-F0-9]{40}$/.test(addr);
+			case 'solana':
+				return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(addr);
+			case 'stellar':
+				return /^G[A-Z0-9]{55}$/.test(addr);
+			default:
+				return false;
+		}
 	}
 
 	async function lookupWalletAddress(address: string) {
@@ -350,7 +366,7 @@
 		}
 
 		if (!validateAddress(recipientAddress)) {
-			error = 'Invalid Ethereum address format (must be 0x + 40 hex characters)';
+			error = `Invalid ${CHAIN_NAMES[selectedChain]} address`;
 			return;
 		}
 
@@ -362,7 +378,12 @@
 
 		const balanceNum = parseFloat(userBalance[selectedChain] || '0');
 		if (numAmount > balanceNum) {
-			error = `Insufficient balance. You have ${userBalance[selectedChain]} ${selectedChain === 'ethereum' ? 'ETH' : 'AVAX'}, but need ${numAmount}`;
+			const unit = selectedChain === 'ethereum' ? 'ETH'
+				: selectedChain === 'avalanche' ? 'AVAX'
+				: selectedChain === 'solana' ? 'SOL'
+				: selectedChain === 'stellar' ? 'XLM'
+				: '';
+			error = `Insufficient balance. You have ${userBalance[selectedChain]} ${unit}, but need ${numAmount}`;
 			return;
 		}
 
@@ -542,7 +563,14 @@
 					<div class="grid grid-cols-2 gap-3 bg-base-200/50 rounded-lg p-4">
 						<div>
 							<div class="text-xs opacity-60">Amount</div>
-							<div class="font-mono font-semibold">{amount} {selectedChain === 'ethereum' ? 'ETH' : 'AVAX'}</div>
+							<div class="font-mono font-semibold">
+							{amount}
+							{selectedChain === 'ethereum' ? ' ETH'
+							: selectedChain === 'avalanche' ? ' AVAX'
+							: selectedChain === 'solana' ? ' SOL'
+							: selectedChain === 'stellar' ? ' XLM'
+							: ''}
+						</div>
 						</div>
 						<div>
 							<div class="text-xs opacity-60">To</div>
@@ -588,10 +616,11 @@
 					<div class="label">
 						<span class="label-text font-semibold">Select Network</span>
 					</div>
-					<div class="grid grid-cols-2 gap-3">
+					<div class="grid grid-cols-2 md:grid-cols-4 gap-3">
 						<button
 							type="button"
 							class="btn {selectedChain === 'ethereum' ? 'btn-primary' : 'btn-outline'} gap-2"
+							disabled={!userWalletAddress?.ethereum || isSubmitting}
 							onclick={() => selectedChain = 'ethereum'}
 						>
 							<span class="text-xl">⟠</span>
@@ -600,10 +629,29 @@
 						<button
 							type="button"
 							class="btn {selectedChain === 'avalanche' ? 'btn-primary' : 'btn-outline'} gap-2"
+							disabled={!userWalletAddress?.avalanche || isSubmitting}
 							onclick={() => selectedChain = 'avalanche'}
 						>
 							<span class="text-xl">▲</span>
 							Avalanche Fuji
+						</button>
+						<button
+							type="button"
+							class="btn {selectedChain === 'solana' ? 'btn-primary' : 'btn-outline'} gap-2"
+							disabled={!userWalletAddress?.solana || isSubmitting}
+							onclick={() => selectedChain = 'solana'}
+						>
+							<span class="text-xl">◎</span>
+							Solana
+						</button>
+						<button
+							type="button"
+							class="btn {selectedChain === 'stellar' ? 'btn-primary' : 'btn-outline'} gap-2"
+							disabled={!userWalletAddress?.stellar || isSubmitting}
+							onclick={() => selectedChain = 'stellar'}
+						>
+							<span class="text-xl">★</span>
+							Stellar
 						</button>
 					</div>
 				</div>
@@ -615,7 +663,12 @@
 						<div class="h-8 skeleton"></div>
 					{:else}
 						<div class="stat-value text-2xl">
-							{userBalance[selectedChain]} {selectedChain === 'ethereum' ? 'ETH' : 'AVAX'}
+							{userBalance[selectedChain]}
+							{selectedChain === 'ethereum' ? ' ETH'
+							: selectedChain === 'avalanche' ? ' AVAX'
+							: selectedChain === 'solana' ? ' SOL'
+							: selectedChain === 'stellar' ? ' XLM'
+							: ''}
 						</div>
 					{/if}
 					<div class="stat-desc text-xs opacity-50">On {CHAIN_NAMES[selectedChain]}</div>
@@ -637,7 +690,15 @@
 					<input
 						id="recipient-address"
 						type="text"
-						placeholder="0x..."
+						placeholder={
+							selectedChain === 'ethereum' || selectedChain === 'avalanche'
+								? '0x...'
+							: selectedChain === 'solana'
+								? 'Solana address'
+							: selectedChain === 'stellar'
+								? 'Stellar address'
+							: ''
+						}
 						class="input input-bordered font-mono text-sm"
 						value={recipientAddress}
 						onchange={(e) => onAddressChange((e.target as HTMLInputElement).value)}
@@ -646,7 +707,7 @@
 					/>
 					{#if recipientAddress && !validateAddress(recipientAddress)}
 						<label class="label" for="recipient-address">
-							<span class="label-text-alt text-error text-xs">Invalid address format (must be 0x + 40 hex characters)</span>
+							<span class="label-text-alt text-error text-xs">Invalid {CHAIN_NAMES[selectedChain]} address</span>
 						</label>
 					{/if}
 
@@ -772,7 +833,7 @@
 						<button
 							type="button"
 							class="btn btn-ghost btn-sm absolute right-1 top-1/2 -translate-y-1/2"
-							onclick={() => amount = parseFloat(userBalance[selectedChain]) || 0}
+							onclick={() => amount = parseFloat(userBalance[selectedChain] || '0') || 0}
 							title="Use max balance"
 						>
 							MAX

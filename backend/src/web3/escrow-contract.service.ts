@@ -2,8 +2,15 @@ import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ethers } from 'ethers';
+
+// Solana & Stellar libraries for non-EVM transactions
+import { Connection, Keypair as SolanaKeypair, SystemProgram, LAMPORTS_PER_SOL, sendAndConfirmTransaction, PublicKey, Transaction } from '@solana/web3.js';
+import { Server } from 'stellar-sdk';
+import { Keypair as StellarKeypair, TransactionBuilder, Networks, Operation, Asset } from '@stellar/stellar-base';
+
 import * as crypto from 'crypto';
 import { WishlistItem } from '../entities/wishlist-item.entity';
+import { WalletGenerationService } from './wallet-generation.service';
 import { Company } from '../entities/company.entity';
 import { UserWallet } from '../entities/user-wallet.entity';
 import { CompanyWallet } from '../entities/company-wallet.entity';
@@ -115,6 +122,10 @@ export class EscrowContractService {
     'https://avalanche-fuji.drpc.org'
   ];
 
+  // Non-EVM RPC endpoints
+  private readonly solanaRpc = 'https://api.mainnet-beta.solana.com';
+  private readonly stellarHorizon = 'https://horizon.stellar.org';
+
   constructor(
     @InjectRepository(WishlistItem)
     private wishlistRepo: Repository<WishlistItem>,
@@ -126,6 +137,7 @@ export class EscrowContractService {
     private companyWalletRepo: Repository<CompanyWallet>,
     private readonly contractHistoryService: ContractHistoryService,
     private readonly platformWalletService: PlatformWalletService,
+    private readonly walletGenerationService: WalletGenerationService,
   ) {
     // Get encryption key from environment variable (for decrypting stored wallets)
     const key = process.env.WALLET_ENCRYPTION_KEY;
@@ -258,7 +270,7 @@ export class EscrowContractService {
    * Get user's private key from database (decrypted)
    * This retrieves the user's master wallet private key from the database
    */
-  async getUserPrivateKey(userId: string, chain: 'ethereum' | 'avalanche'): Promise<string> {
+  async getUserPrivateKey(userId: string, chain: 'ethereum' | 'avalanche' | 'solana' | 'stellar'): Promise<string> {
     this.logger.log(`🔍 Looking up wallet for user: ${userId}`);
     
     const userWallet = await this.userWalletRepo.findOne({
@@ -272,13 +284,42 @@ export class EscrowContractService {
 
     this.logger.log(`🔍 Retrieved wallet for user ${userId}: ETH=${userWallet.ethAddress}, AVAX=${userWallet.avaxAddress}`);
 
-    try {
-      const decryptedPrivateKey = this.decrypt(userWallet.encryptedPrivateKey);
-      return decryptedPrivateKey;
-    } catch (error) {
-      this.logger.error('Failed to decrypt user private key:', error);
-      throw new BadRequestException('Failed to decrypt wallet. Please try again.');
+    // EVM chains simply use stored encrypted private key
+    if (chain === 'ethereum' || chain === 'avalanche') {
+      try {
+        const decryptedPrivateKey = this.decrypt(userWallet.encryptedPrivateKey);
+        return decryptedPrivateKey;
+      } catch (error) {
+        this.logger.error('Failed to decrypt user private key:', error);
+        throw new BadRequestException('Failed to decrypt wallet. Please try again.');
+      }
     }
+
+    // For Solana/Stellar we derive keys from mnemonic
+    if (!userWallet.encryptedMnemonic || !userWallet.encryptedMnemonic.trim()) {
+      throw new BadRequestException('Mnemonic unavailable - cannot derive non-EVM key');
+    }
+
+    let mnemonic: string;
+    try {
+      mnemonic = this.decrypt(userWallet.encryptedMnemonic);
+    } catch (err) {
+      this.logger.error('Failed to decrypt mnemonic for non-EVM key derivation:', err);
+      throw new BadRequestException('Failed to access mnemonic');
+    }
+
+    const { solanaPrivateKey, stellarPrivateKey } = this.walletGenerationService.deriveNonEvmKeys(mnemonic);
+    if (chain === 'solana') {
+      if (!solanaPrivateKey) throw new BadRequestException('Solana key derivation failed');
+      return solanaPrivateKey;
+    }
+    if (chain === 'stellar') {
+      if (!stellarPrivateKey) throw new BadRequestException('Stellar key derivation failed');
+      return stellarPrivateKey;
+    }
+
+    // fallback should not happen
+    throw new BadRequestException('Unsupported chain for key retrieval');
   }
 
   /**
@@ -1651,15 +1692,10 @@ export class EscrowContractService {
   async sendUserTransaction(
     userId: string,
     recipientAddress: string,
-    chain: 'ethereum' | 'avalanche',
+    chain: 'ethereum' | 'avalanche' | 'solana' | 'stellar',
     amountEth: number,
   ): Promise<{ transactionHash: string; from: string; to: string; amount: string; explorerUrl: string }> {
     this.logger.log(`📤 Sending transaction from user ${userId} to ${recipientAddress} on ${chain}`);
-
-    // Validate recipient address
-    if (!ethers.isAddress(recipientAddress)) {
-      throw new Error('Invalid recipient address');
-    }
 
     // Validate amount
     if (amountEth <= 0) {
@@ -1667,8 +1703,72 @@ export class EscrowContractService {
     }
 
     try {
+    // Non-EVM chains first
+    if (chain === 'solana') {
+      // derive keypair and send SOL
+      const secret = await this.getUserPrivateKey(userId, 'solana');
+      const keypair = SolanaKeypair.fromSecretKey(Buffer.from(secret, 'hex'));
+      const connection = new Connection(this.solanaRpc, 'confirmed');
+      const lamports = Math.round(amountEth * LAMPORTS_PER_SOL);
+      const solTx = new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: keypair.publicKey,
+          toPubkey: new PublicKey(recipientAddress),
+          lamports,
+        })
+      );
+      const signature = await sendAndConfirmTransaction(connection, solTx, [keypair]);
+      this.logger.log(`✅ Solana tx sent: ${signature}`);
+      const explorerUrl = `https://explorer.solana.com/tx/${signature}`;
+      return {
+        transactionHash: signature,
+        from: keypair.publicKey.toBase58(),
+        to: recipientAddress,
+        amount: amountEth.toString(),
+        explorerUrl,
+      };
+    }
+
+    if (chain === 'stellar') {
+      const secret = await this.getUserPrivateKey(userId, 'stellar');
+      const keypair = StellarKeypair.fromSecret(secret);
+      const server = new Server(this.stellarHorizon);
+      const account = await server.loadAccount(keypair.publicKey());
+      const fee = await server.fetchBaseFee();
+      const amountStr = amountEth.toString();
+      const tx = new TransactionBuilder(account, {
+        fee: fee.toString(),
+        networkPassphrase: Networks.PUBLIC,
+      })
+        .addOperation(Operation.payment({
+          destination: recipientAddress,
+          asset: Asset.native(),
+          amount: amountStr,
+        }))
+        .setTimeout(30)
+        .build();
+      tx.sign(keypair);
+      const txResponse = await server.submitTransaction(tx as any);
+      this.logger.log(`✅ Stellar tx sent: ${txResponse.hash}`);
+      const explorerUrl = `https://stellarscan.io/tx/${txResponse.hash}`;
+      return {
+        transactionHash: txResponse.hash,
+        from: keypair.publicKey(),
+        to: recipientAddress,
+        amount: amountStr,
+        explorerUrl,
+      };
+    }
+
+    // Handle each chain separately
+    if (chain === 'ethereum' || chain === 'avalanche') {
+      // Validate EVM address
+      if (!ethers.isAddress(recipientAddress)) {
+        throw new Error('Invalid recipient address');
+      }
+
       // Create signer from user's wallet
-      const signer = await this.createUserSigner(userId, chain);
+      const signer = await this.createUserSigner(userId, chain as 'ethereum' | 'avalanche');
       const fromAddress = signer.address;
 
       this.logger.log(`🔑 Using wallet: ${fromAddress} for ${chain} transaction`);
@@ -1708,25 +1808,23 @@ export class EscrowContractService {
       // Wait for transaction to be mined
       const receipt = await tx.wait();
 
-      if (!receipt) {
-        throw new Error('Transaction failed - no receipt received');
-      }
-
-      this.logger.log(`✅ Transaction confirmed: ${receipt.hash}`);
-
-      // Determine explorer URL
       const explorerUrl = chain === 'ethereum'
-        ? `https://sepolia.etherscan.io/tx/${receipt.hash}`
-        : `https://testnet.snowtrace.io/tx/${receipt.hash}`;
+        ? `https://sepolia.etherscan.io/tx/${tx.hash}`
+        : `https://testnet.snowtrace.io/tx/${tx.hash}`;
 
       return {
-        transactionHash: receipt.hash,
+        transactionHash: tx.hash,
         from: fromAddress,
         to: recipientAddress,
         amount: amountEth.toString(),
         explorerUrl,
       };
-    } catch (error: any) {
+    }
+
+
+    // Fallback
+    throw new Error('Unsupported chain');
+  } catch (error: any) {
       this.logger.error(`❌ Transaction failed: ${error.message}`);
       throw new Error(`Transaction failed: ${error.message}`);
     }
