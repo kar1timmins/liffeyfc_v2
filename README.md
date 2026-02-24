@@ -692,6 +692,9 @@ Returns all escrow campaigns for a company.
 ```typescript
 ethereumEscrowAddress: string       // Contract address on Ethereum
 avalancheEscrowAddress: string      // Contract address on Avalanche
+solanaEscrowAddress?: string        // SOL deposit address unique to this bounty
+stellarEscrowAddress?: string       // XLM deposit address unique to this bounty
+bitcoinEscrowAddress?: string       // BTC deposit address unique to this bounty
 campaignDeadline: Date              // Campaign end time
 campaignDurationDays: number        // Duration in days
 isEscrowActive: boolean             // Is campaign currently running

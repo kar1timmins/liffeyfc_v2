@@ -12,6 +12,7 @@ import {
   ContributorInfo,
 } from './escrow-contract.service';
 import { CryptoPricesService } from './crypto-prices.service';
+import { WalletGenerationService } from './wallet-generation.service';
 
 export interface BountyFilters {
   status?: string;
@@ -111,6 +112,7 @@ export class BountiesService {
     private readonly escrowDeploymentRepository: Repository<EscrowDeployment>,
     private readonly escrowService: EscrowContractService,
     private readonly pricesService: CryptoPricesService,
+    private readonly walletService: WalletGenerationService,
   ) {}
 
   /**
@@ -254,6 +256,29 @@ export class BountiesService {
       wishlistItem.campaignDeadline = deadline;
       wishlistItem.campaignDurationDays = durationInDays;
       wishlistItem.isEscrowActive = true;
+
+      // Generate unique non-EVM wallets for this wishlist item (solana/stellar/bitcoin)
+      try {
+        const addresses = await this.walletService.generateWishlistItemAddresses(
+          userId,
+        );
+        wishlistItem.solanaEscrowAddress =
+          addresses.solanaAddress || wishlistItem.solanaEscrowAddress;
+        wishlistItem.stellarEscrowAddress =
+          addresses.stellarAddress || wishlistItem.stellarEscrowAddress;
+        wishlistItem.bitcoinEscrowAddress =
+          addresses.bitcoinAddress || wishlistItem.bitcoinEscrowAddress;
+        this.logger.log(
+          `🔑 Generated non-EVM escrow addresses for wishlist item ${wishlistItem.id}: solana=${addresses.solanaAddress}, stellar=${addresses.stellarAddress}, bitcoin=${addresses.bitcoinAddress}`,
+        );
+      } catch (addrErr) {
+        // not fatal, just log
+        this.logger.warn(
+          `⚠️  Could not generate non-EVM addresses for wishlist item ${wishlistItem.id}: ${
+            addrErr instanceof Error ? addrErr.message : String(addrErr)
+          }`,
+        );
+      }
 
       await this.wishlistRepository.save(wishlistItem);
 
@@ -668,22 +693,37 @@ export class BountiesService {
       progressPercentage = 0;
     }
 
-    // ---- Company child wallet addresses for non-EVM contributions -------
+    // ---- Non-EVM deposit addresses for this bounty (per-item preferred) -------
     let solanaWalletAddress: string | null = null;
     let stellarWalletAddress: string | null = null;
     let bitcoinWalletAddress: string | null = null;
-    try {
-      const cw = await this.companyWalletRepository.findOne({
-        where: { companyId: wishlistItem.company.id },
-        select: ['solanaAddress', 'stellarAddress', 'bitcoinAddress'],
-      });
-      if (cw) {
-        solanaWalletAddress = cw.solanaAddress ?? null;
-        stellarWalletAddress = cw.stellarAddress ?? null;
-        bitcoinWalletAddress = cw.bitcoinAddress ?? null;
+
+    // prefer the unique addresses stored on the wishlist item itself
+    if (wishlistItem.solanaEscrowAddress) {
+      solanaWalletAddress = wishlistItem.solanaEscrowAddress;
+    }
+    if (wishlistItem.stellarEscrowAddress) {
+      stellarWalletAddress = wishlistItem.stellarEscrowAddress;
+    }
+    if (wishlistItem.bitcoinEscrowAddress) {
+      bitcoinWalletAddress = wishlistItem.bitcoinEscrowAddress;
+    }
+
+    // fallback to the company-level child wallet if item-specific not set
+    if (!solanaWalletAddress || !stellarWalletAddress || !bitcoinWalletAddress) {
+      try {
+        const cw = await this.companyWalletRepository.findOne({
+          where: { companyId: wishlistItem.company.id },
+          select: ['solanaAddress', 'stellarAddress', 'bitcoinAddress'],
+        });
+        if (cw) {
+          if (!solanaWalletAddress) solanaWalletAddress = cw.solanaAddress ?? null;
+          if (!stellarWalletAddress) stellarWalletAddress = cw.stellarAddress ?? null;
+          if (!bitcoinWalletAddress) bitcoinWalletAddress = cw.bitcoinAddress ?? null;
+        }
+      } catch {
+        /* missing wallet is not fatal */
       }
-    } catch {
-      /* missing wallet is not fatal */
     }
 
     // ---- Determine final status -----------------------------------------

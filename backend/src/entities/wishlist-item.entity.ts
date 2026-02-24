@@ -70,6 +70,16 @@ export class WishlistItem {
   @Column({ type: 'varchar', length: 42, nullable: true })
   avalancheEscrowAddress?: string;
 
+  // Non‑EVM deposit addresses specific to this wishlist item
+  @Column({ type: 'varchar', length: 66, nullable: true })
+  solanaEscrowAddress?: string | null;
+
+  @Column({ type: 'varchar', length: 66, nullable: true })
+  stellarEscrowAddress?: string | null;
+
+  @Column({ type: 'varchar', length: 66, nullable: true })
+  bitcoinEscrowAddress?: string | null;
+
   @Column({ type: 'timestamp', nullable: true })
   campaignDeadline?: Date;
 

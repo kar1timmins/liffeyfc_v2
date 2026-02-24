@@ -318,6 +318,8 @@ WishlistItem (1:N) → EscrowDeployment (bounty contracts)
   - When master wallet detected: Returns ALL companies + ALL bounties from all companies
   - When company wallet detected: Returns single company + its bounties
   - Only includes active (non-expired) bounties in results
+
+- **Non‑EVM deposit addresses**: Each wishlist item now receives unique SOL/XLM/BTC addresses derived from the owner's master wallet when a bounty is activated. These fields (`solanaEscrowAddress`, `stellarEscrowAddress`, `bitcoinEscrowAddress`) are saved on the `wishlist_items` table and surfaced in API/UX, and fallback to the company-level child wallet if not specified.
   - Supports chain-specific filtering (Ethereum Sepolia, Avalanche Fuji)
   
 - **Wallet Balance API**: CORS-free RPC proxy for balance queries

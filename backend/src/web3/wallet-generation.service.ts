@@ -252,6 +252,46 @@ export class WalletGenerationService {
   }
 
   /**
+   * Generate a unique set of non-EVM deposit addresses for a wishlist item.
+   * Derivation is based on the user's master wallet mnemonic and the current
+   * nextChildIndex stored on the wallet record. The index is incremented so
+   * every call returns a fresh address set. If no mnemonic is available, all
+   * values will be null.
+   */
+  async generateWishlistItemAddresses(
+    userId: string,
+  ): Promise<{
+    solanaAddress: string | null;
+    stellarAddress: string | null;
+    bitcoinAddress: string | null;
+  }> {
+    const userWallet = await this.userWalletRepo.findOne({ where: { userId } });
+    if (!userWallet) {
+      throw new Error('User wallet not found');
+    }
+
+    // mnemonic required for derivation
+    if (
+      !userWallet.encryptedMnemonic ||
+      userWallet.encryptedMnemonic.trim() === ''
+    ) {
+      return { solanaAddress: null, stellarAddress: null, bitcoinAddress: null };
+    }
+
+    const mnemonic = this.decrypt(userWallet.encryptedMnemonic);
+    const childIndex = userWallet.nextChildIndex;
+
+    // bump index for next call
+    userWallet.nextChildIndex += 1;
+    await this.userWalletRepo.save(userWallet);
+
+    const { solanaAddress, stellarAddress, bitcoinAddress } =
+      this.deriveNonEvmAddresses(mnemonic, childIndex);
+
+    return { solanaAddress, stellarAddress, bitcoinAddress };
+  }
+
+  /**
    * Generate a new master HD wallet for a user
    * Can only be called once per user
    */
@@ -719,7 +759,7 @@ export class WalletGenerationService {
       const savedWallet = await this.companyWalletRepo.save(companyWallet);
       devLog.log('Saved company wallet record:', savedWallet.id);
 
-      // Update parent wallet's next child index
+      // Update parent wallet's next child index (userWallet is guaranteed non-null by earlier check)
       userWallet.nextChildIndex = childIndex + 1;
       await this.userWalletRepo.save(userWallet);
       devLog.log('Updated parent wallet nextChildIndex to:', childIndex + 1);
@@ -746,10 +786,7 @@ export class WalletGenerationService {
         updatedCompany?.avaxAddress,
       );
 
-      return {
-        ethAddress: childWallet.address,
-        avaxAddress: avaxAddress,
-      };
+      return { ethAddress: savedWallet.ethAddress, avaxAddress: savedWallet.avaxAddress };
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);

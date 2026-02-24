@@ -166,7 +166,7 @@ Current Bounty Campaign
 ## Technical Implementation Details
 
 ### Contract Address Storage
-- **WishlistItem entity**: Stores `ethereumEscrowAddress` and `avalancheEscrowAddress`
+- **WishlistItem entity**: Stores `ethereumEscrowAddress` and `avalancheEscrowAddress` (plus `solanaEscrowAddress`, `stellarEscrowAddress`, `bitcoinEscrowAddress` for non‑EVM donations)
 - **EscrowDeployment entity**: Stores complete deployment history with transaction hash
 
 ### Blockchain Verification

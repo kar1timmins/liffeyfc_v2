@@ -358,6 +358,20 @@
 									<span>{formatTimeRemaining(bounty.deadline)}</span>
 								</div>
 							</div>
+							<!-- Non-EVM address indicators -->
+							{#if bounty.solanaWalletAddress || bounty.stellarWalletAddress || bounty.bitcoinWalletAddress}
+								<div class="flex items-center gap-2 text-xs opacity-60 mb-2">
+									{#if bounty.solanaWalletAddress}
+										<span class="badge badge-success badge-xs">SOL</span>
+									{/if}
+									{#if bounty.stellarWalletAddress}
+										<span class="badge badge-warning badge-xs">XLM</span>
+									{/if}
+									{#if bounty.bitcoinWalletAddress}
+										<span class="badge badge-info badge-xs">BTC</span>
+									{/if}
+								</div>
+							{/if}
 
 							<!-- Status Badge -->
 							<div class="flex items-center justify-between">
