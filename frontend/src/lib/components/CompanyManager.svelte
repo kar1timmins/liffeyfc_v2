@@ -1226,7 +1226,7 @@
                       companyWallet={company.ethAddress || company.avaxAddress}
                       masterWallet={masterWallet}
                       onItemAdded={handleWishlistItemAdded}
-                      onCreateBounty={(item) => openBountyModal(item, company)}
+                      onCreateBounty={(item: any) => openBountyModal(item, company)}
                     />
 
                     <!-- Existing Wishlist Items -->
