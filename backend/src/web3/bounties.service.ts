@@ -562,9 +562,10 @@ export class BountiesService {
         targetAmountEth: deployment.targetAmountEth ?? null,
       }));
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.warn(
         `⚠️  Failed to fetch deployments for ${wishlistItem.id}:`,
-        error.message,
+        errorMessage,
       );
     }
 
@@ -602,9 +603,10 @@ export class BountiesService {
           );
         }
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.warn(
           `⚠️  Failed to fetch blockchain data for ${wishlistItem.id}:`,
-          error.message,
+          errorMessage,
         );
       }
     }

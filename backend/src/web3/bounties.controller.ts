@@ -10,57 +10,12 @@ import {
   Logger,
   Query,
 } from '@nestjs/common';
-import {
-  IsString,
-  IsNumber,
-  IsOptional,
-  IsNotEmpty,
-  IsIn,
-  Min,
-} from 'class-validator';
 import { BountiesService } from './bounties.service';
 import { UsersService } from '../users/users.service';
 import { GcpStorageService } from '../common/gcp-storage.service';
 import { AuthGuard } from '@nestjs/passport';
 import { CurrentUser } from '../auth/current-user.decorator';
-
-class CreateBountyDto {
-  @IsString()
-  @IsNotEmpty()
-  wishlistItemId: string;
-
-  @IsNumber()
-  targetAmountEur: number;
-
-  @IsNumber()
-  durationInDays: number;
-
-  @IsString()
-  @IsOptional()
-  description?: string;
-
-  @IsString()
-  @IsOptional()
-  campaignName?: string;
-
-  @IsString()
-  @IsOptional()
-  campaignDescription?: string;
-}
-
-class ManualContributionDto {
-  @IsString()
-  @IsIn(['solana', 'stellar', 'bitcoin'])
-  chain: string;
-
-  @IsNumber()
-  @Min(0.000001)
-  nativeAmount: number;
-
-  @IsString()
-  @IsNotEmpty()
-  transactionHash: string;
-}
+import { CreateBountyDto, ManualContributionDto } from './dto/bounties-controller.dto';
 
 @Controller('bounties')
 export class BountiesController {
@@ -105,8 +60,9 @@ export class BountiesController {
                       );
                   } catch (err) {
                     // keep original path if signed url generation fails
+                    const errorMessage = err instanceof Error ? err.message : String(err);
                     this.logger.warn(
-                      `Failed to generate signed URL for user ${ownerId}: ${err.message}`,
+                      `Failed to generate signed URL for user ${ownerId}: ${errorMessage}`,
                     );
                   }
                 }
@@ -118,8 +74,9 @@ export class BountiesController {
               }
             }
           } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : String(err);
             this.logger.warn(
-              `Failed to attach owner data for bounty ${bounty.id}: ${err.message}`,
+              `Failed to attach owner data for bounty ${bounty.id}: ${errorMessage}`,
             );
           }
         }),
@@ -132,15 +89,16 @@ export class BountiesController {
       };
     } catch (error) {
       this.logger.error('❌ Failed to fetch bounties:', error);
+      const message = error instanceof Error ? error.message : 'Failed to fetch bounties';
       throw new HttpException(
-        error.message || 'Failed to fetch bounties',
+        message,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
   /**
-   * Get leaderboard: all public companies ranked by total raised ETH (public)
+   * Get leaderboard: all public companies ranked by total raised funds across all networks (EUR) (public)
    */
   @Get('leaderboard')
   async getLeaderboard() {
@@ -153,8 +111,9 @@ export class BountiesController {
       };
     } catch (error) {
       this.logger.error('❌ Failed to fetch leaderboard:', error);
+      const message = error instanceof Error ? error.message : 'Failed to fetch leaderboard';
       throw new HttpException(
-        error.message || 'Failed to fetch leaderboard',
+        message,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -182,8 +141,9 @@ export class BountiesController {
               profileUrl =
                 await this.gcpStorageService.generateSignedUrl(profileUrl);
             } catch (err) {
+              const errorMessage = err instanceof Error ? err.message : String(err);
               this.logger.warn(
-                `Failed to generate signed URL for user ${owner.id}: ${err.message}`,
+                `Failed to generate signed URL for user ${owner.id}: ${errorMessage}`,
               );
             }
           }
@@ -201,9 +161,11 @@ export class BountiesController {
       };
     } catch (error) {
       this.logger.error('❌ Failed to fetch bounty:', error);
+      const message = error instanceof Error ? error.message : 'Failed to fetch bounty';
+      const status = (error as any)?.status || HttpStatus.INTERNAL_SERVER_ERROR;
       throw new HttpException(
-        error.message || 'Failed to fetch bounty',
-        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        message,
+        status,
       );
     }
   }
@@ -231,9 +193,11 @@ export class BountiesController {
       };
     } catch (error) {
       this.logger.error('❌ Failed to create bounty:', error);
+      const message = error instanceof Error ? error.message : 'Failed to create bounty';
+      const status = (error as any)?.status || HttpStatus.INTERNAL_SERVER_ERROR;
       throw new HttpException(
-        error.message || 'Failed to create bounty',
-        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        message,
+        status,
       );
     }
   }
@@ -253,8 +217,9 @@ export class BountiesController {
       };
     } catch (error) {
       this.logger.error('❌ Failed to sync bounty:', error);
+      const message = error instanceof Error ? error.message : 'Failed to sync bounty';
       throw new HttpException(
-        error.message || 'Failed to sync bounty',
+        message,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -282,8 +247,9 @@ export class BountiesController {
                   profileUrl =
                     await this.gcpStorageService.generateSignedUrl(profileUrl);
                 } catch (err) {
+                  const errorMessage = err instanceof Error ? err.message : String(err);
                   this.logger.warn(
-                    `Failed to generate signed URL for contributor ${user.id}: ${err.message}`,
+                    `Failed to generate signed URL for contributor ${user.id}: ${errorMessage}`,
                   );
                 }
               }
@@ -294,8 +260,9 @@ export class BountiesController {
               } as any;
             }
           } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : String(err);
             this.logger.warn(
-              `Failed to enrich contributor ${contributor.address}: ${err.message}`,
+              `Failed to enrich contributor ${contributor.address}: ${errorMessage}`,
             );
           }
         }),
@@ -308,8 +275,9 @@ export class BountiesController {
       };
     } catch (error) {
       this.logger.error('❌ Failed to fetch contributors:', error);
+      const message = error instanceof Error ? error.message : 'Failed to fetch contributors';
       throw new HttpException(
-        error.message || 'Failed to fetch contributors',
+        message,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -329,8 +297,9 @@ export class BountiesController {
       };
     } catch (error) {
       this.logger.error('❌ Failed to fetch bounty history:', error);
+      const message = error instanceof Error ? error.message : 'Failed to fetch bounty history';
       throw new HttpException(
-        error.message || 'Failed to fetch bounty history',
+        message,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -359,9 +328,11 @@ export class BountiesController {
       return { success: true, message: 'Contribution recorded successfully' };
     } catch (error) {
       this.logger.error('❌ Failed to record manual contribution:', error);
+      const message = error instanceof Error ? error.message : 'Failed to record contribution';
+      const status = (error as any)?.status || HttpStatus.INTERNAL_SERVER_ERROR;
       throw new HttpException(
-        error.message || 'Failed to record contribution',
-        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        message,
+        status,
       );
     }
   }
@@ -390,8 +361,9 @@ export class BountiesController {
                         profileUrl,
                       );
                   } catch (err) {
+                    const errorMessage = err instanceof Error ? err.message : String(err);
                     this.logger.warn(
-                      `Failed to generate signed URL for user ${ownerId}: ${err.message}`,
+                      `Failed to generate signed URL for user ${ownerId}: ${errorMessage}`,
                     );
                   }
                 }
@@ -403,8 +375,9 @@ export class BountiesController {
               }
             }
           } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : String(err);
             this.logger.warn(
-              `Failed to attach owner data for bounty ${bounty.id}: ${err.message}`,
+              `Failed to attach owner data for bounty ${bounty.id}: ${errorMessage}`,
             );
           }
         }),
@@ -417,8 +390,9 @@ export class BountiesController {
       };
     } catch (error) {
       this.logger.error('❌ Failed to fetch company bounties:', error);
+      const message = error instanceof Error ? error.message : 'Failed to fetch company bounties';
       throw new HttpException(
-        error.message || 'Failed to fetch company bounties',
+        message,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

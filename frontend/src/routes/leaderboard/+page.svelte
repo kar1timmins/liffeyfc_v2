@@ -24,7 +24,11 @@
     completedBounties: number;
     activeBounties: number;
     totalBounties: number;
+
     totalRaisedEth: number;
+    totalRaisedAvax: number;
+    totalRaisedManualEur: number;
+    totalRaisedEur: number; // combined eur value for ranking/display
   }
 
   let entries = $state<LeaderboardEntry[]>([]);
@@ -86,9 +90,14 @@
   }
 
   function formatEth(val: number): string {
-    if (!val || val === 0) return '0 ETH';
-    if (val < 0.0001) return `< 0.0001 ETH`;
-    return `${val.toFixed(4)} ETH`;
+    if (!val || val === 0) return '0';
+    if (val < 0.0001) return `< 0.0001`;
+    return `${val.toFixed(4)}`;
+  }
+
+  function formatEur(val: number): string {
+    if (!val || val === 0) return '€0';
+    return `€${val.toFixed(2)}`;
   }
 
   const topThree = $derived(entries.slice(0, 3));
@@ -203,8 +212,14 @@
                     <div class="opacity-50 leading-tight">Active</div>
                   </div>
                   <div class="bg-base-100/60 rounded-lg p-2">
-                    <div class="font-bold text-primary text-base">{entry.totalRaisedEth > 0 ? entry.totalRaisedEth.toFixed(3) : '0'}</div>
-                    <div class="opacity-50 leading-tight">ETH Raised</div>
+                    <div class="font-bold text-primary text-base">{formatEur(entry.totalRaisedEur)}</div>
+                    <div class="opacity-50 leading-tight">
+                      {entry.totalRaisedEth.toFixed(3)} ETH
+                      {entry.totalRaisedAvax > 0 ? ` / ${entry.totalRaisedAvax.toFixed(3)} AVAX` : ''}
+                      {#if entry.totalRaisedManualEur > 0}
+                        <br />+ {formatEur(entry.totalRaisedManualEur)} non‑EVM
+                      {/if}
+                    </div>
                   </div>
                 </div>
 
@@ -246,7 +261,7 @@
                   </th>
                   <th class="text-right">
                     <span class="flex items-center justify-end gap-1">
-                      <TrendingUp class="w-3.5 h-3.5 text-primary" /> Total Raised
+                      <TrendingUp class="w-3.5 h-3.5 text-primary" /> Total Raised (€)
                     </span>
                   </th>
                   <th class="w-10"></th>
@@ -296,7 +311,13 @@
                       </span>
                     </td>
                     <td class="text-right font-mono font-semibold text-primary">
-                      {formatEth(entry.totalRaisedEth)}
+                      {formatEur(entry.totalRaisedEur)}
+                      <div class="text-xs opacity-50">
+                        {entry.totalRaisedEth.toFixed(3)} ETH
+                        {#if entry.totalRaisedAvax > 0}
+                          / {entry.totalRaisedAvax.toFixed(3)} AVAX
+                        {/if}
+                      </div>
                     </td>
                     <td>
                       <ArrowUpRight class="w-4 h-4 opacity-30" />
@@ -331,8 +352,17 @@
                     </div>
                   </div>
                   <div class="text-right">
-                    <div class="font-mono font-bold text-primary text-sm">{formatEth(entry.totalRaisedEth)}</div>
-                    <div class="text-xs opacity-50">{entry.completedBounties} completed</div>
+                    <div class="font-mono font-bold text-primary text-sm">{formatEur(entry.totalRaisedEur)}</div>
+                    <div class="text-xs opacity-50">
+                      {entry.totalRaisedEth.toFixed(3)} ETH
+                      {#if entry.totalRaisedAvax > 0}
+                        / {entry.totalRaisedAvax.toFixed(3)} AVAX
+                      {/if}
+                      {#if entry.totalRaisedManualEur > 0}
+                        • {formatEur(entry.totalRaisedManualEur)} non‑EVM
+                      {/if}
+                      • {entry.completedBounties} completed
+                    </div>
                   </div>
                 </div>
               </div>
