@@ -4,7 +4,7 @@
   import '../app.css';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
-  import { Home, Mic, Info, Sun, Moon, X, Menu, Wallet, User, Grid, Building2, Target, CreditCard, Trophy, Settings } from 'lucide-svelte';
+  import { Home, Mic, Info, Sun, Moon, X, Menu, Wallet, User, Grid, Building2, Target, CreditCard, Trophy, Settings, ShieldCheck } from 'lucide-svelte';
   import Web3Modal from '$lib/components/Web3Modal.svelte';
   import { walletStore, formattedAddress } from '$lib/stores/walletStore';
   import { authStore } from '$lib/stores/auth';
@@ -403,6 +403,12 @@
             <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/bounties')}>
               <Target size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/> 
               <span class="flex-1 text-center">Bounties</span>
+            </button>
+          {/if}
+          {#if $authStore.user?.role === 'staff' || $authStore.user?.userType === 'staff'}
+            <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/admin')}>
+              <ShieldCheck size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/>
+              <span class="flex-1 text-center">Admin</span>
             </button>
           {/if}
         {:else}

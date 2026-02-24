@@ -275,26 +275,32 @@ export class USDCValidatorService {
   }
 
   /**
-   * Get platform's USDC receiver address for a chain
+   * Get platform's USDC receiver address for a chain.
+   * Reads USDC_RECEIVER_ETH / USDC_RECEIVER_AVAX env vars first.
+   * Falls back to deriving the address from PLATFORM_ETH_PRIVATE_KEY /
+   * PLATFORM_AVAX_PRIVATE_KEY so the system is self-healing even if the
+   * dedicated receiver vars are not set.
    */
   getPlatformUSDCAddress(chain: 'ethereum' | 'avalanche'): string {
-    const ethAddress = process.env.USDC_RECEIVER_ETH;
-    const avaxAddress = process.env.USDC_RECEIVER_AVAX;
-
     if (chain === 'ethereum') {
-      if (!ethAddress) {
-        throw new Error(
-          'USDC_RECEIVER_ETH not configured in environment variables',
-        );
+      const explicit = process.env.USDC_RECEIVER_ETH;
+      if (explicit?.trim()) return explicit.trim();
+      const key = process.env.PLATFORM_ETH_PRIVATE_KEY;
+      if (key?.trim()) {
+        const normalized = key.trim().startsWith('0x') ? key.trim() : `0x${key.trim()}`;
+        return new ethers.Wallet(normalized).address;
       }
-      return ethAddress;
+      throw new Error('Platform ETH receiver address not configured. Set USDC_RECEIVER_ETH or PLATFORM_ETH_PRIVATE_KEY.');
     } else {
-      if (!avaxAddress) {
-        throw new Error(
-          'USDC_RECEIVER_AVAX not configured in environment variables',
-        );
+      const explicit = process.env.USDC_RECEIVER_AVAX;
+      if (explicit?.trim()) return explicit.trim();
+      // AVAX uses same key format as ETH; check dedicated key first then fall back to ETH key
+      const key = process.env.PLATFORM_AVAX_PRIVATE_KEY || process.env.PLATFORM_ETH_PRIVATE_KEY;
+      if (key?.trim()) {
+        const normalized = key.trim().startsWith('0x') ? key.trim() : `0x${key.trim()}`;
+        return new ethers.Wallet(normalized).address;
       }
-      return avaxAddress;
+      throw new Error('Platform AVAX receiver address not configured. Set USDC_RECEIVER_AVAX or PLATFORM_AVAX_PRIVATE_KEY.');
     }
   }
 }
