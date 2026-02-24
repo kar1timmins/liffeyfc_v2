@@ -1013,7 +1013,7 @@
 						Sending...
 					{:else}
 						<Send size={20} />
-						Send {selectedChain === 'ethereum' ? 'ETH' : 'AVAX'}
+						Send {selectedChain === 'ethereum' ? 'ETH' : selectedChain === 'avalanche' ? 'AVAX' : selectedChain === 'solana' ? 'SOL' : selectedChain === 'stellar' ? 'XLM' : selectedChain === 'bitcoin' ? 'BTC' : ''}
 					{/if}
 				</button>
 			</form>

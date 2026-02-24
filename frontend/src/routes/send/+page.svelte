@@ -21,10 +21,10 @@
 	<div class="mb-8">
 		<button 
 			class="btn btn-ghost btn-sm gap-2 mb-4"
-			onclick={() => goto('/dashboard')}
+			onclick={() => history.back()}
 		>
 			<ArrowLeft size={18} />
-			Back to Dashboard
+			Back
 		</button>
 		<h1 class="text-4xl font-bold mb-2">Send Funds</h1>
 		<p class="text-base-content/70">Transfer cryptocurrency to any wallet address on supported blockchain networks</p>

@@ -80,7 +80,16 @@ export interface LeaderboardEntry {
   completedBounties: number;
   activeBounties: number;
   totalBounties: number;
+
+  /** Native totals separated by chain */
   totalRaisedEth: number;
+  totalRaisedAvax: number;
+
+  /** Manual or non-EVM contributions (EUR) */
+  totalRaisedManualEur: number;
+
+  /** Combined eur value used for ranking and display */
+  totalRaisedEur: number;
 }
 
 @Injectable()
@@ -811,33 +820,56 @@ export class BountiesService {
         'activeBounties',
       )
       .addSelect('COUNT(DISTINCT ed.id)', 'totalBounties')
-      .addSelect('COALESCE(SUM(con."amountEth"), 0)', 'totalRaisedEth')
+      .addSelect(
+        `COALESCE(SUM(CASE WHEN con.chain = 'ethereum' THEN con."amountEth" ELSE 0 END), 0)`,
+        'totalRaisedEth',
+      )
+      .addSelect(
+        `COALESCE(SUM(CASE WHEN con.chain = 'avalanche' THEN con."amountEth" ELSE 0 END), 0)`,
+        'totalRaisedAvax',
+      )
+      // manual eur contributions (solana, stellar, bitcoin, etc.)
+      .addSelect('COALESCE(SUM(con."amountEur"), 0)', 'totalRaisedManualEur')
       .groupBy('company.id')
       .getRawMany();
 
-    return raw
-      .map((r) => ({
-        rank: 0, // set after sort
-        id: r.id,
-        name: r.name,
-        description: r.description ?? undefined,
-        industry: r.industry ?? undefined,
-        logoUrl: r.logoUrl ?? undefined,
-        completedBounties: parseInt(r.completedBounties, 10) || 0,
-        activeBounties: parseInt(r.activeBounties, 10) || 0,
-        totalBounties: parseInt(r.totalBounties, 10) || 0,
-        totalRaisedEth: parseFloat(r.totalRaisedEth) || 0,
-      }))
-      .sort((a, b) => {
-        if (b.totalRaisedEth !== a.totalRaisedEth)
-          return b.totalRaisedEth - a.totalRaisedEth;
-        if (b.completedBounties !== a.completedBounties)
-          return b.completedBounties - a.completedBounties;
-        if (b.totalBounties !== a.totalBounties)
-          return b.totalBounties - a.totalBounties;
-        return a.name.localeCompare(b.name);
-      })
-      .map((entry, idx) => ({ ...entry, rank: idx + 1 }));
+    // convert strings and compute eur totals
+    const entries = await Promise.all(
+      raw.map(async (r) => {
+        const eth = parseFloat(r.totalRaisedEth) || 0;
+        const avax = parseFloat(r.totalRaisedAvax) || 0;
+        const manualEur = parseFloat(r.totalRaisedManualEur) || 0;
+
+        // convert eth/avax to eur for ranking
+        const ethEur = await this.pricesService.toEur('ETH', eth);
+        const avaxEur = await this.pricesService.toEur('AVAX', avax);
+
+        return {
+          rank: 0,
+          id: r.id,
+          name: r.name,
+          description: r.description ?? undefined,
+          industry: r.industry ?? undefined,
+          logoUrl: r.logoUrl ?? undefined,
+          completedBounties: parseInt(r.completedBounties, 10) || 0,
+          activeBounties: parseInt(r.activeBounties, 10) || 0,
+          totalBounties: parseInt(r.totalBounties, 10) || 0,
+          totalRaisedEth: eth,
+          totalRaisedAvax: avax,
+          totalRaisedManualEur: manualEur,
+          totalRaisedEur: ethEur + avaxEur + manualEur,
+        };
+      }),
+    );
+
+    entries.sort((a, b) => {
+      if (b.totalRaisedEur !== a.totalRaisedEur) return b.totalRaisedEur - a.totalRaisedEur;
+      if (b.completedBounties !== a.completedBounties) return b.completedBounties - a.completedBounties;
+      if (b.totalBounties !== a.totalBounties) return b.totalBounties - a.totalBounties;
+      return a.name.localeCompare(b.name);
+    });
+
+    return entries.map((entry, idx) => ({ ...entry, rank: idx + 1 }));
   }
 
   /**

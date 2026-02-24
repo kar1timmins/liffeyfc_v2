@@ -8,6 +8,7 @@
 		User,
 		Settings,
 		Wallet,
+		WalletCards,
 		LogOut,
 		UserCircle,
 		Briefcase,
@@ -434,19 +435,73 @@
 				</div>
 			</div>
 		</div>
-	</div>
 
-	<!-- My Wallet Addresses Section -->
-	<div class="mt-8">
-		<div class="mb-4 flex items-center gap-3">
-			<div class="rounded-lg bg-gradient-to-br from-primary/20 to-secondary/20 p-2">
-				<ShieldCheck size={22} class="text-primary" />
+				<!-- Buy Crypto Card -->
+				<div
+					class="card bg-base-100 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
+				>
+					<div class="card-body">
+						<div class="mb-4 flex items-center gap-3">
+							<div class="rounded-lg bg-gradient-to-br from-indigo-200 to-indigo-100 p-3">
+								<WalletCards size={24} class="text-indigo-600" />
+							</div>
+							<h2 class="card-title text-xl">Buy Crypto</h2>
+						</div>
+						<p class="mb-4 flex-grow text-base-content/70">
+							Purchase testnet tokens or swap coins using our integrated on-ramp.
+						</p>
+						<div class="card-actions">
+							<button
+								class="text-heading rounded-lg group dark:hover:text-heading relative inline-flex items-center justify-center overflow-hidden bg-gradient-to-br from-indigo-400 to-blue-500 p-0.5 text-sm font-medium group-hover:from-indigo-400 group-hover:to-blue-500 focus:ring-4 focus:ring-indigo-200 focus:outline-none dark:text-white dark:focus:ring-indigo-800"
+								onclick={() => goto('/buy-crypto')}
+							>
+								<span
+									class=" bg-base-100 dark:bg-base-300 rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
+								>
+									Buy Crypto
+								</span>
+							</button>
+						</div>
+					</div>
+				</div>
+
+				<!-- Leaderboard Card -->
+				<div
+					class="card bg-base-100 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
+				>
+					<div class="card-body">
+						<div class="mb-4 flex items-center gap-3">
+							<div class="rounded-lg bg-gradient-to-br from-yellow-200 to-yellow-100 p-3">
+								<TrendingUp size={24} class="text-yellow-600" />
+							</div>
+							<h2 class="card-title text-xl">Leaderboard</h2>
+						</div>
+						<p class="mb-4 flex-grow text-base-content/70">
+							See top contributors and company rankings.
+						</p>
+						<div class="card-actions">
+							<button
+								class="text-heading rounded-lg group dark:hover:text-heading relative inline-flex items-center justify-center overflow-hidden bg-gradient-to-br from-yellow-400 to-orange-400 p-0.5 text-sm font-medium group-hover:from-yellow-400 group-hover:to-orange-400 focus:ring-4 focus:ring-yellow-200 focus:outline-none dark:text-white dark:focus:ring-yellow-800"
+								onclick={() => goto('/leaderboard')}
+							>
+								<span
+									class=" bg-base-100 dark:bg-base-300 rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
+								>
+									View Leaderboard
+								</span>
+							</button>
+						</div>
+					</div>
+				</div>
+
 			</div>
-			<h2 class="text-2xl font-bold">My Wallet Addresses</h2>
+
+		<!-- Wallet Addresses Section -->
+		<div class="mt-12">
+			<h2 class="mb-6 text-2xl font-bold">My Wallet Addresses</h2>
 			{#if !walletAddresses && !isFetchingWallet}
 				<span class="badge badge-ghost badge-sm">No wallet generated</span>
 			{/if}
-		</div>
 
 		{#if isFetchingWallet}
 			<div class="card flex items-center gap-3 bg-base-100 p-6 shadow">

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Building2, Users, MapPin, Calendar, TrendingUp, Plus, Search, X } from 'lucide-svelte';
+  import { Building2, Users, MapPin, Calendar, TrendingUp, Plus, Search, X, ArrowLeft } from 'lucide-svelte';
   import { PUBLIC_API_URL } from '$env/static/public';
   import { authStore } from '$lib/stores/auth';
   import { goto } from '$app/navigation';
@@ -118,6 +118,9 @@
   <div class="container mx-auto px-4">
     <!-- Header -->
     <div class="mb-8">
+    	<button class="btn mb-6 btn-ghost" onclick={() => history.back()}>
+				<ArrowLeft size={16} /> Back
+			</button>
       <h1 class="text-4xl md:text-5xl font-bold mb-4">Companies</h1>
       <p class="text-lg opacity-80 mb-6">
         Discover innovative startups and businesses from the Liffey Founders Club community
