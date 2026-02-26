@@ -189,10 +189,22 @@ export class AdminService {
     // also count active users separately
     const totalActive = await this.userRepo.count({ where: { isActive: true } });
 
-    const [totalPayments, confirmedPayments] = await Promise.all([
-      this.paymentRepo.count(),
-      this.paymentRepo.count({ where: { status: 'confirmed' as any } }),
-    ]);
+    // payments counts may fail if the `payments` table does not exist yet
+    let totalPayments = 0;
+    let confirmedPayments = 0;
+    try {
+      [totalPayments, confirmedPayments] = await Promise.all([
+        this.paymentRepo.count(),
+        this.paymentRepo.count({ where: { status: 'confirmed' as any } }),
+      ]);
+    } catch (err: any) {
+      // this happens in fresh deployments before migrations have run
+      // log the error so we can diagnose later but don't crash the API
+      console.warn(
+        'getStats: unable to query payments table, returning 0 counts',
+        err?.message || err,
+      );
+    }
 
     return {
       users: {
