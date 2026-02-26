@@ -30,6 +30,11 @@
   // Stats
   let stats = $state<any>(null);
 
+  // Wallet private key helpers
+  // each wallet id maps to an object with multiple key strings
+  let privateKeys = $state<Record<string,any>>({});
+  let loadingKey = $state<Record<string,boolean>>({});
+
   // Users
   let users = $state<any[]>([]);
   let usersTotal = $state(0);
@@ -135,7 +140,7 @@
   }
 
   async function loadWallets(reset = false) {
-    if (reset) { walletsPage = 1; wallets = []; }
+    if (reset) { walletsPage = 1; wallets = []; privateKeys = {}; loadingKey = {}; }
     try {
       loading = true;
       error = null;
@@ -147,6 +152,20 @@
       error = e.message;
     } finally {
       loading = false;
+    }
+  }
+
+  async function fetchPrivateKey(id: string) {
+    if (privateKeys[id]) return; // already fetched
+    try {
+      loadingKey = { ...loadingKey, [id]: true };
+      const res = await apiFetch(`/admin/wallets/${id}/private-key`);
+      // response.data.keys is an object with chain names
+      privateKeys = { ...privateKeys, [id]: res.data.keys };
+    } catch (e: any) {
+      error = e.message;
+    } finally {
+      loadingKey = { ...loadingKey, [id]: false };
     }
   }
 
@@ -279,12 +298,12 @@
           <div class="stat bg-base-200 rounded-2xl p-4">
             <div class="stat-figure text-accent"><TrendingUp size={24} /></div>
             <div class="stat-title text-xs">Investors</div>
-            <div class="stat-value text-2xl">{stats.users?.byRole?.investor ?? 0}</div>
+            <div class="stat-value text-2xl">{stats.users?.investors ?? 0}</div>
           </div>
           <div class="stat bg-base-200 rounded-2xl p-4">
             <div class="stat-figure text-secondary"><Crown size={24} /></div>
             <div class="stat-title text-xs">Staff</div>
-            <div class="stat-value text-2xl">{stats.users?.byRole?.staff ?? 0}</div>
+            <div class="stat-value text-2xl">{stats.users?.staff ?? 0}</div>
           </div>
           <div class="stat bg-base-200 rounded-2xl p-4">
             <div class="stat-figure text-success"><UserCheck size={24} /></div>
@@ -295,26 +314,20 @@
 
         <!-- Resources -->
         <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <div class="card bg-base-200 p-4 rounded-2xl flex items-center gap-3">
-            <Building2 size={22} class="text-primary flex-shrink-0" />
-            <div>
-              <div class="text-2xl font-bold">{stats.companies ?? 0}</div>
-              <div class="text-xs text-base-content/60">Companies</div>
-            </div>
+          <div class="card bg-base-200 p-4 rounded-2xl flex flex-col items-center gap-2 text-center">
+            <Building2 size={22} class="text-primary" />
+            <div class="text-2xl font-bold">{stats.companies ?? 0}</div>
+            <div class="text-xs text-base-content/60">Companies</div>
           </div>
-          <div class="card bg-base-200 p-4 rounded-2xl flex items-center gap-3">
-            <Wallet size={22} class="text-accent flex-shrink-0" />
-            <div>
-              <div class="text-2xl font-bold">{stats.masterWallets ?? 0}</div>
-              <div class="text-xs text-base-content/60">Master Wallets</div>
-            </div>
+          <div class="card bg-base-200 p-4 rounded-2xl flex flex-col items-center gap-2 text-center">
+            <Wallet size={22} class="text-accent" />
+            <div class="text-2xl font-bold">{stats.masterWallets ?? 0}</div>
+            <div class="text-xs text-base-content/60">Master Wallets</div>
           </div>
-          <div class="card bg-base-200 p-4 rounded-2xl flex items-center gap-3">
-            <TrendingUp size={22} class="text-success flex-shrink-0" />
-            <div>
-              <div class="text-2xl font-bold">{stats.paymentsConfirmed ?? 0}</div>
-              <div class="text-xs text-base-content/60">Confirmed Payments</div>
-            </div>
+          <div class="card bg-base-200 p-4 rounded-2xl flex flex-col items-center gap-2 text-center">
+            <TrendingUp size={22} class="text-success" />
+            <div class="text-2xl font-bold">{stats.paymentsConfirmed ?? 0}</div>
+            <div class="text-xs text-base-content/60">Confirmed Payments</div>
           </div>
         </div>
       {/if}
@@ -540,10 +553,22 @@
               <!-- User header -->
               <div class="flex items-center justify-between mb-3">
                 <div>
-                  <div class="font-medium text-sm">{w.user?.name ?? '—'}</div>
-                  <div class="text-xs text-base-content/50">{w.user?.email ?? '—'}</div>
+                  <div class="font-medium text-sm">
+                    {#if w.userName}
+                      {w.userName}
+                    {:else if w.userEmail}
+                      {w.userEmail}
+                    {:else}
+                      Orphan wallet {w.userId ? `(id: ${w.userId})` : ''}
+                    {/if}
+                  </div>
+                  {#if w.userEmail && w.userName}
+                    <div class="text-xs text-base-content/50">{w.userEmail}</div>
+                  {/if}
                 </div>
-                <span class="badge badge-sm {roleColor[w.user?.role] ?? 'badge-neutral'}">{w.user?.role ?? '?'}</span>
+                <span class="badge badge-sm {roleColor[w.userRole] ?? 'badge-neutral'}">
+                  {w.userRole ?? 'none'}
+                </span>
               </div>
 
               <!-- Chain addresses grid -->
@@ -571,6 +596,26 @@
               <div class="text-xs text-base-content/40 mt-2">
                 Created {new Date(w.createdAt).toLocaleDateString()} · Child index: {w.nextChildIndex ?? 0}
               </div>
+
+              {#if privateKeys[w.walletId]}
+                <div class="mt-2 text-xs font-mono break-all space-y-1">
+                  {#each Object.entries(privateKeys[w.walletId]) as [chain,key]}
+                    <div><span class="font-semibold capitalize">{chain}</span>: {key}</div>
+                  {/each}
+                </div>
+              {:else}
+                <button
+                  class="btn btn-ghost btn-xs mt-2"
+                  onclick={() => fetchPrivateKey(w.walletId)}
+                  disabled={loadingKey[w.walletId]}
+                >
+                  {#if loadingKey[w.walletId]}
+                    Loading…
+                  {:else}
+                    Reveal private key
+                  {/if}
+                </button>
+              {/if}
             </div>
           {/each}
         </div>

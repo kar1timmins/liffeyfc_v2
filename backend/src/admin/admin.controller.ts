@@ -226,4 +226,15 @@ export class AdminController {
     });
     return { success: true, data: result };
   }
+
+  /**
+   * GET /admin/wallets/:id/private-key
+   * Return decrypted private key for a master wallet. Staff only.
+   */
+  @Get('wallets/:id/private-key')
+  @StaffAuth()
+  async getPrivateKey(@Param('id') id: string) {
+    const keyObj = await this.adminService.getWalletPrivateKey(id);
+    return { success: true, data: { keys: keyObj } };
+  }
 }

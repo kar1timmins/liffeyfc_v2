@@ -5,6 +5,7 @@ import { User, UserRole } from '../entities/user.entity';
 import { UserWallet } from '../entities/user-wallet.entity';
 import { Company } from '../entities/company.entity';
 import { Payment } from '../entities/payment.entity';
+import { WalletGenerationService } from '../web3/wallet-generation.service';
 
 @Injectable()
 export class AdminService {
@@ -20,6 +21,9 @@ export class AdminService {
 
     @InjectRepository(Payment)
     private readonly paymentRepo: Repository<Payment>,
+
+    // inject wallet helper for decryption
+    private readonly walletGen: WalletGenerationService,
   ) {}
 
   // ─── User listing ──────────────────────────────────────────────────────────
@@ -117,6 +121,43 @@ export class AdminService {
     };
   }
 
+  /**
+   * Decrypts and returns the master wallet private key for the given wallet id.
+   * Only accessible by staff via controller guard.
+   */
+  async getWalletPrivateKey(walletId: string) {
+    const w = await this.userWalletRepo.findOne({ where: { id: walletId } });
+    if (!w) throw new NotFoundException('Wallet not found');
+
+    // decrypt master private key and mnemonic
+    // decrypt using private method via any cast (not exported publicly)
+    const privateKey = (this.walletGen as any).decrypt(w.encryptedPrivateKey);
+    const mnemonic = (this.walletGen as any).decrypt(w.encryptedMnemonic);
+
+    // derive non‑EVM chain keys from mnemonic
+    let nonEvm: {
+      solanaPrivateKey: string;
+      stellarPrivateKey: string;
+      bitcoinPrivateKey: string;
+    } | null = null;
+
+    try {
+      nonEvm = this.walletGen.deriveNonEvmKeys(mnemonic);
+    } catch (err) {
+      // derivation may fail if mnemonic invalid, proceed without extras
+      nonEvm = null;
+    }
+
+    return {
+      mnemonic: mnemonic, // optional: admins may need it
+      ethereum: privateKey, // same key used for ETH/AVAX
+      avalanche: privateKey,
+      solana: nonEvm?.solanaPrivateKey ?? null,
+      stellar: nonEvm?.stellarPrivateKey ?? null,
+      bitcoin: nonEvm?.bitcoinPrivateKey ?? null,
+    };
+  }
+
   // ─── Role management ──────────────────────────────────────────────────────
 
   async updateUserRole(userId: string, role: UserRole) {
@@ -145,6 +186,9 @@ export class AdminService {
         this.userWalletRepo.count(),
       ]);
 
+    // also count active users separately
+    const totalActive = await this.userRepo.count({ where: { isActive: true } });
+
     const [totalPayments, confirmedPayments] = await Promise.all([
       this.paymentRepo.count(),
       this.paymentRepo.count({ where: { status: 'confirmed' as any } }),
@@ -156,9 +200,10 @@ export class AdminService {
         founders: totalUsers - totalInvestors - totalStaff,
         investors: totalInvestors,
         staff: totalStaff,
+        active: totalActive,
       },
-      companies: { total: totalCompanies },
-      wallets: { masterWalletsGenerated: totalWallets },
+      companies: totalCompanies,
+      masterWallets: totalWallets,
       payments: { total: totalPayments, confirmed: confirmedPayments },
     };
   }
