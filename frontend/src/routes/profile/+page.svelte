@@ -315,7 +315,7 @@
 <!-- Min height ensures footer stays at bottom -->
 <div class="min-h-[calc(100vh-20rem)] container mx-auto px-4 py-8 max-w-4xl">
   <!-- Back Button -->
-  <button class="btn btn-ghost btn-sm gap-2 mb-6" onclick={() => history.back()}>
+  <button class="btn btn-ghost btn-sm gap-2 mb-6" onclick={() => goto('/dashboard')}>
     <ArrowLeft size={18} />
     Back
   </button>

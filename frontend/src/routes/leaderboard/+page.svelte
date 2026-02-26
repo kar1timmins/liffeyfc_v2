@@ -171,7 +171,7 @@
       <!-- ── Top 3 podium cards ── -->
       {#if topThree.length > 0}
         <section>
-      <button class="btn mb-6 btn-ghost" onclick={() => history.back()}>
+      <button class="btn mb-6 btn-ghost" onclick={() => goto('/dashboard')}>
 				<ArrowLeft size={16} /> Back
 			</button>
           <h2 class="text-sm font-semibold uppercase tracking-widest text-base-content/40 mb-4 flex items-center gap-2">

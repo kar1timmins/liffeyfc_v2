@@ -21,7 +21,7 @@
 	<div class="mb-8">
 		<button 
 			class="btn btn-ghost btn-sm gap-2 mb-4"
-			onclick={() => history.back()}
+			onclick={() => goto('/dashboard')}
 		>
 			<ArrowLeft size={18} />
 			Back

@@ -169,7 +169,7 @@
 	<div class="container mx-auto max-w-7xl px-4">
 		<!-- Header -->
 		<div class="mb-8">
-			<button class="btn mb-6 btn-ghost" onclick={() => history.back()}>
+			<button class="btn mb-6 btn-ghost" onclick={() => goto('/dashboard')}>
 				<ArrowLeft size={16} /> Back
 			</button>
 			<div class="mb-4 flex items-center gap-3">

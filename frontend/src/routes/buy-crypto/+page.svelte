@@ -274,7 +274,7 @@
 <div class="min-h-screen pt-4 pb-24 px-4 sm:px-6 flex flex-col items-center">
   <!-- Page header -->
   <div class="w-full max-w-2xl mb-6">
-    <button class="btn btn-ghost btn-sm gap-2 mb-4 -ml-1" onclick={() => history.back()} aria-label="Go back">
+    <button class="btn btn-ghost btn-sm gap-2 mb-4 -ml-1" onclick={() => goto('/dashboard')} aria-label="Go back">
       <ArrowLeft size={16} /> Back
     </button>
     <div class="flex items-center gap-3 mb-1">

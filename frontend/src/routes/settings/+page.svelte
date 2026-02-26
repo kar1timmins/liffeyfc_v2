@@ -95,7 +95,7 @@
 </svelte:head>
 
 <div class="container mx-auto px-4 py-8 max-w-3xl">
-  <button class="btn btn-ghost mb-6" onclick={() => history.back()}>
+  <button class="btn btn-ghost mb-6" onclick={() => goto('/dashboard')}>
     <ArrowLeft size={16} /> Back
   </button>
 

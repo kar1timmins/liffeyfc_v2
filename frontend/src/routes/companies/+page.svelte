@@ -118,7 +118,7 @@
   <div class="container mx-auto px-4">
     <!-- Header -->
     <div class="mb-8">
-    	<button class="btn mb-6 btn-ghost" onclick={() => history.back()}>
+    	<button class="btn mb-6 btn-ghost" onclick={() => goto('/dashboard')}>
 				<ArrowLeft size={16} /> Back
 			</button>
       <h1 class="text-4xl md:text-5xl font-bold mb-4">Companies</h1>
