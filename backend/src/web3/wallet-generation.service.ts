@@ -170,9 +170,15 @@ export class WalletGenerationService {
     stellarAddress: string;
     bitcoinAddress: string;
   } {
-    // Compute the 64-byte BIP39 seed (no passphrase) from the mnemonic
+    // Compute the 64-byte BIP39 seed (no passphrase) from the mnemonic.
+    // ethers v6 computeSeed() returns a 0x-prefixed hex string; strip the
+    // prefix before passing to ed25519-hd-key's derivePath, which calls
+    // Buffer.from(seed, 'hex'). With the 0x prefix, Buffer.from terminates at
+    // the 'x' character and returns an empty buffer, causing every mnemonic to
+    // produce the exact same derived key.
     const mnemonicObj = Mnemonic.fromPhrase(mnemonic);
-    const seedHex = mnemonicObj.computeSeed(); // hex string
+    const rawSeed = mnemonicObj.computeSeed();
+    const seedHex = rawSeed.startsWith('0x') ? rawSeed.slice(2) : rawSeed;
 
     // Build per-chain derivation paths that vary by childIndex.
     // childIndex=0 produces the same paths as the legacy hardcoded master constants.
@@ -222,7 +228,8 @@ export class WalletGenerationService {
     bitcoinPrivateKey: string;
   } {
     const mnemonicObj = Mnemonic.fromPhrase(mnemonic);
-    const seedHex = mnemonicObj.computeSeed();
+    const rawSeed = mnemonicObj.computeSeed();
+    const seedHex = rawSeed.startsWith('0x') ? rawSeed.slice(2) : rawSeed;
 
     const solPath = `m/44'/501'/${childIndex}'/0'`;
     const xlmPath = `m/44'/148'/${childIndex}'`;
@@ -837,9 +844,37 @@ export class WalletGenerationService {
       return null;
     }
 
-    // Auto-derive SOL/XLM/BTC for wallets created before multi-chain support was added.
-    // Safe no-op when addresses already exist.
-    if (!wallet.solanaAddress && wallet.encryptedMnemonic?.trim()) {
+    // Sentinel addresses produced by the broken derivation (ethers computeSeed()
+    // returns 0x-prefixed hex; Buffer.from('0x...', 'hex') = empty buffer →
+    // every mnemonic yielded the same HMAC master key, giving all users the
+    // same Solana / Stellar address per child index). Re-derive whenever any
+    // of these sentinels are found in the stored addresses.
+    const BROKEN_SOLANA = new Set([
+      '7q6PYSw2dCYfw74igJtDB4iodhCrGBvUg78TnScK6kZj', // childIndex=0
+      'D6cMzPnS4nFVJhZVthKogh1JaYqH7SYuEgCE43RGffRr',  // childIndex=1
+      '89SKcsEbsTCsbANbastFu3wfU5oyepWVEHv7pF1x4xvA',  // childIndex=2
+      'G1xduUDhxM4hSmxdQBAjYWYHkJes9AXtfkCh1JbnoDsa',  // childIndex=3
+      'kfsvEXEkVWoHgUhVqgfUCThq2Ax2mAMgt8R6Qang7SE',   // childIndex=4
+      'A7y82C7rGYo3rc1ouDWdB5K3hLB24tZPkQft4zHReJvv',  // childIndex=5
+    ]);
+    const BROKEN_STELLAR = new Set([
+      'GAVEX22PIDJDXDYMP6P4JU6NUCLE7YRK4WJGCSAC4STCY5E35VAFYNCG', // childIndex=0
+      'GBVDG3UL4U6QKH3AXBYDXOCSAVPYC4QE4BQMMUH43QHTA757D2HCP265', // childIndex=1
+      'GDUIT4WFPFXFUCWCEM4MNDDL37HOZZV6F2EJU7NO6DFWLK2OPN2EU72Z',  // childIndex=2
+      'GAYPI5UDXBMWMS3UOCUFV6EKGLXDFFR6GIESOY7XL55P4WP6UP6PO7BK',  // childIndex=3
+      'GDSDC2WIEHWPTKDXXWXEW2DY6E6Y5NIYNSJFAWGHUTCJR7BVED7GMZHQ',  // childIndex=4
+      'GAXCMZRMJCGLL3FDNZAE4K7TIE5253GOSKA5S3UPGSAWZYV6GTWOWEZX',  // childIndex=5
+    ]);
+
+    const needsRederive =
+      !wallet.solanaAddress ||
+      !wallet.stellarAddress ||
+      BROKEN_SOLANA.has(wallet.solanaAddress) ||
+      BROKEN_STELLAR.has(wallet.stellarAddress ?? '');
+
+    // Auto-derive SOL/XLM/BTC for wallets created before multi-chain support
+    // was added, and for wallets that stored incorrectly-derived addresses.
+    if (needsRederive && wallet.encryptedMnemonic?.trim()) {
       try {
         const mnemonic = this.decrypt(wallet.encryptedMnemonic);
         const { solanaAddress, stellarAddress, bitcoinAddress } =
