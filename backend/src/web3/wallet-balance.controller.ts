@@ -218,6 +218,14 @@ export class WalletBalanceController {
   private async getStellarBalance(address: string) {
     try {
       const res = await fetch(`${this.stellarHorizon}/accounts/${address}`);
+      // Horizon returns 404 for accounts that have never been funded; treat as zero balance
+      if (res.status === 404) {
+        return {
+          chain: 'stellar',
+          address,
+          balanceXlm: '0.000000',
+        };
+      }
       if (!res.ok) {
         throw new Error(`Horizon returned ${res.status}`);
       }
