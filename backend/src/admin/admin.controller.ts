@@ -237,4 +237,26 @@ export class AdminController {
     const keyObj = await this.adminService.getWalletPrivateKey(id);
     return { success: true, data: { keys: keyObj } };
   }
+
+  // ─── Transaction graph ─────────────────────────────────────────────────────
+
+  /**
+   * GET /admin/transactions?page=1&limit=20&type=contribution|deployment
+   * Returns paginated flat rows + un-paginated graph nodes/edges for SVG rendering.
+   * `type` filter is optional; omit to return both contributions and deployments.
+   */
+  @Get('transactions')
+  @StaffAuth()
+  async getTransactions(
+    @Query('page') page = '1',
+    @Query('limit') limit = '20',
+    @Query('type') type?: string,
+  ) {
+    const data = await this.adminService.getTransactions({
+      page: parseInt(page, 10) || 1,
+      limit: Math.min(parseInt(limit, 10) || 20, 100),
+      type: (type as 'contribution' | 'deployment' | '') || '',
+    });
+    return { success: true, data };
+  }
 }

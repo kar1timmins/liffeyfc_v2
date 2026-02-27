@@ -5,6 +5,8 @@ import { User, UserRole } from '../entities/user.entity';
 import { UserWallet } from '../entities/user-wallet.entity';
 import { Company } from '../entities/company.entity';
 import { Payment } from '../entities/payment.entity';
+import { Contribution } from '../entities/contribution.entity';
+import { WishlistItem } from '../entities/wishlist-item.entity';
 import { WalletGenerationService } from '../web3/wallet-generation.service';
 
 @Injectable()
@@ -21,6 +23,12 @@ export class AdminService {
 
     @InjectRepository(Payment)
     private readonly paymentRepo: Repository<Payment>,
+
+    @InjectRepository(Contribution)
+    private readonly contributionRepo: Repository<Contribution>,
+
+    @InjectRepository(WishlistItem)
+    private readonly wishlistRepo: Repository<WishlistItem>,
 
     // inject wallet helper for decryption
     private readonly walletGen: WalletGenerationService,
@@ -217,6 +225,210 @@ export class AdminService {
       companies: totalCompanies,
       masterWallets: totalWallets,
       payments: { total: totalPayments, confirmed: confirmedPayments },
+    };
+  }
+
+  // ─── Transaction graph ─────────────────────────────────────────────────────
+
+  /**
+   * Returns a unified view of all contributions (investor→bounty) and
+   * payment/deployments (founder→escrow setup) suitable for graph rendering.
+   * `graph` is always un-paginated (capped at 500 rows) for the SVG.
+   * `rows` is the paginated flat list for the table.
+   */
+  async getTransactions(opts: {
+    page: number;
+    limit: number;
+    type?: 'contribution' | 'deployment' | '';
+  }) {
+    const { page, limit, type } = opts;
+
+    // ── Contributions ─────────────────────────────────────────────────────
+    const contribRows: any[] = [];
+    if (!type || type === 'contribution') {
+      const contribs = await this.contributionRepo
+        .createQueryBuilder('c')
+        .leftJoinAndSelect('c.user', 'u')
+        .leftJoinAndSelect('c.wishlistItem', 'wi')
+        .leftJoinAndSelect('wi.company', 'co')
+        .leftJoinAndSelect('co.owner', 'owner')
+        .orderBy('c.contributedAt', 'DESC')
+        .take(500)
+        .getMany();
+
+      for (const c of contribs) {
+        contribRows.push({
+          type: 'contribution',
+          id: c.id,
+          date: c.contributedAt,
+          chain: c.chain,
+          txHash: c.transactionHash ?? null,
+          amountEur: c.amountEur ? parseFloat(c.amountEur as any) : null,
+          nativeAmount: c.nativeAmount ? parseFloat(c.nativeAmount as any) : null,
+          currencySymbol: c.currencySymbol ?? null,
+          amountEth: c.amountEth ? parseFloat(c.amountEth as any) : null,
+          isRefunded: c.isRefunded,
+          contributor: {
+            id: c.user?.id ?? null,
+            name: c.user?.name ?? null,
+            email: c.user?.email ?? null,
+            role: c.user?.role ?? 'user',
+            address: c.contributorAddress,
+          },
+          wishlistItem: {
+            id: c.wishlistItem?.id ?? c.wishlistItemId,
+            title: c.wishlistItem?.title ?? 'Unknown',
+          },
+          company: {
+            id: (c.wishlistItem as any)?.company?.id ?? null,
+            name: (c.wishlistItem as any)?.company?.name ?? 'Unknown',
+            ownerId: (c.wishlistItem as any)?.company?.ownerId ?? null,
+            ownerName: (c.wishlistItem as any)?.company?.owner?.name ?? null,
+          },
+        });
+      }
+    }
+
+    // ── Deployments (payments) ────────────────────────────────────────────
+    const deployRows: any[] = [];
+    if (!type || type === 'deployment') {
+      let deployments: Payment[] = [];
+      try {
+        deployments = await this.paymentRepo
+          .createQueryBuilder('p')
+          .leftJoinAndSelect('p.user', 'u')
+          .leftJoinAndSelect('p.wishlistItem', 'wi')
+          .leftJoinAndSelect('wi.company', 'co')
+          .orderBy('p.createdAt', 'DESC')
+          .take(500)
+          .getMany();
+      } catch {
+        // payments table may not exist in older deployments
+      }
+
+      for (const p of deployments) {
+        deployRows.push({
+          type: 'deployment',
+          id: p.id,
+          date: p.createdAt,
+          chain: p.chain,
+          status: p.status,
+          amountUsdc: p.usdcAmount ? parseFloat(p.usdcAmount as any) : null,
+          deploymentChains: p.deploymentChains ?? [],
+          deployedContracts: p.deployedContracts ?? {},
+          deployer: {
+            id: p.user?.id ?? p.userId,
+            name: p.user?.name ?? null,
+            email: p.user?.email ?? null,
+            role: p.user?.role ?? 'user',
+          },
+          wishlistItem: {
+            id: p.wishlistItem?.id ?? p.wishlistItemId,
+            title: p.wishlistItem?.title ?? 'Unknown',
+          },
+          company: {
+            id: (p.wishlistItem as any)?.company?.id ?? null,
+            name: (p.wishlistItem as any)?.company?.name ?? 'Unknown',
+          },
+        });
+      }
+    }
+
+    // ── Merge, sort, paginate ─────────────────────────────────────────────
+    const all = [...contribRows, ...deployRows].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+    );
+    const total = all.length;
+    const rows = all.slice((page - 1) * limit, page * limit);
+
+    // ── Build graph nodes + edges (capped at 150 rows for performance) ────
+    const graphRows = all.slice(0, 150);
+    const nodeMap = new Map<string, object>();
+    const edges: object[] = [];
+
+    for (const row of graphRows) {
+      const actorId =
+        row.type === 'contribution'
+          ? `user:${row.contributor.id ?? row.contributor.address}`
+          : `user:${row.deployer.id}`;
+      const itemId = `item:${row.wishlistItem.id}`;
+      const companyId = `company:${row.company.id}`;
+
+      if (!nodeMap.has(actorId)) {
+        nodeMap.set(actorId, {
+          id: actorId,
+          type: row.type === 'contribution' ? 'investor' : 'founder',
+          label:
+            row.type === 'contribution'
+              ? (row.contributor.name ?? row.contributor.address?.slice(0, 8))
+              : (row.deployer.name ?? 'Unknown'),
+          email:
+            row.type === 'contribution'
+              ? row.contributor.email
+              : row.deployer.email,
+          role:
+            row.type === 'contribution'
+              ? row.contributor.role
+              : row.deployer.role,
+        });
+      }
+      if (!nodeMap.has(itemId)) {
+        nodeMap.set(itemId, {
+          id: itemId,
+          type: 'wishlist',
+          label: row.wishlistItem.title,
+          companyName: row.company.name,
+        });
+      }
+      if (row.company.id && !nodeMap.has(companyId)) {
+        nodeMap.set(companyId, {
+          id: companyId,
+          type: 'company',
+          label: row.company.name,
+          ownerId: row.company.ownerId ?? null,
+          ownerName: row.company.ownerName ?? null,
+        });
+      }
+
+      edges.push({
+        from: actorId,
+        to: itemId,
+        type: row.type,
+        label:
+          row.type === 'contribution'
+            ? row.amountEur != null
+              ? `€${row.amountEur.toFixed(0)}`
+              : row.amountEth != null
+                ? `${row.amountEth.toFixed(4)} ${row.currencySymbol ?? ''}`
+                : ''
+            : `$${(row.amountUsdc ?? 0).toFixed(2)} USDC`,
+        chain: row.chain,
+        status: row.status ?? null,
+        date: row.date,
+      });
+
+      if (row.company.id) {
+        // Add edge from wishlist item to company (ownership)
+        const ownershipKey = `owns:${itemId}:${companyId}`;
+        if (!edges.find((e: any) => e._key === ownershipKey)) {
+          edges.push({
+            _key: ownershipKey,
+            from: itemId,
+            to: companyId,
+            type: 'ownership',
+            label: '',
+          });
+        }
+      }
+    }
+
+    return {
+      graph: { nodes: Array.from(nodeMap.values()), edges },
+      rows,
+      total,
+      page,
+      limit,
+      pages: Math.ceil(total / limit),
     };
   }
 

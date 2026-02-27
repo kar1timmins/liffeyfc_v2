@@ -594,44 +594,70 @@ export class BountiesService {
       );
     }
 
-    // Fetch blockchain data if contracts exist
+    // Fetch blockchain data for ALL deployed EVM contracts independently
+    let ethRaisedNative = 0;
+    let avaxRaisedNative = 0;
+
     if (
       wishlistItem.ethereumEscrowAddress ||
       wishlistItem.avalancheEscrowAddress
     ) {
-      try {
-        if (wishlistItem.ethereumEscrowAddress) {
-          const ethStatus = await this.escrowService.getCampaignStatus(
-            wishlistItem.ethereumEscrowAddress,
-            'ethereum',
-          );
-          raisedAmount = ethStatus.totalRaised;
-          evmRaisedEth = parseFloat(ethStatus.totalRaised);
-          contributorCount = ethStatus.contributorCount;
-          blockchainStatus = this.mapBlockchainStatus(
-            ethStatus.deadline,
-            parseFloat(ethStatus.totalRaised),
-            parseFloat(wishlistItem.value?.toString() || '0'),
-          );
-        } else if (wishlistItem.avalancheEscrowAddress) {
-          const avaxStatus = await this.escrowService.getCampaignStatus(
-            wishlistItem.avalancheEscrowAddress,
-            'avalanche',
-          );
-          raisedAmount = avaxStatus.totalRaised;
-          evmRaisedEth = parseFloat(avaxStatus.totalRaised);
-          contributorCount = avaxStatus.contributorCount;
+      // Fetch both contracts in parallel; failures are non-fatal
+      const [ethResult, avaxResult] = await Promise.allSettled([
+        wishlistItem.ethereumEscrowAddress
+          ? this.escrowService.getCampaignStatus(
+              wishlistItem.ethereumEscrowAddress,
+              'ethereum',
+            )
+          : Promise.resolve(null),
+        wishlistItem.avalancheEscrowAddress
+          ? this.escrowService.getCampaignStatus(
+              wishlistItem.avalancheEscrowAddress,
+              'avalanche',
+            )
+          : Promise.resolve(null),
+      ]);
+
+      if (ethResult.status === 'fulfilled' && ethResult.value) {
+        const ethStatus = ethResult.value;
+        ethRaisedNative = parseFloat(ethStatus.totalRaised);
+        evmRaisedEth += ethRaisedNative;
+        contributorCount += ethStatus.contributorCount;
+        // Use ETH deadline/status as the primary campaign status
+        blockchainStatus = this.mapBlockchainStatus(
+          ethStatus.deadline,
+          ethRaisedNative,
+          parseFloat(wishlistItem.value?.toString() || '0'),
+        );
+        raisedAmount = ethStatus.totalRaised; // kept for backward compat display
+      } else if (ethResult.status === 'rejected') {
+        this.logger.warn(
+          `⚠️  Failed to fetch ETH blockchain data for ${wishlistItem.id}:`,
+          ethResult.reason,
+        );
+      }
+
+      if (avaxResult.status === 'fulfilled' && avaxResult.value) {
+        const avaxStatus = avaxResult.value;
+        avaxRaisedNative = parseFloat(avaxStatus.totalRaised);
+        contributorCount += avaxStatus.contributorCount;
+        // Only use AVAX for campaign status if ETH contract was not present
+        if (!wishlistItem.ethereumEscrowAddress) {
+          evmRaisedEth += avaxRaisedNative;
           blockchainStatus = this.mapBlockchainStatus(
             avaxStatus.deadline,
-            parseFloat(avaxStatus.totalRaised),
+            avaxRaisedNative,
             parseFloat(wishlistItem.value?.toString() || '0'),
           );
+          raisedAmount = avaxStatus.totalRaised;
+        } else {
+          // Both contracts deployed — add AVAX on top of ETH already counted
+          evmRaisedEth += avaxRaisedNative;
         }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+      } else if (avaxResult.status === 'rejected') {
         this.logger.warn(
-          `⚠️  Failed to fetch blockchain data for ${wishlistItem.id}:`,
-          errorMessage,
+          `⚠️  Failed to fetch AVAX blockchain data for ${wishlistItem.id}:`,
+          avaxResult.reason,
         );
       }
     }
@@ -639,11 +665,18 @@ export class BountiesService {
     // ---- Cross-chain EUR aggregation ------------------------------------
     const targetAmountEur = parseFloat(wishlistItem.value?.toString() || '0');
 
-    // Convert EVM raised amount to EUR
+    // Convert each EVM chain's native amount to EUR independently
     let evmRaisedEur = 0;
     try {
-      const priceSymbol = wishlistItem.ethereumEscrowAddress ? 'ETH' : 'AVAX';
-      evmRaisedEur = await this.pricesService.toEur(priceSymbol, evmRaisedEth);
+      const [ethEur, avaxEur] = await Promise.all([
+        ethRaisedNative > 0
+          ? this.pricesService.toEur('ETH', ethRaisedNative)
+          : Promise.resolve(0),
+        avaxRaisedNative > 0
+          ? this.pricesService.toEur('AVAX', avaxRaisedNative)
+          : Promise.resolve(0),
+      ]);
+      evmRaisedEur = ethEur + avaxEur;
     } catch {
       // price fetch failed — evmRaisedEur stays 0
     }
