@@ -876,6 +876,20 @@ export class BountiesService {
   }
 
   /**
+   * Return contributions linked to a particular user.
+   * Relies on the userId column being populated during blockchain sync or
+   * manual recording. Includes associated wishlist item and company info so
+   * the frontend can display list entries without further API calls.
+   */
+  async getUserContributions(userId: string): Promise<Contribution[]> {
+    return this.contributionRepository.find({
+      where: { userId },
+      relations: ['wishlistItem', 'wishlistItem.company', 'escrowDeployment'],
+      order: { contributedAt: 'DESC' },
+    });
+  }
+
+  /**
    * Get the leaderboard: all public companies ranked by total raised ETH,
    * then by number of completed (funded) bounties.
    */

@@ -19,6 +19,7 @@
   let showGenerateWalletModal = $state(false);
   let showRestoreWalletModal = $state(false);
   let companies = $state<any[]>([]);
+  let contributions = $state<any[]>([]);
   let walletRefreshTrigger = $state(0);
 
   // Master wallet state
@@ -48,8 +49,9 @@
         goto('/auth');
         return;
       }
-      // Fetch companies after verification
+      // Fetch companies and contributions after verification
       fetchMyCompanies();
+      fetchMyContributions();
     });
     
     // Subscribe to auth store to get user data
@@ -110,6 +112,22 @@
     }
   }
 
+  async function fetchMyContributions() {
+    try {
+      const token = $authStore.accessToken;
+      if (!token) return;
+      const resp = await fetch(`${PUBLIC_API_URL}/bounties/contributions/user`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await resp.json();
+      if (data.success) {
+        contributions = data.data;
+      }
+    } catch (err) {
+      console.error('Failed to fetch contributions:', err);
+    }
+  }
+
   async function fetchMasterBalances() {
     if (!masterWallet) return;
     const toFetch: Array<{ addr?: string; chain: string }> = [
@@ -157,6 +175,12 @@
     if (masterWallet && masterWalletExpanded) {
       fetchMasterBalances();
     }
+  });
+
+  // when contributions list is loaded we could trigger other things
+  $effect(() => {
+    // no-op for now, placeholder if we need reactivity later
+    contributions;
   });
 
 
@@ -207,27 +231,17 @@
       const response = await fetch(`${PUBLIC_API_URL}/users/upload-avatar`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`
         },
-        body: formData,
+        body: formData
       });
-      
+
       const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to upload image');
-      }
-      
       if (data.success) {
-        // Update the user's profile photo URL in the auth store
-        let currentUser: any = null;
-        const unsubscribe = authStore.subscribe(s => currentUser = s.user);
-        unsubscribe(); // Get current value and unsubscribe immediately
-        
-        if (currentUser) {
-          const updatedUser = { ...currentUser, profilePhotoUrl: data.data.profilePhotoUrl };
-          await authStore.setAccessToken(token!, updatedUser);
-        }
+        // notify profile page to refresh user object
+        authStore.verify();
+      } else {
+        uploadError = data.message || 'Upload failed';
       }
     } catch (error: any) {
       uploadError = error.message || 'Failed to upload image';
@@ -235,6 +249,14 @@
       isUploading = false;
       if (fileInput) fileInput.value = '';
     }
+  }
+
+  // helper to format contribution entries
+  function formatContrib(c: any) {
+    if (c.amountEth) return `${parseFloat(c.amountEth).toFixed(4)} ETH`;
+    if (c.nativeAmount && c.currencySymbol) return `${parseFloat(c.nativeAmount).toFixed(4)} ${c.currencySymbol}`;
+    if (c.amountEur) return `€${parseFloat(c.amountEur).toFixed(2)}`;
+    return '-';
   }
 
   async function handleUpgradeToInvestor() {
@@ -680,6 +702,45 @@
       refreshWalletTrigger={walletRefreshTrigger}
       masterWallet={masterWallet}
     />
+
+    <!-- Contributions history -->
+    <div class="mt-10">
+      <h3 class="text-lg font-semibold mb-3">Your Contributions</h3>
+      {#if contributions.length === 0}
+        <p class="text-sm opacity-70">You haven't contributed to any bounties yet.</p>
+      {:else}
+        <div class="overflow-auto max-h-64">
+          <table class="table table-compact w-full">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Bounty</th>
+                <th>Chain</th>
+                <th>Amount</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each contributions as c}
+                <tr>
+                  <td>{new Date(c.contributedAt).toLocaleDateString()}</td>
+                  <td>
+                    {#if c.wishlistItem}
+                      <a href="/bounties/{c.wishlistItem.id}" class="link">{c.wishlistItem.title}</a>
+                    {:else}
+                      &ndash;
+                    {/if}
+                  </td>
+                  <td>{c.chain.toUpperCase()}</td>
+                  <td>{formatContrib(c)}</td>
+                  <td>{c.isRefunded ? 'Refunded' : 'OK'}</td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+      {/if}
+    </div>
 
     <!-- Investor Upgrade Section (only show for regular users) -->
     {#if user.role === 'user'}

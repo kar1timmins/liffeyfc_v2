@@ -513,16 +513,21 @@
                 <div class="flex justify-between">
                   <span class="opacity-70">Raised</span>
                   <span class="font-bold text-success">
-                    {#if bounty.targetAmountEth}
-                      {formatCrypto(bounty.raisedAmount || 0)} ETH
-                      {#if bounty.raisedAvax !== undefined && bounty.raisedAvax !== null}
-                        <span class="text-xs opacity-60 block">+ {formatCrypto(bounty.raisedAvax)} AVAX</span>
+                    {#if bounty.ethereumEscrowAddress}
+                      {formatCrypto(bounty.raisedEth || 0)} ETH
+                      {#if bounty.avalancheEscrowAddress}
+                        <span class="text-xs opacity-60 block">+ {formatCrypto(bounty.raisedAvax || 0)} AVAX</span>
                       {/if}
                       {#if bounty.totalRaisedEur != null}
                         <div class="text-xs opacity-60">≈ €{bounty.totalRaisedEur.toFixed(2)} (all chains)</div>
                       {/if}
+                    {:else if bounty.avalancheEscrowAddress}
+                      {formatCrypto(bounty.raisedAvax || 0)} AVAX
+                      {#if bounty.totalRaisedEur != null}
+                        <div class="text-xs opacity-60">≈ €{bounty.totalRaisedEur.toFixed(2)} (all chains)</div>
+                      {/if}
                     {:else}
-                      {formatCurrency(bounty.totalRaisedEur || bounty.raisedAmount || 0)}
+                      {formatCurrency(bounty.totalRaisedEur || 0)}
                     {/if}
                   </span>
                 </div>
@@ -530,9 +535,12 @@
                 <div class="flex justify-between">
                   <span class="opacity-70">Target</span>
                   <div class="text-right">
-                    {#if bounty.targetAmountEth}
+                    {#if bounty.ethereumEscrowAddress}
                       <span class="font-bold text-primary">{formatCrypto(bounty.targetAmountEth)} ETH</span>
                       <div class="text-xs opacity-60">≈ {formatCurrency(bounty.targetAmount || 0)}</div>
+                    {:else if bounty.avalancheEscrowAddress}
+                      <!-- when only AVAX contract exists, show EUR target since we don't track AVAX amount separately -->
+                      <span class="font-bold text-primary">≈ {formatCurrency(bounty.targetAmount || 0)}</span>
                     {:else}
                       <span class="font-bold text-primary">{formatCurrency(bounty.targetAmount || 0)}</span>
                     {/if}

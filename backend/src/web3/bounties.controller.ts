@@ -338,6 +338,25 @@ export class BountiesController {
   }
 
   /**
+   * Get contributions made by the authenticated user
+   */
+  @Get('contributions/user')
+  @UseGuards(AuthGuard('jwt'))
+  async getMyContributions(@CurrentUser() user: any) {
+    try {
+      const contributions = await this.bountiesService.getUserContributions(
+        user.sub,
+      );
+      return { success: true, data: contributions };
+    } catch (error) {
+      this.logger.error('❌ Failed to fetch user contributions:', error);
+      const message =
+        error instanceof Error ? error.message : 'Failed to fetch contributions';
+      throw new HttpException(message, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
    * Get bounties for a specific company
    */
   @Get('company/:companyId')

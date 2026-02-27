@@ -1043,9 +1043,11 @@
                                     Contribute
                                   </button>
                                 </div>
-                                <p class="text-xs opacity-60 mt-2">
-                                  ⚠️ Funds locked until {new Date(item.campaignDeadline).toLocaleDateString()}. Refunded if target not met (minus gas fees split among contributors).
-                                </p>
+                                {#if item.campaignDeadline}
+                                  <p class="text-xs opacity-60 mt-2">
+                                    ⚠️ Funds locked until {new Date(item.campaignDeadline).toLocaleDateString()}. Refunded if target not met (minus gas fees split among contributors).
+                                  </p>
+                                {/if}
 
                               {:else if selectedBountyChain[item.id] === 'solana' || selectedBountyChain[item.id] === 'stellar' || selectedBountyChain[item.id] === 'bitcoin'}
                                 <!-- Non-EVM: send directly to company wallet, then record here -->
