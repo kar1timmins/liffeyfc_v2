@@ -112,8 +112,16 @@
     },
   ];
 
+  // Chains on which escrow contracts will be deployed — always EVM only.
+  // If the wishlist item has a specific EVM chain set use that; otherwise deploy on both.
+  function resolveDeploymentChains(): ('ethereum' | 'avalanche')[] {
+    const chain = wishlistItem.selectedChain;
+    if (chain === 'ethereum' || chain === 'avalanche') return [chain];
+    // solana / stellar / undefined → deploy on both EVM chains
+    return ['ethereum', 'avalanche'];
+  }
+
   const BOUNTY_CHAIN_LABELS: Record<string, string> = {
-    ethereum: 'Ethereum Sepolia (escrow contract)',
     avalanche: 'Avalanche Fuji (escrow contract)',
     solana: 'Solana (deposit address)',
     stellar: 'Stellar (deposit address)',
@@ -237,7 +245,7 @@
           wishlistItemId: wishlistItem.id,
           usdcAmount: PLATFORM_FEE_USDC,
           chain: selectedPaymentChain as 'ethereum' | 'avalanche',
-          deploymentChains: wishlistItem.selectedChain ? [wishlistItem.selectedChain] : [],
+          deploymentChains: resolveDeploymentChains(),
           targetAmountEth: wishlistItem.targetAmountEth ?? 0.5,
           durationInDays: wishlistItem.durationDays ?? 30,
           campaignName: wishlistItem.title,
@@ -339,7 +347,7 @@
           usdcTxHash: txHash,
           usdcAmount: PLATFORM_FEE_USDC,
           chain: selectedPaymentChain,
-          deploymentChains: wishlistItem.selectedChain ? [wishlistItem.selectedChain] : [],
+          deploymentChains: resolveDeploymentChains(),
           targetAmountEth: wishlistItem.targetAmountEth ?? 0.5,
           durationInDays: wishlistItem.durationDays ?? 30,
           campaignName: wishlistItem.title,
