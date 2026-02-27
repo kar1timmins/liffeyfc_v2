@@ -45,6 +45,7 @@
   const txLimit = 20;
   let txTypeFilter = $state<'' | 'contribution' | 'deployment'>('');
   let txChainFilter = $state('');
+  let txUserSearch = $state('');
   let graphData = $state<{ nodes: any[]; edges: any[] } | null>(null);
   let txLoading = $state(false);
 
@@ -389,6 +390,15 @@
     (simEdges as any[]).filter((e: any) => {
       if (txTypeFilter && e.type !== txTypeFilter) return false;
       if (txChainFilter && e.chain && !e.chain.toLowerCase().includes(txChainFilter.toLowerCase())) return false;
+      if (txUserSearch) {
+        const q = txUserSearch.toLowerCase();
+        const fromNode = (simNodes as any[]).find((n: any) => n.id === e.from);
+        const toNode   = (simNodes as any[]).find((n: any) => n.id === e.to);
+        const match = (node: any) =>
+          node && ((node.label ?? '').toLowerCase().includes(q) ||
+                   (node.email ?? '').toLowerCase().includes(q));
+        if (!match(fromNode) && !match(toNode)) return false;
+      }
       return true;
     })
   );
@@ -408,6 +418,28 @@
     selectedNodeId
       ? visibleEdges.filter((e: any) => e.from === selectedNodeId || e.to === selectedNodeId)
       : ([] as any[])
+  );
+
+  // Node IDs that have at least one visible edge — used to fade unreachable nodes when searching
+  const activeNodeIds = $derived<Set<string> | null>(
+    txUserSearch
+      ? new Set<string>((visibleEdges as any[]).flatMap((e: any) => [e.from as string, e.to as string]))
+      : null
+  );
+
+  // Table rows filtered by user search (client-side, instant)
+  const filteredTxRows = $derived<any[]>(
+    txUserSearch
+      ? (txRows as any[]).filter((row: any) => {
+          const q = txUserSearch.toLowerCase();
+          const actor = row.type === 'contribution' ? row.contributor : row.deployer;
+          return (
+            (actor?.name    ?? '').toLowerCase().includes(q) ||
+            (actor?.email   ?? '').toLowerCase().includes(q) ||
+            (actor?.address ?? '').toLowerCase().includes(q)
+          );
+        })
+      : (txRows as any[])
   );
 
   const roleColor: Record<string, string> = {
@@ -832,8 +864,28 @@
   {#if activeTab === 'transactions'}
     <div>
       <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <h2 class="text-lg font-semibold">Transaction Flow ({txTotal})</h2>
+        <div class="flex items-baseline gap-2">
+          <h2 class="text-lg font-semibold">Transaction Flow</h2>
+          <span class="text-sm text-base-content/50">
+            {txUserSearch ? `${filteredTxRows.length} of ${txTotal}` : txTotal} record{txTotal !== 1 ? 's' : ''}
+          </span>
+        </div>
         <div class="flex gap-2 flex-wrap">
+          <!-- User / email search -->
+          <label class="input input-sm input-bordered flex items-center gap-2 min-w-[200px]">
+            <Search size={13} class="opacity-40 flex-shrink-0" />
+            <input
+              type="text"
+              placeholder="Search name or email…"
+              bind:value={txUserSearch}
+              class="grow bg-transparent outline-none"
+            />
+            {#if txUserSearch}
+              <button class="opacity-40 hover:opacity-100" onclick={() => { txUserSearch = ''; }}
+                aria-label="Clear search">✕</button>
+            {/if}
+          </label>
+          <!-- Type filter -->
           <select class="select select-sm select-bordered" bind:value={txTypeFilter}
             onchange={() => loadTransactions(true)}>
             <option value="">All types</option>
@@ -863,7 +915,8 @@
               <option value="bitcoin">Bitcoin</option>
             </select>
             <span class="text-xs text-base-content/40">
-              {simNodes.length} nodes · {visibleEdges.length} edges{selectedNodeId ? ` · ${connectedEdges.length} connections shown` : ''}
+              {txUserSearch ? `${activeNodeIds?.size ?? 0} of ${simNodes.length}` : simNodes.length} nodes
+              · {visibleEdges.length} edge{visibleEdges.length !== 1 ? 's' : ''}{selectedNodeId ? ` · ${connectedEdges.length} connections shown` : ''}
             </span>
             {#if selectedNodeId}
               <button class="btn btn-xs btn-ghost" onclick={() => { selectedNodeId = null; }}>✕ Clear selection</button>
@@ -954,7 +1007,9 @@
                   node.type === 'wishlist' ? '#0ea5e9' :
                                              '#f59e0b'}
                 {@const isSelected = selectedNodeId === node.id}
-                {@const isFaded = connectedNodeIds != null && !connectedNodeIds.has(node.id)}
+                {@const isFaded =
+                    (connectedNodeIds != null && !connectedNodeIds.has(node.id)) ||
+                    (activeNodeIds    != null && !activeNodeIds.has(node.id))}
                 <!-- svelte-ignore a11y_no_static_element_interactions -->
                 <g
                   transform="translate({node.x},{node.y})"
@@ -1065,7 +1120,11 @@
 
         {:else if !txLoading}
           <div class="rounded-2xl border border-base-300 bg-base-200/40 p-10 text-center text-base-content/40 mb-6">
-            No transaction data yet. Contributions and deployments will appear here.
+            {#if txUserSearch}
+              No transactions found for <strong class="text-base-content/60">{txUserSearch}</strong>. Try a different name or email.
+            {:else}
+              No transaction data yet. Contributions and deployments will appear here.
+            {/if}
           </div>
         {/if}
 
@@ -1086,7 +1145,7 @@
                 </tr>
               </thead>
               <tbody>
-                {#each txRows as row}
+                {#each filteredTxRows as row}
                   {@const actor = row.type === 'contribution' ? row.contributor : row.deployer}
                   {@const amount =
                     row.type === 'contribution'
@@ -1145,7 +1204,13 @@
             </div>
           {/if}
         {:else if !txLoading}
-          <p class="text-center text-base-content/40 py-6">No records match the current filter.</p>
+          <p class="text-center text-base-content/40 py-6">
+            {#if txUserSearch}
+              No transactions found for <strong class="text-base-content/60">{txUserSearch}</strong> matching the current filters.
+            {:else}
+              No records match the current filter.
+            {/if}
+          </p>
         {/if}
       {/if}
     </div>
