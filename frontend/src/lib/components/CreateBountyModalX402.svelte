@@ -140,6 +140,7 @@
   let error = $state<string | null>(null);
   let deploymentResult = $state<any>(null);
   let paymentTxHash = $state<string | null>(null);
+  let pollingStatus = $state<string>('Queuing deployment…');
 
   const STEP_DISPLAY = ['Review', 'Pay', 'Processing', 'Done'];
   const STEP_KEYS: Step[] = ['review', 'payment', 'processing', 'success'];
@@ -166,6 +167,7 @@
     error = null;
     deploymentResult = null;
     paymentTxHash = null;
+    pollingStatus = 'Queuing deployment…';
   }
 
   async function copyToClipboard(text: string) {
@@ -221,9 +223,11 @@
   async function handlePlatformWalletPayment() {
     isSubmitting = true;
     error = null;
+    pollingStatus = 'Queuing deployment…';
     currentStep = 'processing';
     try {
-      const res = await fetch(`${PUBLIC_API_URL}/payments/create-master-wallet`, {
+      // Step 1: queue the deployment job
+      const res = await fetch(`${PUBLIC_API_URL}/payments/deploy`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -243,11 +247,18 @@
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.message ?? 'Failed to register payment');
-      deploymentResult = data.data;
+
+      const { paymentId, jobId } = data.data as { paymentId: string; jobId: string };
+
+      // Step 2: poll until the worker finishes deploying contracts
+      const contracts = await pollUntilDeployed(jobId, paymentId);
+
+      // Step 3: surface results
+      deploymentResult = contracts;
       currentStep = 'success';
-      toastStore.add({ message: '🎉 Bounty created successfully!', type: 'success', ttl: 8000 });
+      toastStore.add({ message: '🎉 Contracts deployed successfully!', type: 'success', ttl: 8000 });
       setTimeout(() => {
-        onSuccess(deploymentResult);
+        onSuccess(contracts);
         close();
       }, 4000);
     } catch (e: any) {
@@ -256,6 +267,50 @@
     } finally {
       isSubmitting = false;
     }
+  }
+
+  /**
+   * Poll GET /payments/job/:jobId until 'completed' or 'failed'.
+   * Returns the deployed contract addresses in the format CompanyManager expects.
+   */
+  async function pollUntilDeployed(
+    jobId: string,
+    paymentId: string,
+  ): Promise<{ ethereumAddress?: string; avalancheAddress?: string }> {
+    const MAX_ATTEMPTS = 30; // ~2 minutes
+    const INTERVAL_MS = 4000;
+
+    for (let i = 0; i < MAX_ATTEMPTS; i++) {
+      await new Promise((r) => setTimeout(r, INTERVAL_MS));
+      pollingStatus = `Deploying contracts… (${i + 1}/${MAX_ATTEMPTS})`;
+
+      const jobRes = await fetch(`${PUBLIC_API_URL}/payments/job/${jobId}`);
+      const jobData = await jobRes.json();
+      const status: string = jobData.data?.status ?? 'unknown';
+
+      if (status === 'completed') {
+        pollingStatus = 'Finalising…';
+        // Fetch payment record to get contract addresses
+        const payRes = await fetch(`${PUBLIC_API_URL}/payments/${paymentId}`, {
+          headers: { Authorization: `Bearer ${$authStore.accessToken}` },
+        });
+        const payData = await payRes.json();
+        const contracts = payData.data?.deployedContracts ?? {};
+        return {
+          ethereumAddress: contracts.ethereum ?? undefined,
+          avalancheAddress: contracts.avalanche ?? undefined,
+        };
+      }
+
+      if (status === 'failed') {
+        throw new Error(
+          jobData.data?.error ||
+            'Contract deployment failed. Please contact support.',
+        );
+      }
+      // Any other status (waiting, active, delayed) → keep polling
+    }
+    throw new Error('Deployment timed out. The contracts may still deploy — check back shortly.');
   }
 
   async function handleManualPayment() {
@@ -646,8 +701,9 @@
               <Loader class="w-8 h-8 text-primary animate-spin" />
             </div>
             <div class="text-center">
-              <h4 class="text-lg font-bold">Registering Bounty…</h4>
-              <p class="text-sm opacity-60 mt-1">Payment received. Setting up your campaign.</p>
+              <h4 class="text-lg font-bold">Deploying Contracts…</h4>
+              <p class="text-sm opacity-60 mt-1">{pollingStatus}</p>
+              <p class="text-xs opacity-40 mt-2">Broadcasting to blockchain. This can take 1–2 minutes.</p>
             </div>
 
             {#if paymentTxHash}

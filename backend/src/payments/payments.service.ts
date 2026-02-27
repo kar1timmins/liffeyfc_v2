@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Payment, PaymentStatus } from '../entities/payment.entity';
 import { WishlistItem } from '../entities/wishlist-item.entity';
 import { Company } from '../entities/company.entity';
@@ -149,11 +149,11 @@ export class PaymentsService {
       );
     }
 
-    // Prevent duplicate confirmed payments for same wishlist item
+    // Prevent duplicate payments — block if already confirmed (queued) OR deployed
     const existing = await this.paymentRepo.findOne({
       where: {
         wishlistItemId: dto.wishlistItemId,
-        status: PaymentStatus.CONFIRMED,
+        status: In([PaymentStatus.CONFIRMED, PaymentStatus.DEPLOYED]),
       },
     });
     if (existing) {
@@ -301,7 +301,12 @@ export class PaymentsService {
 
     const ETH_TO_USD = 3800; // Approximate rate (in production, fetch from price oracle like Chainlink)
     const AVAX_TO_USD = 40; // Approximate rate (in production, fetch from price oracle)
-    const PLATFORM_FEE_USD = 0; // No platform fee currently
+    // Platform fee percentage on top of gas costs.
+    // Controlled by PLATFORM_FEE_PCT env var (default 5 = 5%).
+    // The collected USDC goes to USDC_RECEIVER_ETH / USDC_RECEIVER_AVAX —
+    // set those env vars to the admin master wallet ETH / AVAX address.
+    const PLATFORM_FEE_PCT =
+      parseFloat(process.env.PLATFORM_FEE_PCT ?? '5') / 100;
 
     // Historical gas cost estimates for contract deployment
     // Based on CompanyWishlistEscrow.sol deployment costs
@@ -333,16 +338,17 @@ export class PaymentsService {
     }
 
     const totalUSD = breakdown.reduce((sum, item) => sum + item.gasCostUSD, 0);
-    const grandTotalUSD = Math.round((totalUSD + PLATFORM_FEE_USD) * 100) / 100;
+    const platformFeeUSD = Math.round(totalUSD * PLATFORM_FEE_PCT * 100) / 100;
+    const grandTotalUSD = Math.round((totalUSD + platformFeeUSD) * 100) / 100;
 
     this.logger.log(
-      `💰 Total estimated cost: $${grandTotalUSD.toFixed(2)} USDC`,
+      `💰 Gas: $${totalUSD.toFixed(2)} + Fee (${(PLATFORM_FEE_PCT * 100).toFixed(0)}%): $${platformFeeUSD.toFixed(2)} = $${grandTotalUSD.toFixed(2)} USDC`,
     );
 
     return {
       breakdown,
       totalUSD: Math.round(totalUSD * 100) / 100,
-      platformFeeUSD: PLATFORM_FEE_USD,
+      platformFeeUSD,
       grandTotalUSD,
     };
   }
