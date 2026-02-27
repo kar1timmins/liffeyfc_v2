@@ -142,8 +142,8 @@ export class EscrowContractService {
   ];
 
   // Non-EVM RPC endpoints
-  private readonly solanaRpc = 'https://api.mainnet-beta.solana.com';
-  private readonly stellarHorizon = 'https://horizon.stellar.org';
+  private readonly solanaRpc = 'https://api.devnet.solana.com';
+  private readonly stellarHorizon = 'https://horizon-testnet.stellar.org';
 
   constructor(
     @InjectRepository(WishlistItem)

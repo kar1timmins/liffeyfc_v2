@@ -182,8 +182,8 @@ export class WalletBalanceController {
   // --------------------------------------------------------------------
   // Solana / Stellar Balances
   // --------------------------------------------------------------------
-  private readonly solanaRpc = 'https://api.mainnet-beta.solana.com';
-  private readonly stellarHorizon = 'https://horizon.stellar.org';
+  private readonly solanaRpc = 'https://api.devnet.solana.com';
+  private readonly stellarHorizon = 'https://horizon-testnet.stellar.org';
 
   private async getSolanaBalance(address: string) {
     try {

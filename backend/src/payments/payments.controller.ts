@@ -99,8 +99,10 @@ export class PaymentsController {
     try {
       this.logger.log(`💳 Master wallet payment request from user ${user.sub}`);
 
-      // Ensure user has a master wallet configured
-      if (!user?.wallet?.ethAddress) {
+      // Resolve the user's master wallet ETH address from the database
+      const masterWalletEthAddress =
+        await this.paymentsService.getMasterWalletEthAddress(user.sub);
+      if (!masterWalletEthAddress) {
         throw new Error('Master wallet not configured for user');
       }
 
@@ -119,7 +121,7 @@ export class PaymentsController {
         userId: user.sub,
         wishlistItemId: dto.wishlistItemId,
         companyWalletAddress: wishlistItem.company.ethAddress || '',
-        masterWalletAddress: user.wallet?.ethAddress || '',
+        masterWalletAddress: masterWalletEthAddress,
         targetAmountEth: dto.targetAmountEth,
         durationInDays: dto.durationInDays,
         chains: dto.deploymentChains,

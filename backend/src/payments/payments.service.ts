@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { Payment, PaymentStatus } from '../entities/payment.entity';
 import { WishlistItem } from '../entities/wishlist-item.entity';
 import { Company } from '../entities/company.entity';
+import { UserWallet } from '../entities/user-wallet.entity';
 import { USDCValidatorService } from './usdc-validator.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { PlatformWalletService } from '../web3/platform-wallet.service';
@@ -24,9 +25,20 @@ export class PaymentsService {
     private wishlistRepo: Repository<WishlistItem>,
     @InjectRepository(Company)
     private companyRepo: Repository<Company>,
+    @InjectRepository(UserWallet)
+    private userWalletRepo: Repository<UserWallet>,
     private usdcValidator: USDCValidatorService,
     private platformWalletService: PlatformWalletService,
   ) {}
+
+  /**
+   * Fetch the user's master wallet ETH address from the database.
+   * Returns null if no master wallet has been generated yet.
+   */
+  async getMasterWalletEthAddress(userId: string): Promise<string | null> {
+    const wallet = await this.userWalletRepo.findOne({ where: { userId } });
+    return wallet?.ethAddress ?? null;
+  }
 
   /**
    * Create and validate a payment for contract deployment
