@@ -21,6 +21,9 @@
   // Live bounty data for escrow-enabled wishlist items (keyed by wishlist item id)
   let liveBounties = $state<Record<string, any>>({});
   let isFetchingBounties = $state(false);
+  // payments keyed by wishlist item id
+  let paymentsByItem: Record<string, any[]> = $state({});
+  let isFetchingPayments = $state(false);
   
   // Donation state for wishlist items
   let donationAmounts = $state<Record<string, string>>({});
@@ -103,6 +106,7 @@
 
   onMount(async () => {
     await fetchCompany();
+    await fetchCompanyPayments();
     await fetchCompanyBounties();
   });
 
@@ -129,6 +133,44 @@
 
   function goBack() {
     goto('/companies');
+  }
+
+  async function fetchCompanyPayments() {
+    if (!companyId) return;
+    isFetchingPayments = true;
+    try {
+      const res = await fetch(`${PUBLIC_API_URL}/payments/company/${companyId}`);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        // group by wishlistItemId
+        const map: Record<string, any[]> = {};
+        for (const p of data.data) {
+          if (!map[p.wishlistItemId]) map[p.wishlistItemId] = [];
+          map[p.wishlistItemId].push(p);
+        }
+        paymentsByItem = map;
+
+        // merge deployed contracts into items
+        for (const item of wishlistItems) {
+          const payments = paymentsByItem[item.id] || [];
+          const deployed = payments.find((p) => p.status === 'deployed' && p.deployedContracts);
+          if (deployed) {
+            item.isEscrowActive = true;
+            const contracts = deployed.deployedContracts || {};
+            if (!item.ethereumEscrowAddress && contracts.ethereum) {
+              item.ethereumEscrowAddress = contracts.ethereum;
+            }
+            if (!item.avalancheEscrowAddress && contracts.avalanche) {
+              item.avalancheEscrowAddress = contracts.avalanche;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Failed to fetch company payments:', e);
+    } finally {
+      isFetchingPayments = false;
+    }
   }
 
   async function fetchCompanyBounties() {
@@ -552,7 +594,7 @@
           {:else if canDonate}
             <p class="opacity-80 mb-6">
               Send cryptocurrency directly to this company's wallet using your on-platform wallet. No external wallet is required or allowed.
-
+            </p>
           <div class="space-y-4">
             <!-- Ethereum Address -->
             {#if company.ethAddress}
@@ -789,14 +831,14 @@
                 {@const remaining = liveBounty ? null : (item.value ? Math.max(0, item.value - (item.amountRaised || 0)) : 0)}
                 {@const closed = isBountyClosed(item, liveBounty)}
 
-                <details class="mb-4" open={!closed}>
-                  <summary class="cursor-pointer flex justify-between items-center py-2 {closed ? 'pointer-events-none opacity-60' : ''}">
+                <details class="card mb-4 {closed ? 'opacity-60' : ''} shadow-lg" >
+                  <summary class="cursor-pointer flex justify-between items-center py-2">
                     <span class="font-semibold text-lg">{item.title}</span>
                     {#if closed}
                       <span class="badge badge-ghost">Closed</span>
                     {/if}
                   </summary>
-                  <div class="glass-subtle rounded-xl p-4 {closed ? 'opacity-60' : ''}">
+                  <div class="glass-subtle rounded-xl p-4">
                   <div class="flex items-start gap-4">
                     <div class="flex-shrink-0 mt-1">
                       {#if item.isFulfilled}

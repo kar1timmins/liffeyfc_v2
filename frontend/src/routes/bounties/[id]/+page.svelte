@@ -251,7 +251,7 @@
             <div class="card-body">
               <!-- Status Badge -->
               <div class="flex justify-between items-start mb-4">
-                <span class="badge {getStatusBadge(bounty.status).class} badge-lg">
+                <span class="badge {getStatusBadge(bounty.status).class} badge-sm">
                   {getStatusBadge(bounty.status).label}
                 </span>
                 <div class="flex items-center gap-2 text-sm opacity-70">
@@ -329,12 +329,12 @@
                     </div>
                   </div>
                 {:else}
-                  <div class="space-y-4">
+                  <div class="space-y-4 overflow-x-auto">
                     {#if bounty.deployments && bounty.deployments.length > 0}
                       {#each bounty.deployments as deployment}
                         {#if deployment.chain === 'ethereum'}
-                          <div class="p-4 bg-base-100 border-2 border-primary/20 rounded-lg hover:border-primary/40 transition-colors">
-                            <div class="flex items-center justify-between mb-3">
+                          <div class="p-4 bg-base-100 border-2 border-primary/20 rounded-lg hover:border-primary/40 transition-colors w-full max-w-full">
+                            <div class="flex flex-wrap items-center justify-between mb-3">
                               <div class="flex items-center gap-2">
                                 <div class="badge badge-primary gap-1">
                                   <span class="w-2 h-2 bg-primary-content rounded-full"></span>
@@ -491,15 +491,21 @@
 
               <!-- Progress Bar -->
               <div class="mb-4">
-                <progress 
-                  class="progress progress-primary w-full h-4" 
-                  value={bounty.progressPercentage || 0} 
-                  max="100"
-                ></progress>
-                <div class="text-center mt-2">
-                  <span class="text-2xl font-bold">{bounty.progressPercentage || 0}%</span>
-                  <span class="text-sm opacity-70 ml-1">funded</span>
-                </div>
+                {#if bounty}
+                  {@const displayPercentage = bounty.progressPercentage != null ? bounty.progressPercentage : 0}
+                  <!-- wrap progress to clip browser thumb/icon overflow -->
+                  <div class="overflow-hidden rounded">
+                    <progress 
+                      class="progress progress-primary w-full h-4" 
+                      value={Math.min(displayPercentage, 100)} 
+                      max="100"
+                    ></progress>
+                  </div>
+                  <div class="text-center mt-2">
+                    <span class="text-2xl font-bold">{displayPercentage}%</span>
+                    <span class="text-sm opacity-70 ml-1">funded</span>
+                  </div>
+                {/if}
               </div>
 
               <!-- Amounts -->
@@ -509,8 +515,14 @@
                   <span class="font-bold text-success">
                     {#if bounty.targetAmountEth}
                       {formatCrypto(bounty.raisedAmount || 0)} ETH
+                      {#if bounty.raisedAvax !== undefined && bounty.raisedAvax !== null}
+                        <span class="text-xs opacity-60 block">+ {formatCrypto(bounty.raisedAvax)} AVAX</span>
+                      {/if}
+                      {#if bounty.totalRaisedEur != null}
+                        <div class="text-xs opacity-60">≈ €{bounty.totalRaisedEur.toFixed(2)} (all chains)</div>
+                      {/if}
                     {:else}
-                      {formatCurrency(bounty.raisedAmount || 0)}
+                      {formatCurrency(bounty.totalRaisedEur || bounty.raisedAmount || 0)}
                     {/if}
                   </span>
                 </div>
@@ -537,12 +549,14 @@
                   <div class="stat-value text-2xl">{bounty.contributorCount || 0}</div>
                   <div class="stat-desc">Backers</div>
                 </div>
-                <div class="stat bg-base-100 rounded-lg p-3">
-                  <div class="stat-figure text-warning">
+                <div class="stat bg-base-100 rounded-lg p-3 overflow-hidden flex items-center">
+                  <div class="stat-figure text-warning flex-shrink-0">
                     <Clock class="w-6 h-6" />
                   </div>
-                  <div class="stat-value text-2xl">{formatTimeRemaining(bounty.deadline)}</div>
-                  <div class="stat-desc">Remaining</div>
+                  <div class="ml-2">
+                    <div class="stat-value text-sm">{formatTimeRemaining(bounty.deadline)}</div>
+                    <div class="stat-desc">Remaining</div>
+                  </div>
                 </div>
               </div>
 

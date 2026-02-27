@@ -171,6 +171,24 @@ export class DeploymentWorkerService implements OnModuleInit, OnModuleDestroy {
       this.logger.log(`   Ethereum: ${result.ethereumAddress || 'N/A'}`);
       this.logger.log(`   Avalanche: ${result.avalancheAddress || 'N/A'}`);
 
+      // Sanity check: it would be extremely unusual for the two addresses to
+      // match, since they are deployed on different networks with different
+      // factory contracts. If the same address does appear it usually means one
+      // of the chains was skipped or mis‑configured. Log a warning so we can
+      // investigate if it happens in production.
+      if (
+        result.ethereumAddress &&
+        result.avalancheAddress &&
+        result.ethereumAddress.toLowerCase() ===
+          result.avalancheAddress.toLowerCase()
+      ) {
+        this.logger.warn(
+          '⚠️  Ethereum and Avalanche escrow addresses are identical. ' +
+            'Verify that both networks were actually deployed and that factory ' +
+            'addresses are correct.',
+        );
+      }
+
       // After deployment we need to update the wishlist item so the UI can
       // recognise the bounty and display the chain selector. Older code in the
       // EscrowController handled this for manual deployments; the platform wallet
@@ -183,10 +201,16 @@ export class DeploymentWorkerService implements OnModuleInit, OnModuleDestroy {
         });
         if (wl) {
           // mark escrow active and store addresses
-          wl.ethereumEscrowAddress =
-            result.ethereumAddress || wl.ethereumEscrowAddress;
-          wl.avalancheEscrowAddress =
-            result.avalancheAddress || wl.avalancheEscrowAddress;
+          // only update the wishlist item field when the result contains a
+          // new address for that chain; we deliberately avoid copying the
+          // ethereum address over to the avalanche column when the latter is
+          // undefined.
+          if (result.ethereumAddress) {
+            wl.ethereumEscrowAddress = result.ethereumAddress;
+          }
+          if (result.avalancheAddress) {
+            wl.avalancheEscrowAddress = result.avalancheAddress;
+          }
           wl.campaignDurationDays = deploymentData.durationInDays;
           wl.campaignDeadline = new Date(
             Date.now() + deploymentData.durationInDays * 24 * 60 * 60 * 1000,

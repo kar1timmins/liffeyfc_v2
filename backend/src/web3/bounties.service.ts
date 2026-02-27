@@ -40,8 +40,11 @@ export interface BountyResponse {
   targetAmount: string;
   targetAmountEur: number;
   targetAmountEth: number | null;
+  /** Amount raised on Ethereum (native ETH) — may be "0" if no ETH contract */
+  raisedEth: string;
   /** EVM raised amount in native token as string (ETH or AVAX) */
   raisedAmount: string;
+  raisedAvax?: string; // populated when an Avalanche contract exists
   /** Total raised across ALL chains, converted to EUR */
   totalRaisedEur: number;
   progressPercentage: number;
@@ -778,6 +781,8 @@ export class BountiesService {
       targetAmount: wishlistItem.value?.toString() || '0',
       targetAmountEur,
       targetAmountEth: ethTargetFromDeployment,
+      raisedEth: ethRaisedNative.toString(),
+      raisedAvax: avaxRaisedNative.toString(),
       raisedAmount,
       totalRaisedEur: Math.round(totalRaisedEur * 100) / 100,
       progressPercentage: Math.round(progressPercentage),

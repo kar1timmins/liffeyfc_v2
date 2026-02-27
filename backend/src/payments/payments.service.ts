@@ -1,3 +1,4 @@
+
 import {
   Injectable,
   Logger,
@@ -351,5 +352,27 @@ export class PaymentsService {
       platformFeeUSD,
       grandTotalUSD,
     };
+  }
+
+    /**
+   * Get all payments for a wishlist item (for frontend to merge deployed contracts)
+   */
+  async getPaymentsForWishlistItem(wishlistItemId: string): Promise<Payment[]> {
+    return this.paymentRepo.find({
+      where: { wishlistItemId },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  /**
+   * Get payments for all wishlist items that belong to a given company.
+   * Joins through the wishlist_items table for filtering.
+   */
+  async getPaymentsForCompany(companyId: string): Promise<Payment[]> {
+    return this.paymentRepo
+      .createQueryBuilder('p')
+      .innerJoin('p.wishlistItem', 'w', 'w.companyId = :companyId', { companyId })
+      .orderBy('p.createdAt', 'DESC')
+      .getMany();
   }
 }

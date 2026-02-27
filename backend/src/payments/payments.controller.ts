@@ -1,3 +1,4 @@
+
 import {
   Controller,
   Post,
@@ -349,6 +350,45 @@ export class PaymentsController {
       throw new HttpException(
         error.message || 'Failed to get payment info',
         HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+    /**
+   * Get all payments for a wishlist item (for frontend to merge deployed contracts)
+   */
+  @Get('wishlist/:wishlistItemId')
+  async getPaymentsForWishlistItem(@Param('wishlistItemId') wishlistItemId: string) {
+    try {
+      const payments = await this.paymentsService.getPaymentsForWishlistItem(wishlistItemId);
+      return {
+        success: true,
+        data: payments,
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        error.message || 'Failed to get payments for wishlist item',
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * Get all payments for a company (across all wishlist items)
+   * Useful for loading all deployments/payments in a single request.
+   */
+  @Get('company/:companyId')
+  async getPaymentsForCompany(@Param('companyId') companyId: string) {
+    try {
+      const payments = await this.paymentsService.getPaymentsForCompany(companyId);
+      return {
+        success: true,
+        data: payments,
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        error.message || 'Failed to get payments for company',
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
