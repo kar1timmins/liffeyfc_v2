@@ -9,7 +9,11 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Payment, PaymentStatus } from '../entities/payment.entity';
+import { WishlistItem } from '../entities/wishlist-item.entity';
+import { EscrowDeployment } from '../entities/escrow-deployment.entity';
 import { EscrowContractService } from '../web3/escrow-contract.service';
+import { BountiesService } from '../web3/bounties.service';
+import { CryptoPricesService } from '../web3/crypto-prices.service';
 import { DeploymentJobData } from './deployment-queue.service';
 
 /**
@@ -19,7 +23,7 @@ import { DeploymentJobData } from './deployment-queue.service';
 @Injectable()
 export class DeploymentWorkerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(DeploymentWorkerService.name);
-  private worker: Worker<DeploymentJobData>;
+  private worker!: Worker<DeploymentJobData>;
   private redisConnection: any;
 
   constructor(
@@ -27,6 +31,12 @@ export class DeploymentWorkerService implements OnModuleInit, OnModuleDestroy {
     private escrowService: EscrowContractService,
     @InjectRepository(Payment)
     private paymentRepo: Repository<Payment>,
+    @InjectRepository(WishlistItem)
+    private wishlistRepo: Repository<WishlistItem>,
+    @InjectRepository(EscrowDeployment)
+    private escrowDeploymentRepo: Repository<EscrowDeployment>,
+    private bountiesService: BountiesService,
+    private cryptoPrices: CryptoPricesService,
   ) {}
 
   async onModuleInit() {
@@ -161,6 +171,105 @@ export class DeploymentWorkerService implements OnModuleInit, OnModuleDestroy {
       this.logger.log(`   Ethereum: ${result.ethereumAddress || 'N/A'}`);
       this.logger.log(`   Avalanche: ${result.avalancheAddress || 'N/A'}`);
 
+      // After deployment we need to update the wishlist item so the UI can
+      // recognise the bounty and display the chain selector. Older code in the
+      // EscrowController handled this for manual deployments; the platform wallet
+      // flow was missing that step which resulted in bounties showing the
+      // fallback "Donate" form. We also create an escrowDeployment record and
+      // optionally create a bounty entry for completeness.
+      try {
+        const wl = await this.wishlistRepo.findOne({
+          where: { id: deploymentData.wishlistItemId },
+        });
+        if (wl) {
+          // mark escrow active and store addresses
+          wl.ethereumEscrowAddress =
+            result.ethereumAddress || wl.ethereumEscrowAddress;
+          wl.avalancheEscrowAddress =
+            result.avalancheAddress || wl.avalancheEscrowAddress;
+          wl.campaignDurationDays = deploymentData.durationInDays;
+          wl.campaignDeadline = new Date(
+            Date.now() + deploymentData.durationInDays * 24 * 60 * 60 * 1000,
+          );
+          wl.isEscrowActive = true;
+
+          // also set approximate euro value if not already set
+          if (!wl.value || wl.value === 0) {
+            // convert ETH goal to EUR using current market price (choose first chain)
+            const prices = await this.cryptoPrices.getPrices();
+            const rate =
+              deploymentData.chains.includes('ethereum')
+                ? prices.ethEur
+                : prices.avaxEur;
+            wl.value = Math.round(deploymentData.targetAmountEth * rate);
+          }
+
+          await this.wishlistRepo.save(wl);
+
+          // create escrow deployment entries to mirror escrow controller behaviour
+          if (result.ethereumAddress) {
+            const ethDeployment = this.escrowDeploymentRepo.create({
+              contractAddress: result.ethereumAddress,
+              chain: 'ethereum',
+              network: 'sepolia',
+              deploymentTxHash: result.transactionHashes.ethereum || undefined,
+              targetAmountEth: deploymentData.targetAmountEth,
+              durationInDays: deploymentData.durationInDays,
+              deadline: wl.campaignDeadline,
+              deployedById: deploymentData.userId,
+              wishlistItemId: wl.id,
+              campaignName:
+                deploymentData.campaignName || wl.title || '',
+              campaignDescription:
+                deploymentData.campaignDescription || wl.description || '',
+              status: 'active',
+            });
+            await this.escrowDeploymentRepo.save(ethDeployment);
+          }
+          if (result.avalancheAddress) {
+            const avaxDeployment = this.escrowDeploymentRepo.create({
+              contractAddress: result.avalancheAddress,
+              chain: 'avalanche',
+              network: 'fuji',
+              deploymentTxHash: result.transactionHashes.avalanche || undefined,
+              targetAmountEth: deploymentData.targetAmountEth,
+              durationInDays: deploymentData.durationInDays,
+              deadline: wl.campaignDeadline,
+              deployedById: deploymentData.userId,
+              wishlistItemId: wl.id,
+              campaignName:
+                deploymentData.campaignName || wl.title || '',
+              campaignDescription:
+                deploymentData.campaignDescription || wl.description || '',
+              status: 'active',
+            });
+            await this.escrowDeploymentRepo.save(avaxDeployment);
+          }
+
+          // ensure a bounty record exists so the /bounties endpoints return this
+          // item when users browse global bounties. createFromWishlistItem will
+          // set isEscrowActive=true again and populate other fields but will
+          // throw if the flag was already flipped; therefore we only call it if
+          // there is no existing bounty linked to this wishlist item.
+          try {
+            await this.bountiesService.createFromWishlistItem(
+              wl.id,
+              wl.value || 0,
+              deploymentData.durationInDays,
+              deploymentData.userId,
+            );
+          } catch (e: any) {
+            // ignore conflict errors; bounty may already exist
+            this.logger.debug(
+              'Bounty creation skipped or failed:',
+              e.message || e,
+            );
+          }
+        }
+      } catch (updErr) {
+        this.logger.error('Failed to update wishlist item after deployment:', updErr);
+      }
+
       return {
         success: true,
         deployedContracts: {
@@ -169,7 +278,7 @@ export class DeploymentWorkerService implements OnModuleInit, OnModuleDestroy {
         },
         transactionHashes: result.transactionHashes,
       };
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`❌ Deployment failed: ${error.message}`);
 
       // Update payment status to failed
