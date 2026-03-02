@@ -25,8 +25,8 @@
 	let bounties = $state.raw<any[]>([]);
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
-	let searchQuery = $state('active');
-	let selectedStatus = $state('all');
+	let searchQuery = $state('');
+	let selectedStatus = $state('active');
 	let selectedCategory = $state('all');
 
 	// $derived replaces the old $effect + applyFilters pattern — pure computation,
