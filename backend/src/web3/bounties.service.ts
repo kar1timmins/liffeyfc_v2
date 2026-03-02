@@ -181,28 +181,38 @@ export class BountiesService {
 
   /**
    * Find a specific bounty by ID
+   *
+   * Uses repository.findOne() instead of QueryBuilder to avoid a TypeORM
+   * result-mapping bug where leftJoinAndSelect('wishlist.company', 'company')
+   * with getOne() returns a previously-loaded WishlistItem when two items
+   * share the same company.  The bounty eligibility check (isEscrowActive OR
+   * has EscrowDeployment rows) is performed as a separate query.
    */
   async findById(id: string): Promise<BountyResponse | null> {
     try {
-      const wishlistItem = await this.wishlistRepository
-        .createQueryBuilder('wishlist')
-        .leftJoinAndSelect('wishlist.company', 'company')
-        .where('wishlist.id = :id', { id })
-        .andWhere(
-          'wishlist.isEscrowActive = true OR EXISTS (' +
-            'SELECT 1 FROM escrow_deployments ed WHERE ed."wishlistItemId" = wishlist.id' +
-            ')',
-        )
-        .getOne();
+      // Step 1 — load the wishlist item by primary key (no QueryBuilder)
+      const wishlistItem = await this.wishlistRepository.findOne({
+        where: { id },
+        relations: ['company'],
+      });
 
       if (!wishlistItem) {
         return null;
       }
 
+      // Step 2 — enforce the same "is a bounty" predicate used elsewhere:
+      //   isEscrowActive = true  OR  has at least one EscrowDeployment row
+      if (!wishlistItem.isEscrowActive) {
+        const deploymentCount = await this.escrowDeploymentRepository.count({
+          where: { wishlistItem: { id } },
+        });
+        if (deploymentCount === 0) {
+          return null;
+        }
+      }
+
+      // Step 3 — enrich with on-chain data
       const bounty = await this.enrichWithBlockchainData(wishlistItem);
-
-      this.logger.log(`🎯 Found bounty: ${bounty.title}`);
-
       return bounty;
     } catch (error) {
       this.logger.error(`❌ Failed to fetch bounty ${id}:`, error);

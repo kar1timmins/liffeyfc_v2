@@ -19,11 +19,12 @@ export class USDCValidatorService {
 
   // RPC Endpoint fallbacks (same as escrow-contract.service)
   private ethereumRPCEndpoints = [
+    'https://ethereum-sepolia-rpc.publicnode.com',
     'https://sepolia.drpc.org',
-    'https://sepolia-rpc.publicnode.com',
-    'https://ethereum-sepolia.publicnode.com',
-    'https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
     'https://rpc.sepolia.org',
+    'https://eth-sepolia.public.blastapi.io',
+    'https://sepolia.gateway.tenderly.co',
+    'https://1rpc.io/sepolia',
   ];
 
   private avalancheRPCEndpoints = [

@@ -20,14 +20,38 @@
 	import { PUBLIC_API_URL } from '$env/static/public';
 	import { authStore } from '$lib/stores/auth';
 
-	let bounties = $state<any[]>([]);
-	let filteredBounties = $state<any[]>([]);
+	// $state.raw keeps the array reactive but leaves elements as plain JSON objects
+	// (no deep proxy wrapping), so bounty.id always returns the correct raw UUID.
+	let bounties = $state.raw<any[]>([]);
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
 	let searchQuery = $state('');
-	// default to active bounties so newcomers see live campaigns immediately
-	let selectedStatus = $state('active');
+	let selectedStatus = $state('all');
 	let selectedCategory = $state('all');
+
+	// $derived replaces the old $effect + applyFilters pattern — pure computation,
+	// no state writes inside an effect, so no update-depth cycles.
+	const filteredBounties = $derived.by(() => {
+		let result = [...bounties];
+		if (searchQuery.trim()) {
+			const q = searchQuery.toLowerCase();
+			result = result.filter(
+				(b) =>
+					b.title?.toLowerCase().includes(q) ||
+					b.description?.toLowerCase().includes(q) ||
+					b.company?.name?.toLowerCase().includes(q)
+			);
+		}
+		if (selectedStatus !== 'all') {
+			result = result.filter((b) => b.status === selectedStatus);
+		}
+		if (selectedCategory !== 'all') {
+			result = result.filter((b) => b.category === selectedCategory);
+		}
+		return result;
+	});
+	// Parallel plain-string ID array — zero proxy involvement in template hrefs.
+	const filteredBountyIds = $derived(filteredBounties.map((b) => String(b.id)));
 
 	const statusFilters = [
 		{ value: 'all', label: 'All Bounties' },
@@ -62,8 +86,9 @@
 			const data = await response.json();
 
 			if (data.success) {
-				bounties = data.data || [];
-				applyFilters();
+				// JSON.parse(JSON.stringify(...)) produces completely plain objects
+				// with no TypeORM / Svelte proxy contamination.
+				bounties = JSON.parse(JSON.stringify(data.data || []));
 			} else {
 				error = data.message || 'Failed to fetch bounties';
 			}
@@ -74,36 +99,8 @@
 		}
 	}
 
-	function applyFilters() {
-		let result = [...bounties];
-
-		// Search filter
-		if (searchQuery.trim()) {
-			const query = searchQuery.toLowerCase();
-			result = result.filter(
-				(bounty) =>
-					bounty.title?.toLowerCase().includes(query) ||
-					bounty.description?.toLowerCase().includes(query) ||
-					bounty.company?.name?.toLowerCase().includes(query)
-			);
-		}
-
-		// Status filter
-		if (selectedStatus !== 'all') {
-			result = result.filter((bounty) => bounty.status === selectedStatus);
-		}
-
-		// Category filter
-		if (selectedCategory !== 'all') {
-			result = result.filter((bounty) => bounty.category === selectedCategory);
-		}
-
-		filteredBounties = result;
-	}
-
 	function clearSearch() {
 		searchQuery = '';
-		applyFilters();
 	}
 
 	function viewBounty(bountyId: string) {
@@ -148,12 +145,6 @@
 		if (days > 0) return `${days} day${days > 1 ? 's' : ''} left`;
 		return `${hours} hour${hours > 1 ? 's' : ''} left`;
 	}
-
-	$effect(() => {
-		if (searchQuery !== undefined || selectedStatus || selectedCategory) {
-			applyFilters();
-		}
-	});
 </script>
 
 <svelte:head>
@@ -256,7 +247,7 @@
 		<!-- Bounties Grid -->
 		{#if !isLoading && !error && filteredBounties.length > 0}
 			<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-				{#each filteredBounties as bounty}
+				{#each filteredBounties as bounty, i (filteredBountyIds[i])}
 					<div
 						class="card border border-base-300 bg-base-100 shadow-xl transition-all duration-300 hover:shadow-2xl"
 					>
@@ -364,10 +355,10 @@
 								<span class="badge {getStatusBadge(bounty.status).class}">
 									{getStatusBadge(bounty.status).label}
 								</span>
-								<button onclick={() => viewBounty(bounty.id)} class="btn gap-2 btn-sm btn-primary">
-									View Details
-									<ArrowRight class="h-4 w-4" />
-								</button>
+							<a href="/bounties/{filteredBountyIds[i]}" class="btn gap-2 btn-sm btn-primary">
+								View Details
+								<ArrowRight class="h-4 w-4" />
+							</a>
 							</div>
 						</div>
 					</div>

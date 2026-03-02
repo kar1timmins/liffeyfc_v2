@@ -130,10 +130,10 @@ export class EscrowContractService {
   private ethereumRPCEndpoints = [
     'https://ethereum-sepolia-rpc.publicnode.com',
     'https://rpc.sepolia.org',
-    'https://sepolia.gateway.tenderly.co',
-    'https://eth-sepolia.public.blastapi.io',
-    'https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
     'https://sepolia.drpc.org',
+    'https://eth-sepolia.public.blastapi.io',
+    'https://sepolia.gateway.tenderly.co',
+    'https://1rpc.io/sepolia',
   ];
 
   private avalancheRPCEndpoints = [
