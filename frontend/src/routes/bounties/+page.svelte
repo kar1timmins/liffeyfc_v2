@@ -25,7 +25,7 @@
 	let bounties = $state.raw<any[]>([]);
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
-	let searchQuery = $state('');
+	let searchQuery = $state('active');
 	let selectedStatus = $state('all');
 	let selectedCategory = $state('all');
 
