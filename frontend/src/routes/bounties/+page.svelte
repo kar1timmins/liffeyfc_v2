@@ -25,7 +25,8 @@
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
 	let searchQuery = $state('');
-	let selectedStatus = $state('all');
+	// default to active bounties so newcomers see live campaigns immediately
+	let selectedStatus = $state('active');
 	let selectedCategory = $state('all');
 
 	const statusFilters = [
@@ -215,7 +216,7 @@
 					</label>
 					<select id="status-filter" class="select-bordered select" bind:value={selectedStatus}>
 						{#each statusFilters as filter}
-							<option value={filter.value} selected={filter.value === 'active'}>
+							<option value={filter.value}>
 								{filter.label}
 							</option>
 						{/each}
