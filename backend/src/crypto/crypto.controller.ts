@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Logger } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Logger, Get } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { CryptoService } from './crypto.service';
 import { CreateOnrampSessionDto } from './dto/create-onramp-session.dto';
@@ -27,6 +27,21 @@ export class CryptoController {
     @CurrentUser() user: any,
   ) {
     this.logger.log(`User ${user?.id} requesting onramp session from IP ${ip}`);
-    return this.cryptoService.createOnrampSession(body, ip);
+    const result = await this.cryptoService.createOnrampSession(body, ip);
+    // record the request so user can see history later
+    await this.cryptoService.logPurchase(user.id, body.transaction_details);
+    return result;
+  }
+
+  /**
+   * GET /crypto/history
+   * Returns the most recent 20 purchases by the authenticated user.
+   */
+  @Get('history')
+  async getHistory(@CurrentUser() user: any) {
+    return {
+      success: true,
+      data: await this.cryptoService.getPurchaseHistory(user.id),
+    };
   }
 }

@@ -11,6 +11,7 @@ import { Wallet } from './wallet.entity';
 import { RefreshToken } from './refresh-token.entity';
 import { Company } from './company.entity';
 import { UserWallet } from './user-wallet.entity';
+import { CryptoPurchase } from '../crypto/crypto-purchase.entity';
 
 /**
  * User Role Enum
@@ -32,7 +33,7 @@ export enum UserRole {
 @Entity({ name: 'users' })
 export class User {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column({ type: 'varchar', nullable: true, unique: true })
   email?: string;
@@ -52,7 +53,7 @@ export class User {
     enum: UserRole,
     default: UserRole.USER,
   })
-  role: UserRole;
+  role! : UserRole;
 
   // Fields for investors
   @Column({ type: 'varchar', nullable: true })
@@ -107,9 +108,13 @@ export class User {
   @OneToOne(() => UserWallet, (w: UserWallet) => w.user, { cascade: true })
   userWallet?: UserWallet;
 
+  // history of stripe onramp purchases
+  @OneToMany(() => CryptoPurchase, (p: CryptoPurchase) => p.user)
+  cryptoPurchases?: CryptoPurchase[];
+
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt!: Date;
 }

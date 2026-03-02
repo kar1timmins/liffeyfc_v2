@@ -215,7 +215,9 @@
 					</label>
 					<select id="status-filter" class="select-bordered select" bind:value={selectedStatus}>
 						{#each statusFilters as filter}
-							<option value={filter.value}>{filter.label}</option>
+							<option value={filter.value} selected={filter.value === 'active'}>
+								{filter.label}
+							</option>
 						{/each}
 					</select>
 				</div>

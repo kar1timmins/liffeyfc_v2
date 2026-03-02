@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { WishlistItem } from '../entities/wishlist-item.entity';
 import { User } from '../entities/user.entity';
+import { UserWallet } from '../entities/user-wallet.entity';
 import { Company } from '../entities/company.entity';
 import { CompanyWallet } from '../entities/company-wallet.entity';
 import { Contribution } from '../entities/contribution.entity';
@@ -113,6 +114,8 @@ export class BountiesService {
     private readonly contributionRepository: Repository<Contribution>,
     @InjectRepository(EscrowDeployment)
     private readonly escrowDeploymentRepository: Repository<EscrowDeployment>,
+    @InjectRepository(UserWallet)
+    private readonly userWalletRepository: Repository<UserWallet>,
     private readonly escrowService: EscrowContractService,
     private readonly pricesService: CryptoPricesService,
     private readonly walletService: WalletGenerationService,
@@ -123,10 +126,19 @@ export class BountiesService {
    */
   async findAll(filters: BountyFilters = {}): Promise<BountyResponse[]> {
     try {
+      // Include items that are either explicitly marked as escrow-active OR
+      // have at least one EscrowDeployment record.  The latter catches items
+      // deployed via the USDC/platform-wallet flow where the wishlist save
+      // may have failed before isEscrowActive could be persisted.
       const queryBuilder = this.wishlistRepository
         .createQueryBuilder('wishlist')
         .leftJoinAndSelect('wishlist.company', 'company')
-        .where('wishlist.isEscrowActive = :isActive', { isActive: true });
+        .where(
+          'wishlist.isEscrowActive = :isActive OR EXISTS (' +
+            'SELECT 1 FROM escrow_deployments ed WHERE ed."wishlistItemId" = wishlist.id' +
+            ')',
+          { isActive: true },
+        );
 
       // Apply filters
       if (filters.category) {
@@ -172,10 +184,16 @@ export class BountiesService {
    */
   async findById(id: string): Promise<BountyResponse | null> {
     try {
-      const wishlistItem = await this.wishlistRepository.findOne({
-        where: { id, isEscrowActive: true },
-        relations: ['company'],
-      });
+      const wishlistItem = await this.wishlistRepository
+        .createQueryBuilder('wishlist')
+        .leftJoinAndSelect('wishlist.company', 'company')
+        .where('wishlist.id = :id', { id })
+        .andWhere(
+          'wishlist.isEscrowActive = true OR EXISTS (' +
+            'SELECT 1 FROM escrow_deployments ed WHERE ed."wishlistItemId" = wishlist.id' +
+            ')',
+        )
+        .getOne();
 
       if (!wishlistItem) {
         return null;
@@ -197,13 +215,16 @@ export class BountiesService {
    */
   async findByCompany(companyId: string): Promise<BountyResponse[]> {
     try {
-      const wishlistItems = await this.wishlistRepository.find({
-        where: {
-          company: { id: companyId },
-          isEscrowActive: true,
-        },
-        relations: ['company'],
-      });
+      const wishlistItems = await this.wishlistRepository
+        .createQueryBuilder('wishlist')
+        .leftJoinAndSelect('wishlist.company', 'company')
+        .where('company.id = :companyId', { companyId })
+        .andWhere(
+          'wishlist.isEscrowActive = true OR EXISTS (' +
+            'SELECT 1 FROM escrow_deployments ed WHERE ed."wishlistItemId" = wishlist.id' +
+            ')',
+        )
+        .getMany();
 
       const bounties = await Promise.all(
         wishlistItems.map((item) => this.enrichWithBlockchainData(item)),
@@ -426,9 +447,22 @@ export class BountiesService {
         });
 
         if (!existing) {
+          // Resolve userId by looking up the contributor's master wallet
+          let resolvedUserId: string | undefined;
+          try {
+            const uw = await this.userWalletRepository.findOne({
+              where: [
+                { ethAddress: address },
+                { avaxAddress: address },
+              ],
+            });
+            if (uw) resolvedUserId = uw.userId;
+          } catch { /* non-fatal */ }
+
           // Create new contribution record
           const contribution = this.contributionRepository.create({
             contributorAddress: address,
+            userId: resolvedUserId,
             escrowDeploymentId: escrowDeployment.id,
             wishlistItemId,
             contractAddress,
@@ -882,11 +916,42 @@ export class BountiesService {
    * the frontend can display list entries without further API calls.
    */
   async getUserContributions(userId: string): Promise<Contribution[]> {
-    return this.contributionRepository.find({
-      where: { userId },
-      relations: ['wishlistItem', 'wishlistItem.company', 'escrowDeployment'],
-      order: { contributedAt: 'DESC' },
-    });
+    // First resolve the user's registered wallet addresses so we can match
+    // on-chain contributions that were saved before userId was backfilled.
+    let ethAddress: string | undefined;
+    let avaxAddress: string | undefined;
+    try {
+      const uw = await this.userWalletRepository.findOne({ where: { userId } });
+      if (uw) {
+        ethAddress = uw.ethAddress;
+        avaxAddress = uw.avaxAddress;
+      }
+    } catch { /* non-fatal, fall through to userId-only search */ }
+
+    if (!ethAddress) {
+      // No wallet found – just query by userId
+      return this.contributionRepository.find({
+        where: { userId },
+        relations: ['wishlistItem', 'wishlistItem.company', 'escrowDeployment'],
+        order: { contributedAt: 'DESC' },
+      });
+    }
+
+    // Query by userId OR by the user's registered wallet addresses so we
+    // catch historic contributions that were synced without a userId.
+    const qb = this.contributionRepository
+      .createQueryBuilder('c')
+      .leftJoinAndSelect('c.wishlistItem', 'wi')
+      .leftJoinAndSelect('wi.company', 'company')
+      .leftJoinAndSelect('c.escrowDeployment', 'ed')
+      .where('c.userId = :userId', { userId })
+      .orWhere('c.contributorAddress = :ethAddress', { ethAddress });
+
+    if (avaxAddress && avaxAddress !== ethAddress) {
+      qb.orWhere('c.contributorAddress = :avaxAddress', { avaxAddress });
+    }
+
+    return qb.orderBy('c.contributedAt', 'DESC').getMany();
   }
 
   /**

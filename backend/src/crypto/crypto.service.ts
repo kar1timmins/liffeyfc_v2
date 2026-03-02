@@ -1,4 +1,6 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import Stripe from 'stripe';
 import { CreateOnrampSessionDto } from './dto/create-onramp-session.dto';
 
@@ -16,7 +18,10 @@ export class CryptoService {
   private readonly logger = new Logger(CryptoService.name);
   private readonly stripe: Stripe;
 
-  constructor() {
+  constructor(
+    @InjectRepository(require('../crypto/crypto-purchase.entity').CryptoPurchase)
+    private readonly purchaseRepo: Repository<any>,
+  ) {
     const secretKey = process.env.STRIPE_SECRET_KEY;
     if (!secretKey) {
       throw new Error('STRIPE_SECRET_KEY environment variable is not set');
@@ -75,5 +80,40 @@ export class CryptoService {
           : 'Failed to create onramp session';
       throw new HttpException(errorMessage, HttpStatus.BAD_GATEWAY);
     }
+  }
+
+  /**
+   * Record a purchase in the database.  Called by the controller after session
+   * creation so we know the requesting user.
+   */
+  async logPurchase(
+    userId: string,
+    transactionDetails: {
+      destination_currency: string;
+      destination_exchange_amount: string;
+      destination_network: string;
+    },
+    initialStatus = 'initialized',
+  ) {
+    const { destination_currency, destination_exchange_amount, destination_network } = transactionDetails;
+    const record = this.purchaseRepo.create({
+      user: { id: userId },
+      currency: destination_currency,
+      network: destination_network,
+      amount: destination_exchange_amount,
+      status: initialStatus,
+    });
+    await this.purchaseRepo.save(record);
+  }
+
+  /**
+   * Fetch recent purchases for a given user, newest first.
+   */
+  async getPurchaseHistory(userId: string) {
+    return this.purchaseRepo.find({
+      where: { user: { id: userId } },
+      order: { createdAt: 'DESC' },
+      take: 20,
+    });
   }
 }

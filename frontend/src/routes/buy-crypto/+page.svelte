@@ -100,6 +100,21 @@
   let sessionState = $state<'idle' | 'loading' | 'mounted' | 'error'>('idle');
   let errorMessage = $state('');
   let statusMessage = $state('');
+  // when the onramp reaches a terminal state we show a final notice so the
+  // user knows the flow finished; it stays until they press "Reconfigure".
+  let showFinalNotice = $state(false);
+
+  // history of previous onramp purchases
+  type HistoryItem = {
+    id: string;
+    currency: string;
+    network: string;
+    amount: string;
+    status: string;
+    createdAt: string;
+  };
+  let purchaseHistory = $state<HistoryItem[]>([]);
+  let historyLoading = $state(false);
 
   let onrampContainer: HTMLDivElement;
   let activeSession: ReturnType<
@@ -149,6 +164,7 @@
   onMount(async () => {
     if (!$authStore.isAuthenticated) { goto('/auth'); return; }
     await loadMasterWallet();
+    await loadHistory();
   });
 
   async function loadMasterWallet() {
@@ -254,12 +270,14 @@
         const status: string = e?.payload?.session?.status ?? '';
         statusMessage = STATUS_LABELS[status] ?? `Session status: ${status}`;
 
-        // when session reaches a terminal state, tear it down automatically
+        // when session reaches a terminal state, show a persistent notice
         if (status === 'fulfillment_complete' || status === 'payment_failed' || status === 'rejected') {
-          // give user a moment to read the final message
-          setTimeout(() => {
-            reconfigure();
-          }, 2500);
+          showFinalNotice = true;
+          if (status === 'fulfillment_complete') {
+            loadHistory();
+          }
+          // we deliberately do NOT call reconfigure() here; the user can
+          // hit 'Reconfigure' or navigate away when they're ready.
         }
       };
 
@@ -299,6 +317,25 @@
   function onWalletGenerated(_data: any) {
     showGenerateModal = false;
     loadMasterWallet();
+  }
+
+  async function loadHistory() {
+    historyLoading = true;
+    try {
+      const res = await fetch(`${PUBLIC_API_URL}/crypto/history`, {
+        headers: { Authorization: `Bearer ${$authStore.accessToken}` },
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const body = await res.json();
+        if (body.success && Array.isArray(body.data)) {
+          purchaseHistory = body.data;
+        }
+      }
+    } catch (_) {
+      // ignore
+    }
+    historyLoading = false;
   }
 </script>
 
@@ -473,9 +510,53 @@
       </div>
     {/if}
 
+    {#if showFinalNotice}
+      <div class="alert alert-success text-sm py-2 mb-3">
+        <span>
+          {statusMessage || 'The onramp session has completed. You may close this widget or click Reconfigure to start again.'}
+        </span>
+      </div>
+    {/if}
+
     <!-- Stripe injects an iframe here -->
     <div bind:this={onrampContainer} id="onramp-element" class="rounded-2xl overflow-hidden w-full"></div>
   </div>
+
+  {#if purchaseHistory.length || historyLoading}
+    <div class="w-full max-w-2xl mt-8">
+      <h2 class="text-lg font-semibold mb-2">Purchase History</h2>
+      {#if historyLoading}
+        <div class="text-sm text-base-content/60 flex items-center gap-2">
+          <span class="loading loading-spinner loading-xs"></span> Loading…
+        </div>
+      {:else if purchaseHistory.length === 0}
+        <p class="text-sm text-base-content/60">No previous purchases found.</p>
+      {:else}
+        <table class="table table-zebra w-full">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Network</th>
+              <th>Currency</th>
+              <th>Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each purchaseHistory as item}
+              <tr>
+                <td>{new Date(item.createdAt).toLocaleString()}</td>
+                <td>{item.network}</td>
+                <td>{item.currency.toUpperCase()}</td>
+                <td>{parseFloat(item.amount).toFixed(2)}</td>
+                <td>{item.status.replace('_',' ')}</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      {/if}
+    </div>
+  {/if}
 
   <p class="text-center text-xs text-base-content/40 max-w-md mt-8">
     Powered by
