@@ -346,9 +346,17 @@ export class BountiesService {
    */
   async getContributors(id: string) {
     try {
-      const wishlistItem = await this.wishlistRepository.findOne({
-        where: { id, isEscrowActive: true },
-      });
+      // Use OR-EXISTS so USDC-deployed items (isEscrowActive may still be false)
+      // are found the same way findAll/findById work.
+      const wishlistItem = await this.wishlistRepository
+        .createQueryBuilder('wishlist')
+        .where('wishlist.id = :id', { id })
+        .andWhere(
+          'wishlist.isEscrowActive = true OR EXISTS (' +
+            'SELECT 1 FROM escrow_deployments ed WHERE ed."wishlistItemId" = wishlist.id' +
+            ')',
+        )
+        .getOne();
 
       if (!wishlistItem) {
         throw new HttpException('Bounty not found', HttpStatus.NOT_FOUND);
@@ -356,39 +364,70 @@ export class BountiesService {
 
       let contributors: ContributorInfo[] = [];
 
-      // Get contributors from Ethereum if available
-      if (wishlistItem.ethereumEscrowAddress) {
-        const status = await this.escrowService.getCampaignStatus(
-          wishlistItem.ethereumEscrowAddress,
-          'ethereum',
-          true,
+      // Attempt on-chain fetch; fall back to DB records if RPC is unavailable.
+      try {
+        // Get contributors from Ethereum if available
+        if (wishlistItem.ethereumEscrowAddress) {
+          const status = await this.escrowService.getCampaignStatus(
+            wishlistItem.ethereumEscrowAddress,
+            'ethereum',
+            true,
+          );
+          contributors = status.contributors || [];
+        }
+        // Fall back to Avalanche
+        else if (wishlistItem.avalancheEscrowAddress) {
+          const status = await this.escrowService.getCampaignStatus(
+            wishlistItem.avalancheEscrowAddress,
+            'avalanche',
+            true,
+          );
+          contributors = status.contributors || [];
+        }
+      } catch (rpcErr: any) {
+        this.logger.warn(
+          `⚠️  On-chain contributor fetch failed for ${id}, returning DB records: ${rpcErr?.message ?? rpcErr}`,
         );
-        contributors = status.contributors || [];
-      }
-      // Fall back to Avalanche
-      else if (wishlistItem.avalancheEscrowAddress) {
-        const status = await this.escrowService.getCampaignStatus(
-          wishlistItem.avalancheEscrowAddress,
-          'avalanche',
-          true,
-        );
-        contributors = status.contributors || [];
+        // fall through with empty on-chain list; DB sync below is a no-op
       }
 
       this.logger.log(
-        `📋 Found ${contributors.length} contributors for bounty ${id}`,
+        `📋 Found ${contributors.length} on-chain contributors for bounty ${id}`,
       );
 
-      // Sync contributors to database
-      await this.syncContributorsToDatabase(id, contributors);
+      // Sync contributors to database (non-fatal)
+      if (contributors.length) {
+        await this.syncContributorsToDatabase(id, contributors);
+      }
 
-      return contributors;
+      // Always return whatever is in the DB so the UI always gets data
+      const dbContributions = await this.contributionRepository.find({
+        where: { wishlistItemId: id, isRefunded: false },
+        order: { contributedAt: 'DESC' },
+      });
+
+      // Merge: prefer on-chain data where available, supplement with DB-only records
+      const onChainAddresses = new Set(contributors.map((c) => c.address.toLowerCase()));
+      const dbOnly = dbContributions.filter(
+        (c) => !onChainAddresses.has(c.contributorAddress.toLowerCase()),
+      );
+      const dbMapped: ContributorInfo[] = dbOnly.map((c) => ({
+        address: c.contributorAddress,
+        amount: c.amountWei ?? '0',
+        amountEth: c.amountEth?.toString() ?? '0',
+      }));
+
+      return [...contributors, ...dbMapped];
     } catch (error) {
+      if (error instanceof HttpException) throw error;
       this.logger.error(
         `❌ Failed to get contributors for bounty ${id}:`,
         error,
       );
-      throw error;
+      throw new HttpException(
+        'Failed to fetch contributors',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 

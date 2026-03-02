@@ -127,12 +127,6 @@
 		return 'progress-error';
 	}
 
-	function formatCrypto(value: string | number, symbol = 'ETH') {
-		const num = typeof value === 'string' ? parseFloat(value) : value;
-		if (isNaN(num)) return `0 ${symbol}`;
-		return `${num.toFixed(4)} ${symbol}`;
-	}
-
 	function formatCurrency(value: string | number) {
 		const num = typeof value === 'string' ? parseFloat(value) : value;
 		return new Intl.NumberFormat('en-IE', {
@@ -320,24 +314,13 @@
 								<div class="flex justify-between text-sm">
 									<span class="font-medium">Target</span>
 									<span class="font-bold text-primary">
-										{#if bounty.targetAmountEth}
-											{formatCrypto(bounty.targetAmountEth)}
-											<span class="text-xs opacity-60"
-												>(≈ {formatCurrency(bounty.targetAmount || 0)})</span
-											>
-										{:else}
-											{formatCurrency(bounty.targetAmount || 0)}
-										{/if}
+										{formatCurrency(bounty.targetAmountEur ?? bounty.targetAmount ?? 0)}
 									</span>
 								</div>
 								<div class="flex justify-between text-sm">
 									<span>Raised</span>
 									<span class="font-semibold text-success">
-										{#if bounty.targetAmountEth}
-											{formatCrypto(bounty.raisedAmount || 0)}
-										{:else}
-											{formatCurrency(bounty.raisedAmount || 0)}
-										{/if}
+										{formatCurrency(bounty.totalRaisedEur ?? 0)}
 									</span>
 								</div>
 								<progress

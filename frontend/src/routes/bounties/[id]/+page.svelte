@@ -50,6 +50,20 @@
     return () => clearInterval(interval);
   });
 
+  // Re-fetch whenever the route param changes (SvelteKit reuses the component
+  // between navigations so onMount only fires once per lifecycle).
+  let previousBountyId = $state<string | null>(null);
+  $effect(() => {
+    if (bountyId && bountyId !== previousBountyId) {
+      previousBountyId = bountyId;
+      bounty = null;
+      contributors = [];
+      error = null;
+      fetchBounty();
+      fetchContributors();
+    }
+  });
+
   async function fetchBounty() {
     if (!bountyId) return;
 

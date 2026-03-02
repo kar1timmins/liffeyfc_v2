@@ -126,12 +126,13 @@ export class EscrowContractService {
   private lastAvalancheRpcWarn: number;
 
   // RPC Endpoint fallbacks
-  // Prefer publicnode and infura first; leave drpc as last-resort to avoid free-tier batching errors
+  // publicnode.com /rpc path returns 404 — use the correct hostname-only URL
   private ethereumRPCEndpoints = [
-    'https://sepolia-rpc.publicnode.com',
-    'https://ethereum-sepolia.publicnode.com',
-    'https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
+    'https://ethereum-sepolia-rpc.publicnode.com',
     'https://rpc.sepolia.org',
+    'https://sepolia.gateway.tenderly.co',
+    'https://eth-sepolia.public.blastapi.io',
+    'https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
     'https://sepolia.drpc.org',
   ];
 
