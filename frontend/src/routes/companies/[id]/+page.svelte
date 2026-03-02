@@ -164,6 +164,8 @@
               item.avalancheEscrowAddress = contracts.avalanche;
             }
           }
+          // flag that a confirmed payment exists (deployment may be pending)
+          item.hasConfirmedPayment = payments.some((p) => p.status === 'confirmed');
         }
       }
     } catch (e) {
@@ -890,6 +892,15 @@
                             {#if closed && !item.isFulfilled}
                               <p class="text-sm mt-2 text-warning font-semibold">
                                 ⏳ This bounty has expired and is no longer accepting contributions.
+                              </p>
+                            {/if}
+                            {#if closed && !item.hasConfirmedPayment && !item.isEscrowActive}
+                              <p class="text-sm mt-2 text-warning font-semibold">
+                                ⚠️ This wishlist item has expired and cannot be redeployed. Create a new item instead.
+                              </p>
+                            {:else if item.hasConfirmedPayment && !item.isEscrowActive}
+                              <p class="text-sm mt-2 text-warning font-semibold">
+                                🕒 Deployment pending – payment has been confirmed.
                               </p>
                             {/if}
 

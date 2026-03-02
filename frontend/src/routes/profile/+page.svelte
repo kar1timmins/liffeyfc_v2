@@ -78,7 +78,36 @@
       const data = await response.json();
       if (data.success) {
         companies = data.data;
-        
+
+        // After loading companies, fetch payments for each to mark pending/deployed items
+        for (const comp of companies) {
+          if (!comp.id) continue;
+          try {
+            const payRes = await fetch(`${PUBLIC_API_URL}/payments/company/${comp.id}`);
+            const payData = await payRes.json();
+            if (payData.success && Array.isArray(payData.data)) {
+              const map: Record<string, any[]> = {};
+              for (const p of payData.data) {
+                if (!map[p.wishlistItemId]) map[p.wishlistItemId] = [];
+                map[p.wishlistItemId].push(p);
+              }
+              if (comp.wishlistItems) {
+                for (const item of comp.wishlistItems) {
+                  const payments = map[item.id] || [];
+                  // mark if a confirmed payment exists (pending deployment)
+                  item.hasConfirmedPayment = payments.some((p) => p.status === 'confirmed');
+                  // also flag escrow active if deployed contracts exist
+                  item.isEscrowActive = payments.some(
+                    (p) => p.status === 'deployed' && p.deployedContracts,
+                  );
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Failed to fetch payments for company', comp.id, e);
+          }
+        }
+
         // Dispatch event to refresh FAB navigation
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('refresh-user-companies'));

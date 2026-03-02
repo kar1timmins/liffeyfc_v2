@@ -58,6 +58,15 @@
   }
   let bountyModalOpen = $state(false);
   let bountyModalX402Open = $state(false);
+
+  // helper to determine if wishlist item is expired/closed
+  function isWishlistItemClosed(item: any): boolean {
+    if (item.isFulfilled) return true;
+    if (item.campaignDeadline) {
+      return new Date(item.campaignDeadline) < new Date();
+    }
+    return false;
+  }
   let selectedWishlistItem = $state<any | null>(null);
   let selectedCompany = $state<Company | null>(null);
   
@@ -248,12 +257,40 @@
   }
 
   function openBountyModal(item: any, company: Company) {
+    if (item.hasConfirmedPayment) {
+      toastStore.add({
+        message: 'A confirmed payment already exists for this wishlist item. Please wait for deployment.',
+        type: 'info',
+      });
+      return;
+    }
+    if (isWishlistItemClosed(item)) {
+      toastStore.add({
+        message: 'This wishlist item is closed/expired and cannot be redeployed. Create a new item.',
+        type: 'warning',
+      });
+      return;
+    }
     selectedWishlistItem = item;
     selectedCompany = company;
     bountyModalOpen = true;
   }
 
   function openBountyModalX402(item: any, company: Company) {
+    if (item.hasConfirmedPayment) {
+      toastStore.add({
+        message: 'A confirmed payment already exists for this wishlist item. Please wait for deployment.',
+        type: 'info',
+      });
+      return;
+    }
+    if (isWishlistItemClosed(item)) {
+      toastStore.add({
+        message: 'This wishlist item is closed/expired and cannot be redeployed. Create a new item.',
+        type: 'warning',
+      });
+      return;
+    }
     selectedWishlistItem = item;
     selectedCompany = company;
     bountyModalX402Open = true;
@@ -270,6 +307,8 @@
         if (typeof itemIndex === 'number' && itemIndex !== -1) {
           const item = companies[companyIndex].wishlistItems?.[itemIndex];
           if (item) {
+            // when any payment result comes back we should mark pending immediately
+            item.hasConfirmedPayment = true;
             if (deployed.ethereumAddress) item.ethereumEscrowAddress = deployed.ethereumAddress;
             if (deployed.avalancheAddress) item.avalancheEscrowAddress = deployed.avalancheAddress;
             item.isEscrowActive = true;
@@ -1344,7 +1383,15 @@
                             <!-- Bounty actions / info -->
                             {#if !item.isEscrowActive}
                               <div class="border-t border-base-300 bg-base-200/50 px-4 py-3">
-                                {#if item.value && (company.ethAddress || company.avaxAddress)}
+                                {#if item.hasConfirmedPayment}
+                                  <p class="text-xs opacity-60">
+                                    🚧 A confirmed payment has already been submitted for this wishlist item. Deployment is pending — no further action required.
+                                  </p>
+                                {:else if isWishlistItemClosed(item)}
+                                  <p class="text-xs opacity-60">
+                                    ⚠️ This wishlist item is closed/expired. Create a new one to start a fresh bounty.
+                                  </p>
+                                {:else if item.value && (company.ethAddress || company.avaxAddress)}
                                   <div class="flex flex-col sm:flex-row gap-2">
                                     <button
                                       class="btn btn-sm btn-primary flex-1 gap-1"

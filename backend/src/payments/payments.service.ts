@@ -67,7 +67,18 @@ export class PaymentsService {
       );
     }
 
-    // 2. Check if transaction has already been used
+    // 2. Check wishlist item status – expiry or fulfilled
+    if (wishlistItem.isFulfilled) {
+      throw new BadRequestException('Wishlist item already fulfilled');
+    }
+    if (
+      wishlistItem.campaignDeadline &&
+      new Date(wishlistItem.campaignDeadline) < new Date()
+    ) {
+      throw new BadRequestException('Wishlist item expired; create a new item instead');
+    }
+
+    // 3. Check if transaction has already been used
     const existingPayment = await this.paymentRepo.findOne({
       where: { usdcTxHash: dto.usdcTxHash },
     });
@@ -161,6 +172,17 @@ export class PaymentsService {
       throw new BadRequestException(
         'A confirmed payment already exists for this wishlist item',
       );
+    }
+
+    // Guard against expired/fulfilled items as well
+    if (wishlistItem.isFulfilled) {
+      throw new BadRequestException('Wishlist item already fulfilled');
+    }
+    if (
+      wishlistItem.campaignDeadline &&
+      new Date(wishlistItem.campaignDeadline) < new Date()
+    ) {
+      throw new BadRequestException('Wishlist item expired; cannot deploy');
     }
 
     // Platform receiver address for record keeping

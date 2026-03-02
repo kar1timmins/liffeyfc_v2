@@ -215,6 +215,8 @@ export class DeploymentWorkerService implements OnModuleInit, OnModuleDestroy {
           wl.campaignDeadline = new Date(
             Date.now() + deploymentData.durationInDays * 24 * 60 * 60 * 1000,
           );
+          // capture previous state to avoid duplicate bounty creation on retry
+          const wasEscrowActiveBefore = !!wl.isEscrowActive;
           wl.isEscrowActive = true;
 
           // also set approximate euro value if not already set
@@ -274,20 +276,23 @@ export class DeploymentWorkerService implements OnModuleInit, OnModuleDestroy {
           // item when users browse global bounties. createFromWishlistItem will
           // set isEscrowActive=true again and populate other fields but will
           // throw if the flag was already flipped; therefore we only call it if
-          // there is no existing bounty linked to this wishlist item.
-          try {
-            await this.bountiesService.createFromWishlistItem(
-              wl.id,
-              wl.value || 0,
-              deploymentData.durationInDays,
-              deploymentData.userId,
-            );
-          } catch (e: any) {
-            // ignore conflict errors; bounty may already exist
-            this.logger.debug(
-              'Bounty creation skipped or failed:',
-              e.message || e,
-            );
+          // there is no existing bounty linked to this wishlist item *and* the
+          // item was inactive before we saved it.
+          if (!wasEscrowActiveBefore) {
+            try {
+              await this.bountiesService.createFromWishlistItem(
+                wl.id,
+                wl.value || 0,
+                deploymentData.durationInDays,
+                deploymentData.userId,
+              );
+            } catch (e: any) {
+              // ignore conflict errors; bounty may already exist
+              this.logger.debug(
+                'Bounty creation skipped or failed:',
+                e.message || e,
+              );
+            }
           }
         }
       } catch (updErr) {
