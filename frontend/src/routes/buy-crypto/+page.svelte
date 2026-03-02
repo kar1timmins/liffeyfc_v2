@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
   import { loadStripeOnramp } from '@stripe/crypto';
   import { authStore } from '$lib/stores/auth';
@@ -106,6 +106,9 @@
     NonNullable<Awaited<ReturnType<typeof loadStripeOnramp>>>['createSession']
   > | null = null;
 
+  // remember the listener so it can be removed when we destroy/unmount
+  let sessionListener: ((e: any) => void) | null = null;
+
   // ---------------------------------------------------------------------------
   // Derived
   // ---------------------------------------------------------------------------
@@ -188,6 +191,8 @@
 
   async function launchOnramp() {
     if (!$authStore.isAuthenticated) { goto('/auth'); return; }
+    // avoid accidental double clicks or re-entry while widget is already running
+    if (sessionState === 'loading' || sessionState === 'mounted') return;
 
     activeSession = null;
     if (onrampContainer) onrampContainer.innerHTML = '';
@@ -231,11 +236,12 @@
         },
       });
 
+      unmountSession();
       activeSession = session;
       session.mount(onrampContainer);
       sessionState = 'mounted';
 
-      session.addEventListener('onramp_session_updated', (e: any) => {
+      sessionListener = (e: any) => {
         const STATUS_LABELS: Record<string, string> = {
           initialized:            'Session initialised — complete the form to proceed.',
           rejected:               'Session was declined. You may try again.',
@@ -247,18 +253,48 @@
         };
         const status: string = e?.payload?.session?.status ?? '';
         statusMessage = STATUS_LABELS[status] ?? `Session status: ${status}`;
-      });
+
+        // when session reaches a terminal state, tear it down automatically
+        if (status === 'fulfillment_complete' || status === 'payment_failed' || status === 'rejected') {
+          // give user a moment to read the final message
+          setTimeout(() => {
+            reconfigure();
+          }, 2500);
+        }
+      };
+
+      // wire the listener up to the session so we can tear it down later
+      session.addEventListener('onramp_session_updated', sessionListener);
     } catch (err: any) {
       errorMessage = err?.message ?? 'Something went wrong. Please try again.';
       sessionState = 'error';
     }
   }
 
-  function reconfigure() {
-    sessionState = 'idle';
+  function unmountSession() {
+    if (activeSession) {
+      // the current typings don't yet include unmount/destroy, so cast to any
+      // most recent Stripe SDKs support unmount()/destroy(); call both defensively
+      try { (activeSession as any).unmount?.(); } catch {}
+      try { (activeSession as any).destroy?.(); } catch {}
+    }
+    if (sessionListener && activeSession) {
+      activeSession.removeEventListener('onramp_session_updated', sessionListener);
+    }
+    sessionListener = null;
     activeSession = null;
+  }
+
+  function reconfigure() {
+    unmountSession();
+    sessionState = 'idle';
     if (onrampContainer) onrampContainer.innerHTML = '';
   }
+
+  // ensure any active stripe session is torn down when leaving the page
+  onDestroy(() => {
+    unmountSession();
+  });
 
   function onWalletGenerated(_data: any) {
     showGenerateModal = false;
