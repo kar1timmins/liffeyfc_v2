@@ -421,6 +421,24 @@ body {
   animation: scroll 30s linear infinite;
 }
 
+/* FAB menu entrance */
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.93) translateY(8px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);   }
+}
+.animate-fade-in {
+  animation: fadeInScale 0.2s ease-out both;
+}
+
+/* FAB group slide-down */
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+.animate-slide-down {
+  animation: slideDown 0.18s ease-out both;
+}
+
 /* Logo sheen animation - applies highlight sweep to the logo only */
 .logo-sheen {
   position: relative;

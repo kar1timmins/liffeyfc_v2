@@ -132,6 +132,9 @@
   
   // FAB logic
   let fabOpen = $state(false);
+  let group1Open = $state(false);
+  let group2Open = $state(false);
+  let group3Open = $state(false);
   
   // Toggle FAB with event stopping
   function toggleFab(event: MouseEvent) {
@@ -385,90 +388,141 @@
   <!-- Floating Action Button (FAB) Navigation - Mobile Optimized -->
   <div bind:this={fabContainer} class="fixed fab-container bottom-6 right-6 md:bottom-8 md:right-8 z-[9999] flex flex-col items-end gap-2">
     {#if fabOpen}
-      <div class="fab-menu flex flex-col items-center mb-2 p-2 md:p-3 rounded-2xl glass-fab animate-fade-in w-44 md:w-48">
-        <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/')}>
-          <Home size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/> 
-          <span class="flex-1 text-center">Home</span>
+      <div
+        class="fab-menu flex flex-col items-start mb-2 p-2 md:p-3 rounded-2xl glass-fab animate-fade-in w-48 md:w-52 max-h-[80vh] overflow-y-auto"
+        role="menu"
+        aria-label="Navigation menu"
+      >
+
+        <!-- ── GROUP 1: Explore ─────────────────────────────── -->
+        <button
+          class="w-full flex items-center justify-between px-2 py-1.5 mb-1 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors text-xs font-semibold uppercase tracking-wide text-primary"
+          onclick={() => (group1Open = !group1Open)}
+          aria-expanded={group1Open}
+        >
+          <span>Explore</span>
+          <span class="transition-transform duration-300" style="display:inline-block;transform:rotate({group1Open ? 90 : 0}deg)">▸</span>
         </button>
-        {#if $authStore.isAuthenticated}
-          <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/companies')}>
-            <Building2 size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/> 
-            <span class="flex-1 text-center">Companies</span>
-          </button>
-          <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/leaderboard')}>
-            <Trophy size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/> 
-            <span class="flex-1 text-center">Leaderboard</span>
-          </button>
-          {#if userCompanies.length > 0}
-            <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/bounties')}>
-              <Target size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/> 
-              <span class="flex-1 text-center">Bounties</span>
+
+        {#if group1Open}
+          <div class="w-full flex flex-col gap-1 mb-2 pl-1 animate-slide-down">
+            <button class="btn glass-fab btn-neon-cool w-full flex items-center justify-start gap-2 border-0 hover:scale-[1.03] transition-all duration-200 text-xs py-1.5 px-2 min-h-0 h-auto" onclick={() => navTo('/')}>
+              <Home size={14} class="flex-shrink-0"/>
+              <span>Home</span>
             </button>
-          {/if}
-          {#if $authStore.user?.role === 'staff' || $authStore.user?.userType === 'staff'}
-            <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/admin')}>
-              <ShieldCheck size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/>
-              <span class="flex-1 text-center">Admin</span>
-            </button>
-          {/if}
-        {:else}
-          <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/pitch')}>
-            <Mic size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/> 
-            <span class="flex-1 text-center">Pitch</span>
-          </button>
-          <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/learnMore')}>
-            <Info size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/> 
-            <span class="flex-1 text-center">Learn More</span>
-          </button>
-        {/if}
-        {#if $authStore.isAuthenticated}
-          <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/buy-crypto')}>
-            <CreditCard size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/>
-            <span class="flex-1 text-center">Buy Crypto</span>
-          </button>
-          <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/dashboard')}>
-            <Grid size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/>
-            <span class="flex-1 text-center">Dashboard</span>
-          </button>
-          <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/profile')}>
-            <User size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/>
-            <span class="flex-1 text-center">{ $authStore.user?.name ? `${$authStore.user.name}` : 'Profile' }</span>
-          </button>
-          <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/settings')}>
-            <Settings size={16} class="flex-shrink-0 w-4 h-4 sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"/>
-            <span class="flex-1 text-center">Settings</span>
-          </button>
-          <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => signOut()}>
-            <span class="flex-1 text-center">Sign Out</span>
-          </button>
-        {:else}
-          <!-- Single sign-in entry point. The /auth page toggles login/register with animation -->
-          <button class="btn glass-fab btn-neon-cool w-full mb-2 flex items-center justify-center gap-2.5 md:gap-3 border-0 hover:scale-105 transition-all duration-300 text-xs sm:text-sm md:text-base" onclick={() => navTo('/auth')}>
-            <span class="flex-1 text-center">Sign In</span>
-          </button>
-        {/if}
-        <!-- Wallet summary: show balance when connected; removed Connect button from FAB per UI change request -->
-        {#if $walletStore.isConnected}
-          <div class="w-full mb-2 p-2 rounded-md glass-subtle text-sm text-center">
-            <div class="font-medium">{$formattedAddress}</div>
-            <div class="text-xs text-base-content/70">{ $walletStore.balance ?? '—' } { $walletStore.chainName ?? '' }</div>
+            {#if $authStore.isAuthenticated}
+              <button class="btn glass-fab btn-neon-cool w-full flex items-center justify-start gap-2 border-0 hover:scale-[1.03] transition-all duration-200 text-xs py-1.5 px-2 min-h-0 h-auto" onclick={() => navTo('/companies')}>
+                <Building2 size={14} class="flex-shrink-0"/>
+                <span>Companies</span>
+              </button>
+              <button class="btn glass-fab btn-neon-cool w-full flex items-center justify-start gap-2 border-0 hover:scale-[1.03] transition-all duration-200 text-xs py-1.5 px-2 min-h-0 h-auto" onclick={() => navTo('/leaderboard')}>
+                <Trophy size={14} class="flex-shrink-0"/>
+                <span>Leaderboard</span>
+              </button>
+              {#if userCompanies.length > 0}
+                <button class="btn glass-fab btn-neon-cool w-full flex items-center justify-start gap-2 border-0 hover:scale-[1.03] transition-all duration-200 text-xs py-1.5 px-2 min-h-0 h-auto" onclick={() => navTo('/bounties')}>
+                  <Target size={14} class="flex-shrink-0"/>
+                  <span>Bounties</span>
+                </button>
+              {/if}
+              {#if $authStore.user?.role === 'staff' || $authStore.user?.userType === 'staff'}
+                <button class="btn glass-fab btn-neon-cool w-full flex items-center justify-start gap-2 border-0 hover:scale-[1.03] transition-all duration-200 text-xs py-1.5 px-2 min-h-0 h-auto" onclick={() => navTo('/admin')}>
+                  <ShieldCheck size={14} class="flex-shrink-0"/>
+                  <span>Admin</span>
+                </button>
+              {/if}
+            {:else}
+              <button class="btn glass-fab btn-neon-cool w-full flex items-center justify-start gap-2 border-0 hover:scale-[1.03] transition-all duration-200 text-xs py-1.5 px-2 min-h-0 h-auto" onclick={() => navTo('/pitch')}>
+                <Mic size={14} class="flex-shrink-0"/>
+                <span>Pitch</span>
+              </button>
+              <button class="btn glass-fab btn-neon-cool w-full flex items-center justify-start gap-2 border-0 hover:scale-[1.03] transition-all duration-200 text-xs py-1.5 px-2 min-h-0 h-auto" onclick={() => navTo('/learnMore')}>
+                <Info size={14} class="flex-shrink-0"/>
+                <span>Learn More</span>
+              </button>
+            {/if}
           </div>
         {/if}
-        <div class="w-full flex flex-col items-center mt-2">
+
+        <!-- ── GROUP 2: My Account ──────────────────────────── -->
+        <button
+          class="w-full flex items-center justify-between px-2 py-1.5 mb-1 rounded-lg bg-secondary/10 hover:bg-secondary/20 transition-colors text-xs font-semibold uppercase tracking-wide text-secondary"
+          onclick={() => (group2Open = !group2Open)}
+          aria-expanded={group2Open}
+        >
+          <span>My Account</span>
+          <span class="transition-transform duration-300" style="display:inline-block;transform:rotate({group2Open ? 90 : 0}deg)">▸</span>
+        </button>
+
+        {#if group2Open}
+          <div class="w-full flex flex-col gap-1 mb-2 pl-1 animate-slide-down">
+            {#if $authStore.isAuthenticated}
+              <button class="btn glass-fab btn-neon-cool w-full flex items-center justify-start gap-2 border-0 hover:scale-[1.03] transition-all duration-200 text-xs py-1.5 px-2 min-h-0 h-auto" onclick={() => navTo('/buy-crypto')}>
+                <CreditCard size={14} class="flex-shrink-0"/>
+                <span>Buy Crypto</span>
+              </button>
+              <button class="btn glass-fab btn-neon-cool w-full flex items-center justify-start gap-2 border-0 hover:scale-[1.03] transition-all duration-200 text-xs py-1.5 px-2 min-h-0 h-auto" onclick={() => navTo('/dashboard')}>
+                <Grid size={14} class="flex-shrink-0"/>
+                <span>Dashboard</span>
+              </button>
+              <button class="btn glass-fab btn-neon-cool w-full flex items-center justify-start gap-2 border-0 hover:scale-[1.03] transition-all duration-200 text-xs py-1.5 px-2 min-h-0 h-auto" onclick={() => navTo('/profile')}>
+                <User size={14} class="flex-shrink-0"/>
+                <span class="truncate max-w-[7rem]">{$authStore.user?.name ?? 'Profile'}</span>
+              </button>
+            {:else}
+              <button class="btn glass-fab btn-neon-cool w-full flex items-center justify-start gap-2 border-0 hover:scale-[1.03] transition-all duration-200 text-xs py-1.5 px-2 min-h-0 h-auto" onclick={() => navTo('/auth')}>
+                <User size={14} class="flex-shrink-0"/>
+                <span>Sign In</span>
+              </button>
+            {/if}
+          </div>
+        {/if}
+
+        <!-- ── GROUP 3: Preferences ────────────────────────── -->
+        {#if $authStore.isAuthenticated}
           <button
-            class="btn btn-circle glass-fab border-0 hover:scale-110 transition-all duration-300 w-10 h-10 md:w-12 md:h-12"
+            class="w-full flex items-center justify-between px-2 py-1.5 mb-1 rounded-lg bg-accent/10 hover:bg-accent/20 transition-colors text-xs font-semibold uppercase tracking-wide text-accent"
+            onclick={() => (group3Open = !group3Open)}
+            aria-expanded={group3Open}
+          >
+            <span>Preferences</span>
+            <span class="transition-transform duration-300" style="display:inline-block;transform:rotate({group3Open ? 90 : 0}deg)">▸</span>
+          </button>
+
+          {#if group3Open}
+            <div class="w-full flex flex-col gap-1 mb-2 pl-1 animate-slide-down">
+              <button class="btn glass-fab btn-neon-cool w-full flex items-center justify-start gap-2 border-0 hover:scale-[1.03] transition-all duration-200 text-xs py-1.5 px-2 min-h-0 h-auto" onclick={() => navTo('/settings')}>
+                <Settings size={14} class="flex-shrink-0"/>
+                <span>Settings</span>
+              </button>
+              <button class="btn glass-fab btn-neon-cool w-full flex items-center justify-start gap-2 border-0 hover:scale-[1.03] transition-all duration-200 text-xs py-1.5 px-2 min-h-0 h-auto" onclick={() => signOut()}>
+                <span>Sign Out</span>
+              </button>
+            </div>
+          {/if}
+        {/if}
+
+        <!-- ── Wallet summary + Theme toggle ──────────────── -->
+        <div class="w-full border-t border-base-300/40 pt-2 mt-1 flex flex-col items-center gap-1.5">
+          {#if $walletStore.isConnected}
+            <div class="w-full text-xs text-base-content/70 text-center truncate">
+              <div class="font-medium text-base-content truncate">{$formattedAddress}</div>
+              <div>{$walletStore.balance ?? '—'} {$walletStore.chainName ?? ''}</div>
+            </div>
+          {/if}
+          <button
+            class="btn btn-circle glass-fab border-0 hover:scale-110 transition-all duration-300 w-8 h-8"
             aria-label="Toggle light/dark theme"
             onclick={() => setTheme(selectedTheme === 'light' ? 'dark' : 'light')}
           >
             {#if selectedTheme === 'light'}
-              <!-- when light mode is on, show the moon to indicate switching to dark -->
-              <Moon class="h-5 w-5 md:h-6 md:w-6" />
+              <Moon class="h-4 w-4"/>
             {:else}
-              <!-- when dark mode is on, show the sun to indicate switching to light -->
-              <Sun class="h-5 w-5 md:h-6 md:w-6" />
+              <Sun class="h-4 w-4"/>
             {/if}
           </button>
         </div>
+
       </div>
     {/if}
     <button
