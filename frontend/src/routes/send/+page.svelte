@@ -24,7 +24,7 @@
 			onclick={() => goto('/dashboard')}
 		>
 			<ArrowLeft size={18} />
-			Back to Dashboard
+			Back
 		</button>
 		<h1 class="text-4xl font-bold mb-2">Send Funds</h1>
 		<p class="text-base-content/70">Transfer cryptocurrency to any wallet address on supported blockchain networks</p>

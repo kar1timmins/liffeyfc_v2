@@ -9,18 +9,31 @@
     masterWallet?: {
       ethAddress?: string;
       avaxAddress?: string;
+      solanaAddress?: string;
+      stellarAddress?: string;
     } | null;
   } = $props();
 
-  let selectedChain = $state<'ethereum' | 'avalanche'>('ethereum');
+  type Chain = 'ethereum' | 'avalanche' | 'solana' | 'stellar';
+
+  let selectedChain = $state<Chain>('ethereum');
   let balance = $state<string | null>(null);
   let isLoadingBalance = $state(false);
 
   // The USDC address is always the master wallet address for the selected chain
-  let displayWallet = $derived(
-    selectedChain === 'ethereum'
-      ? (masterWallet?.ethAddress || '')
-      : (masterWallet?.avaxAddress || '')
+  let displayWallet = $derived((() => {
+    if (selectedChain === 'ethereum') return masterWallet?.ethAddress || '';
+    if (selectedChain === 'avalanche') return masterWallet?.avaxAddress || '';
+    if (selectedChain === 'solana') return masterWallet?.solanaAddress || '';
+    if (selectedChain === 'stellar') return masterWallet?.stellarAddress || '';
+    return '';
+  })());
+
+  // Shorten non-EVM addresses for display
+  let displayAddress = $derived(
+    (selectedChain === 'solana' || selectedChain === 'stellar') && displayWallet
+      ? `${displayWallet.slice(0, 10)}…${displayWallet.slice(-8)}`
+      : displayWallet
   );
 
   async function fetchBalance() {
@@ -54,25 +67,52 @@
     }
   }
 
-  function getBlockExplorerUrl(address: string, chain: string) {
+  function getBlockExplorerUrl(address: string, chain: Chain) {
     if (chain === 'ethereum') return `https://sepolia.etherscan.io/address/${address}`;
     if (chain === 'avalanche') return `https://testnet.snowtrace.io/address/${address}`;
+    if (chain === 'solana') return `https://solscan.io/account/${address}`;
+    if (chain === 'stellar') return `https://stellar.expert/explorer/public/account/${address}`;
     return '#';
   }
 
-  function getTestnetFaucetUrls(chain: string) {
+  function getExplorerLabel(chain: Chain) {
+    if (chain === 'ethereum') return 'View on Etherscan (Sepolia)';
+    if (chain === 'avalanche') return 'View on Snowtrace (Fuji)';
+    if (chain === 'solana') return 'View on Solscan';
+    if (chain === 'stellar') return 'View on Stellar Expert';
+    return 'View on Explorer';
+  }
+
+  function getTestnetFaucetUrls(chain: Chain) {
     if (chain === 'ethereum') {
       return [
         { name: 'Sepolia Faucet', url: 'https://faucets.chain.link/sepolia' },
         { name: 'Alchemy Faucet', url: 'https://www.alchemy.com/faucets/ethereum-sepolia' },
         { name: 'QuickNode Faucet', url: 'https://faucet.quicknode.com/ethereum/sepolia' },
       ];
-    } else {
+    } else if (chain === 'avalanche') {
       return [
         { name: 'Avalanche Faucet', url: 'https://faucets.avax.network/' },
         { name: 'QuickNode Faucet', url: 'https://faucet.quicknode.com/avalanche/fuji' },
       ];
+    } else if (chain === 'solana') {
+      return [
+        { name: 'Circle USDC (Devnet)', url: 'https://faucet.circle.com/' },
+        { name: 'Solana Faucet', url: 'https://faucet.solana.com/' },
+      ];
+    } else {
+      return [
+        { name: 'Circle USDC (Stellar)', url: 'https://faucet.circle.com/' },
+        { name: 'Stellar Laboratory', url: 'https://laboratory.stellar.org/' },
+      ];
     }
+  }
+
+  function getFaucetNote(chain: Chain) {
+    if (chain === 'ethereum') return 'Use these faucets to get free Sepolia ETH for gas fees';
+    if (chain === 'avalanche') return 'Use these faucets to get free Fuji AVAX for gas fees';
+    if (chain === 'solana') return 'USDC on Solana mainnet — use Circle Faucet for devnet testing';
+    return 'USDC on Stellar mainnet — use Circle Faucet for testnet USDC';
   }
 </script>
 
@@ -82,18 +122,18 @@
       💳 USDC Payment Wallet
     </h3>
     <p class="text-sm opacity-70 mb-4">
-      Your platform-generated master wallet address is used for USDC payments on Ethereum and Avalanche testnets.
+      Your platform-generated master wallet address is used for USDC payments on Ethereum, Avalanche, Solana, and Stellar.
     </p>
 
     {#if displayWallet}
       <div class="bg-base-200 rounded-lg p-4 space-y-4">
         <!-- Address display -->
         <div class="flex items-center justify-between">
-          <div>
+          <div class="min-w-0 flex-1">
             <p class="text-xs opacity-60 mb-1">Wallet Address</p>
-            <p class="font-mono text-sm break-all">{displayWallet}</p>
+            <p class="font-mono text-sm break-all">{displayAddress}</p>
           </div>
-          <button class="btn btn-ghost btn-sm" onclick={copyToClipboard} title="Copy address">
+          <button class="btn btn-ghost btn-sm ml-2 shrink-0" onclick={copyToClipboard} title="Copy full address">
             <Copy class="w-4 h-4" />
           </button>
         </div>
@@ -108,6 +148,8 @@
             >
               <option value="ethereum">🔷 Ethereum Sepolia</option>
               <option value="avalanche">🔺 Avalanche Fuji</option>
+              <option value="solana">◎ Solana</option>
+              <option value="stellar">✦ Stellar</option>
             </select>
             <button
               class="btn btn-sm btn-outline gap-1"
@@ -137,12 +179,12 @@
           class="btn btn-sm btn-outline gap-2 w-full"
         >
           <ExternalLink class="w-4 h-4" />
-          View on Block Explorer
+          {getExplorerLabel(selectedChain)}
         </a>
 
         <!-- Testnet Faucet Links -->
         <div class="bg-info/10 border border-info rounded-lg p-3">
-          <p class="text-xs font-semibold mb-2 text-info">Get Testnet Tokens</p>
+          <p class="text-xs font-semibold mb-2 text-info">Get Testnet / USDC Tokens</p>
           <div class="space-y-1">
             {#each getTestnetFaucetUrls(selectedChain) as faucet}
               <a
@@ -157,7 +199,7 @@
             {/each}
           </div>
           <p class="text-xs opacity-70 mt-2">
-            Use these faucets to get free testnet {selectedChain === 'ethereum' ? 'Sepolia ETH' : 'Fuji AVAX'} for gas fees
+            {getFaucetNote(selectedChain)}
           </p>
         </div>
       </div>

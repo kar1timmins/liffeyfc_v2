@@ -188,6 +188,35 @@ export class EscrowController {
         relations: ['userWallet'],
       });
 
+      // If the wishlist item does not yet have its non-EVM escrow addresses, generate them now
+      if (
+        !wishlistItem.solanaEscrowAddress &&
+        !wishlistItem.stellarEscrowAddress &&
+        !wishlistItem.bitcoinEscrowAddress
+      ) {
+        try {
+          const newAddrs = await this.walletService.generateWishlistItemAddresses(
+            user.sub,
+          );
+          wishlistItem.solanaEscrowAddress =
+            newAddrs.solanaAddress || wishlistItem.solanaEscrowAddress;
+          wishlistItem.stellarEscrowAddress =
+            newAddrs.stellarAddress || wishlistItem.stellarEscrowAddress;
+          wishlistItem.bitcoinEscrowAddress =
+            newAddrs.bitcoinAddress || wishlistItem.bitcoinEscrowAddress;
+          await this.wishlistRepo.save(wishlistItem);
+          this.logger.log(
+            `🔑 Generated non-EVM escrow addresses for wishlist item during deployment: solana=${newAddrs.solanaAddress}, stellar=${newAddrs.stellarAddress}, bitcoin=${newAddrs.bitcoinAddress}`,
+          );
+        } catch (genErr) {
+          this.logger.warn(
+            `⚠️ Could not auto-generate non-EVM addresses during escrow creation: ${
+              genErr instanceof Error ? genErr.message : String(genErr)
+            }`,
+          );
+        }
+      }
+
       if (!user_ || !user_.userWallet) {
         throw new HttpException(
           'User does not have a master wallet configured',

@@ -6,11 +6,11 @@ export class ConnectWalletDto {
   @Matches(/^0x[a-fA-F0-9]{40}$/, {
     message: 'Invalid Ethereum address format',
   })
-  address: string;
+  address!: string;
 
   @IsString()
   @IsNotEmpty()
-  chainId: string;
+  chainId!: string;
 }
 
 export class VerifySignatureDto {
@@ -19,13 +19,13 @@ export class VerifySignatureDto {
   @Matches(/^0x[a-fA-F0-9]{40}$/, {
     message: 'Invalid Ethereum address format',
   })
-  address: string;
+  address!: string;
 
   @IsString()
   @IsNotEmpty()
-  message: string;
+  message!: string;
 
   @IsString()
   @IsNotEmpty()
-  signature: string;
+  signature!: string;
 }

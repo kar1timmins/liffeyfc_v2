@@ -45,6 +45,9 @@ Retrieve all active bounties with optional filtering.
       "isEscrowActive": true,
       "ethereumEscrowAddress": "0x1234...",
       "avalancheEscrowAddress": "0x5678...",
+      "solanaWalletAddress": "G2z...",
+      "stellarWalletAddress": "GABCD...",
+      "bitcoinWalletAddress": "bc1qxyz...",
       "createdAt": "2024-12-07T00:00:00.000Z"
     }
   ],
@@ -101,6 +104,9 @@ Retrieve detailed information about a specific bounty.
     "isEscrowActive": true,
     "ethereumEscrowAddress": "0x1234...",
     "avalancheEscrowAddress": "0x5678...",
+    "solanaWalletAddress": "G2z...",
+    "stellarWalletAddress": "GABCD...",
+    "bitcoinWalletAddress": "bc1qxyz...",
     "createdAt": "2024-12-07T00:00:00.000Z"
   }
 }

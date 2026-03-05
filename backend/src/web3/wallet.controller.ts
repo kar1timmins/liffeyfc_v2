@@ -13,6 +13,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { WalletGenerationService } from './wallet-generation.service';
 import { SendTransactionDto } from './dto/send-transaction.dto';
 import { EscrowContractService } from './escrow-contract.service';
+import { BountiesService } from './bounties.service';
 
 @Controller('wallet')
 export class WalletController {
@@ -21,6 +22,7 @@ export class WalletController {
   constructor(
     private readonly walletService: WalletGenerationService,
     private readonly escrowService: EscrowContractService,
+    private readonly bountiesService: BountiesService,
   ) {
     this.logger = new Logger(WalletController.name);
   }
@@ -318,6 +320,21 @@ export class WalletController {
         dto.amountEth,
       );
 
+      // If this was a bounty contribution, immediately persist a Contribution
+      // record so it shows on the profile page without waiting for a sync.
+      if (
+        dto.wishlistItemId &&
+        (dto.chain === 'ethereum' || dto.chain === 'avalanche')
+      ) {
+        await this.bountiesService.recordImmediateContribution(
+          dto.wishlistItemId,
+          result.transactionHash,
+          result.from,
+          user.sub,
+          dto.chain,
+          dto.amountEth,
+        );
+      }
       const chainName =
         dto.chain === 'ethereum'
           ? 'Ethereum Sepolia'

@@ -19,6 +19,7 @@
   let showGenerateWalletModal = $state(false);
   let showRestoreWalletModal = $state(false);
   let companies = $state<any[]>([]);
+  let contributions = $state<any[]>([]);
   let walletRefreshTrigger = $state(0);
 
   // Master wallet state
@@ -48,8 +49,9 @@
         goto('/auth');
         return;
       }
-      // Fetch companies after verification
+      // Fetch companies and contributions after verification
       fetchMyCompanies();
+      fetchMyContributions();
     });
     
     // Subscribe to auth store to get user data
@@ -76,7 +78,36 @@
       const data = await response.json();
       if (data.success) {
         companies = data.data;
-        
+
+        // After loading companies, fetch payments for each to mark pending/deployed items
+        for (const comp of companies) {
+          if (!comp.id) continue;
+          try {
+            const payRes = await fetch(`${PUBLIC_API_URL}/payments/company/${comp.id}`);
+            const payData = await payRes.json();
+            if (payData.success && Array.isArray(payData.data)) {
+              const map: Record<string, any[]> = {};
+              for (const p of payData.data) {
+                if (!map[p.wishlistItemId]) map[p.wishlistItemId] = [];
+                map[p.wishlistItemId].push(p);
+              }
+              if (comp.wishlistItems) {
+                for (const item of comp.wishlistItems) {
+                  const payments = map[item.id] || [];
+                  // mark if a confirmed payment exists (pending deployment)
+                  item.hasConfirmedPayment = payments.some((p) => p.status === 'confirmed');
+                  // also flag escrow active if deployed contracts exist
+                  item.isEscrowActive = payments.some(
+                    (p) => p.status === 'deployed' && p.deployedContracts,
+                  );
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Failed to fetch payments for company', comp.id, e);
+          }
+        }
+
         // Dispatch event to refresh FAB navigation
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('refresh-user-companies'));
@@ -107,6 +138,22 @@
       console.error('Failed to fetch master wallet:', err);
     } finally {
       loadingWallet = false;
+    }
+  }
+
+  async function fetchMyContributions() {
+    try {
+      const token = $authStore.accessToken;
+      if (!token) return;
+      const resp = await fetch(`${PUBLIC_API_URL}/bounties/contributions/user`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await resp.json();
+      if (data.success) {
+        contributions = data.data;
+      }
+    } catch (err) {
+      console.error('Failed to fetch contributions:', err);
     }
   }
 
@@ -159,6 +206,12 @@
     }
   });
 
+  // when contributions list is loaded we could trigger other things
+  $effect(() => {
+    // no-op for now, placeholder if we need reactivity later
+    contributions;
+  });
+
 
   let usdcHint = $state<string | null>(null);
 
@@ -207,27 +260,17 @@
       const response = await fetch(`${PUBLIC_API_URL}/users/upload-avatar`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`
         },
-        body: formData,
+        body: formData
       });
-      
+
       const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to upload image');
-      }
-      
       if (data.success) {
-        // Update the user's profile photo URL in the auth store
-        let currentUser: any = null;
-        const unsubscribe = authStore.subscribe(s => currentUser = s.user);
-        unsubscribe(); // Get current value and unsubscribe immediately
-        
-        if (currentUser) {
-          const updatedUser = { ...currentUser, profilePhotoUrl: data.data.profilePhotoUrl };
-          await authStore.setAccessToken(token!, updatedUser);
-        }
+        // notify profile page to refresh user object
+        authStore.verify();
+      } else {
+        uploadError = data.message || 'Upload failed';
       }
     } catch (error: any) {
       uploadError = error.message || 'Failed to upload image';
@@ -235,6 +278,14 @@
       isUploading = false;
       if (fileInput) fileInput.value = '';
     }
+  }
+
+  // helper to format contribution entries
+  function formatContrib(c: any) {
+    if (c.amountEth) return `${parseFloat(c.amountEth).toFixed(4)} ETH`;
+    if (c.nativeAmount && c.currencySymbol) return `${parseFloat(c.nativeAmount).toFixed(4)} ${c.currencySymbol}`;
+    if (c.amountEur) return `€${parseFloat(c.amountEur).toFixed(2)}`;
+    return '-';
   }
 
   async function handleUpgradeToInvestor() {
@@ -317,7 +368,7 @@
   <!-- Back Button -->
   <button class="btn btn-ghost btn-sm gap-2 mb-6" onclick={() => goto('/dashboard')}>
     <ArrowLeft size={18} />
-    Back to Dashboard
+    Back
   </button>
 
   <!-- Page Header -->
@@ -680,6 +731,134 @@
       refreshWalletTrigger={walletRefreshTrigger}
       masterWallet={masterWallet}
     />
+
+    <!-- Contributions history -->
+    <div class="mt-10">
+      <div class="card bg-base-100 shadow-lg border border-base-300">
+        <div class="card-body">
+          <h3 class="text-lg font-semibold mb-1 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Contribution History
+            {#if contributions.length > 0}
+              <span class="badge badge-primary badge-sm">{contributions.length}</span>
+            {/if}
+          </h3>
+          <p class="text-sm text-base-content/60 mb-4">A record of every bounty contribution linked to your account or wallet addresses.</p>
+
+          {#if contributions.length === 0}
+            <div class="flex flex-col items-center justify-center py-10 text-center gap-3">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-base-content/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/></svg>
+              <p class="text-base-content/50 text-sm">No contributions yet.<br/>Visit a company page to contribute to a bounty.</p>
+              <a href="/companies" class="btn btn-sm btn-outline btn-primary mt-1">Browse Companies</a>
+            </div>
+          {:else}
+            <div class="flex flex-col gap-3">
+              {#each contributions as c}
+                {@const explorerBase =
+                  c.chain === 'ethereum' ? 'https://sepolia.etherscan.io' :
+                  c.chain === 'avalanche' ? 'https://testnet.snowtrace.io' :
+                  c.chain === 'solana' ? 'https://explorer.solana.com' :
+                  c.chain === 'stellar' ? 'https://stellar.expert/explorer/testnet' :
+                  c.chain === 'bitcoin' ? 'https://mempool.space/testnet' : null}
+                {@const txUrl = c.transactionHash && explorerBase
+                  ? (c.chain === 'solana'
+                      ? `${explorerBase}/tx/${c.transactionHash}?cluster=devnet`
+                      : `${explorerBase}/tx/${c.transactionHash}`)
+                  : null}
+                {@const chainLabel =
+                  c.chain === 'ethereum' ? 'ETH Sepolia' :
+                  c.chain === 'avalanche' ? 'AVAX Fuji' :
+                  c.chain === 'solana' ? 'Solana' :
+                  c.chain === 'stellar' ? 'Stellar' :
+                  c.chain === 'bitcoin' ? 'Bitcoin' : (c.chain ?? '').toUpperCase()}
+                {@const chainColor =
+                  c.chain === 'ethereum' ? 'badge-info' :
+                  c.chain === 'avalanche' ? 'badge-error' :
+                  c.chain === 'solana' ? 'badge-secondary' :
+                  c.chain === 'stellar' ? 'badge-accent' :
+                  c.chain === 'bitcoin' ? 'badge-warning' : 'badge-ghost'}
+
+                <div class="flex flex-col sm:flex-row sm:items-start gap-3 p-4 rounded-xl bg-base-200/50 border border-base-300/60 hover:border-primary/30 transition-colors">
+                  <!-- Chain badge column -->
+                  <div class="flex sm:flex-col items-center gap-2 sm:gap-1 sm:min-w-[80px]">
+                    <span class="badge {chainColor} badge-sm font-mono">{chainLabel}</span>
+                    <span class="text-xs text-base-content/50">{new Date(c.contributedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: '2-digit' })}</span>
+                  </div>
+
+                  <!-- Main info -->
+                  <div class="flex-1 min-w-0">
+                    <!-- Bounty title -->
+                    <div class="font-semibold text-sm mb-0.5">
+                      {#if c.wishlistItem}
+                        <a href="/bounties/{c.wishlistItem.id}" class="link link-hover link-primary">
+                          {c.wishlistItem.title}
+                        </a>
+                        {#if c.wishlistItem.company?.name}
+                          <span class="text-base-content/50 font-normal text-xs"> — {c.wishlistItem.company.name}</span>
+                        {/if}
+                      {:else}
+                        <span class="text-base-content/40 italic">Bounty unavailable</span>
+                      {/if}
+                    </div>
+
+                    <!-- Amounts -->
+                    <div class="flex flex-wrap items-center gap-2 mt-1">
+                      <span class="text-base font-bold text-success">{formatContrib(c)}</span>
+                      {#if c.amountEur && !(c.chain === 'ethereum' || c.chain === 'avalanche')}
+                        <span class="text-xs text-base-content/50">≈ €{parseFloat(c.amountEur).toFixed(2)}</span>
+                      {/if}
+                      {#if c.amountUsd}
+                        <span class="text-xs text-base-content/40">/ ${parseFloat(c.amountUsd).toFixed(2)}</span>
+                      {/if}
+                    </div>
+
+                    <!-- Tx hash -->
+                    {#if c.transactionHash}
+                      <div class="flex items-center gap-1 mt-1">
+                        <span class="text-xs text-base-content/50">Tx:</span>
+                        {#if txUrl}
+                          <a href={txUrl} target="_blank" rel="noopener noreferrer"
+                             class="font-mono text-xs text-primary link link-hover truncate max-w-[180px] sm:max-w-xs">
+                            {c.transactionHash.slice(0, 10)}…{c.transactionHash.slice(-6)}
+                          </a>
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-primary/60 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                        {:else}
+                          <span class="font-mono text-xs text-base-content/50 truncate max-w-[180px]">
+                            {c.transactionHash.slice(0, 10)}…{c.transactionHash.slice(-6)}
+                          </span>
+                        {/if}
+                      </div>
+                    {/if}
+
+                    <!-- Contract / recipient address -->
+                    {#if c.contractAddress}
+                      <div class="flex items-center gap-1 mt-0.5">
+                        <span class="text-xs text-base-content/40">Contract:</span>
+                        <span class="font-mono text-xs text-base-content/50">
+                          {c.contractAddress.slice(0, 8)}…{c.contractAddress.slice(-6)}
+                        </span>
+                      </div>
+                    {/if}
+                  </div>
+
+                  <!-- Status badge -->
+                  <div class="flex sm:flex-col items-center gap-1">
+                    {#if c.isRefunded}
+                      <span class="badge badge-warning badge-sm">Refunded</span>
+                      {#if c.refundedAt}
+                        <span class="text-xs text-base-content/40">{new Date(c.refundedAt).toLocaleDateString()}</span>
+                      {/if}
+                    {:else}
+                      <span class="badge badge-success badge-sm">Confirmed</span>
+                    {/if}
+                  </div>
+                </div>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      </div>
+    </div>
 
     <!-- Investor Upgrade Section (only show for regular users) -->
     {#if user.role === 'user'}

@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { WishlistItem } from '../entities/wishlist-item.entity';
 import { User } from '../entities/user.entity';
+import { UserWallet } from '../entities/user-wallet.entity';
 import { Company } from '../entities/company.entity';
 import { CompanyWallet } from '../entities/company-wallet.entity';
 import { Contribution } from '../entities/contribution.entity';
@@ -12,6 +13,7 @@ import {
   ContributorInfo,
 } from './escrow-contract.service';
 import { CryptoPricesService } from './crypto-prices.service';
+import { WalletGenerationService } from './wallet-generation.service';
 
 export interface BountyFilters {
   status?: string;
@@ -39,8 +41,11 @@ export interface BountyResponse {
   targetAmount: string;
   targetAmountEur: number;
   targetAmountEth: number | null;
+  /** Amount raised on Ethereum (native ETH) — may be "0" if no ETH contract */
+  raisedEth: string;
   /** EVM raised amount in native token as string (ETH or AVAX) */
   raisedAmount: string;
+  raisedAvax?: string; // populated when an Avalanche contract exists
   /** Total raised across ALL chains, converted to EUR */
   totalRaisedEur: number;
   progressPercentage: number;
@@ -80,7 +85,16 @@ export interface LeaderboardEntry {
   completedBounties: number;
   activeBounties: number;
   totalBounties: number;
+
+  /** Native totals separated by chain */
   totalRaisedEth: number;
+  totalRaisedAvax: number;
+
+  /** Manual or non-EVM contributions (EUR) */
+  totalRaisedManualEur: number;
+
+  /** Combined eur value used for ranking and display */
+  totalRaisedEur: number;
 }
 
 @Injectable()
@@ -100,8 +114,11 @@ export class BountiesService {
     private readonly contributionRepository: Repository<Contribution>,
     @InjectRepository(EscrowDeployment)
     private readonly escrowDeploymentRepository: Repository<EscrowDeployment>,
+    @InjectRepository(UserWallet)
+    private readonly userWalletRepository: Repository<UserWallet>,
     private readonly escrowService: EscrowContractService,
     private readonly pricesService: CryptoPricesService,
+    private readonly walletService: WalletGenerationService,
   ) {}
 
   /**
@@ -109,10 +126,19 @@ export class BountiesService {
    */
   async findAll(filters: BountyFilters = {}): Promise<BountyResponse[]> {
     try {
+      // Include items that are either explicitly marked as escrow-active OR
+      // have at least one EscrowDeployment record.  The latter catches items
+      // deployed via the USDC/platform-wallet flow where the wishlist save
+      // may have failed before isEscrowActive could be persisted.
       const queryBuilder = this.wishlistRepository
         .createQueryBuilder('wishlist')
         .leftJoinAndSelect('wishlist.company', 'company')
-        .where('wishlist.isEscrowActive = :isActive', { isActive: true });
+        .where(
+          'wishlist.isEscrowActive = :isActive OR EXISTS (' +
+            'SELECT 1 FROM escrow_deployments ed WHERE ed."wishlistItemId" = wishlist.id' +
+            ')',
+          { isActive: true },
+        );
 
       // Apply filters
       if (filters.category) {
@@ -155,11 +181,18 @@ export class BountiesService {
 
   /**
    * Find a specific bounty by ID
+   *
+   * Uses repository.findOne() instead of QueryBuilder to avoid a TypeORM
+   * result-mapping bug where leftJoinAndSelect('wishlist.company', 'company')
+   * with getOne() returns a previously-loaded WishlistItem when two items
+   * share the same company.  The bounty eligibility check (isEscrowActive OR
+   * has EscrowDeployment rows) is performed as a separate query.
    */
   async findById(id: string): Promise<BountyResponse | null> {
     try {
+      // Step 1 — load the wishlist item by primary key (no QueryBuilder)
       const wishlistItem = await this.wishlistRepository.findOne({
-        where: { id, isEscrowActive: true },
+        where: { id },
         relations: ['company'],
       });
 
@@ -167,10 +200,19 @@ export class BountiesService {
         return null;
       }
 
+      // Step 2 — enforce the same "is a bounty" predicate used elsewhere:
+      //   isEscrowActive = true  OR  has at least one EscrowDeployment row
+      if (!wishlistItem.isEscrowActive) {
+        const deploymentCount = await this.escrowDeploymentRepository.count({
+          where: { wishlistItem: { id } },
+        });
+        if (deploymentCount === 0) {
+          return null;
+        }
+      }
+
+      // Step 3 — enrich with on-chain data
       const bounty = await this.enrichWithBlockchainData(wishlistItem);
-
-      this.logger.log(`🎯 Found bounty: ${bounty.title}`);
-
       return bounty;
     } catch (error) {
       this.logger.error(`❌ Failed to fetch bounty ${id}:`, error);
@@ -183,13 +225,16 @@ export class BountiesService {
    */
   async findByCompany(companyId: string): Promise<BountyResponse[]> {
     try {
-      const wishlistItems = await this.wishlistRepository.find({
-        where: {
-          company: { id: companyId },
-          isEscrowActive: true,
-        },
-        relations: ['company'],
-      });
+      const wishlistItems = await this.wishlistRepository
+        .createQueryBuilder('wishlist')
+        .leftJoinAndSelect('wishlist.company', 'company')
+        .where('company.id = :companyId', { companyId })
+        .andWhere(
+          'wishlist.isEscrowActive = true OR EXISTS (' +
+            'SELECT 1 FROM escrow_deployments ed WHERE ed."wishlistItemId" = wishlist.id' +
+            ')',
+        )
+        .getMany();
 
       const bounties = await Promise.all(
         wishlistItems.map((item) => this.enrichWithBlockchainData(item)),
@@ -246,6 +291,29 @@ export class BountiesService {
       wishlistItem.campaignDurationDays = durationInDays;
       wishlistItem.isEscrowActive = true;
 
+      // Generate unique non-EVM wallets for this wishlist item (solana/stellar/bitcoin)
+      try {
+        const addresses = await this.walletService.generateWishlistItemAddresses(
+          userId,
+        );
+        wishlistItem.solanaEscrowAddress =
+          addresses.solanaAddress || wishlistItem.solanaEscrowAddress;
+        wishlistItem.stellarEscrowAddress =
+          addresses.stellarAddress || wishlistItem.stellarEscrowAddress;
+        wishlistItem.bitcoinEscrowAddress =
+          addresses.bitcoinAddress || wishlistItem.bitcoinEscrowAddress;
+        this.logger.log(
+          `🔑 Generated non-EVM escrow addresses for wishlist item ${wishlistItem.id}: solana=${addresses.solanaAddress}, stellar=${addresses.stellarAddress}, bitcoin=${addresses.bitcoinAddress}`,
+        );
+      } catch (addrErr) {
+        // not fatal, just log
+        this.logger.warn(
+          `⚠️  Could not generate non-EVM addresses for wishlist item ${wishlistItem.id}: ${
+            addrErr instanceof Error ? addrErr.message : String(addrErr)
+          }`,
+        );
+      }
+
       await this.wishlistRepository.save(wishlistItem);
 
       this.logger.log(`✅ Created bounty for wishlist item: ${wishlistItemId}`);
@@ -288,9 +356,17 @@ export class BountiesService {
    */
   async getContributors(id: string) {
     try {
-      const wishlistItem = await this.wishlistRepository.findOne({
-        where: { id, isEscrowActive: true },
-      });
+      // Use OR-EXISTS so USDC-deployed items (isEscrowActive may still be false)
+      // are found the same way findAll/findById work.
+      const wishlistItem = await this.wishlistRepository
+        .createQueryBuilder('wishlist')
+        .where('wishlist.id = :id', { id })
+        .andWhere(
+          'wishlist.isEscrowActive = true OR EXISTS (' +
+            'SELECT 1 FROM escrow_deployments ed WHERE ed."wishlistItemId" = wishlist.id' +
+            ')',
+        )
+        .getOne();
 
       if (!wishlistItem) {
         throw new HttpException('Bounty not found', HttpStatus.NOT_FOUND);
@@ -298,39 +374,70 @@ export class BountiesService {
 
       let contributors: ContributorInfo[] = [];
 
-      // Get contributors from Ethereum if available
-      if (wishlistItem.ethereumEscrowAddress) {
-        const status = await this.escrowService.getCampaignStatus(
-          wishlistItem.ethereumEscrowAddress,
-          'ethereum',
-          true,
+      // Attempt on-chain fetch; fall back to DB records if RPC is unavailable.
+      try {
+        // Get contributors from Ethereum if available
+        if (wishlistItem.ethereumEscrowAddress) {
+          const status = await this.escrowService.getCampaignStatus(
+            wishlistItem.ethereumEscrowAddress,
+            'ethereum',
+            true,
+          );
+          contributors = status.contributors || [];
+        }
+        // Fall back to Avalanche
+        else if (wishlistItem.avalancheEscrowAddress) {
+          const status = await this.escrowService.getCampaignStatus(
+            wishlistItem.avalancheEscrowAddress,
+            'avalanche',
+            true,
+          );
+          contributors = status.contributors || [];
+        }
+      } catch (rpcErr: any) {
+        this.logger.warn(
+          `⚠️  On-chain contributor fetch failed for ${id}, returning DB records: ${rpcErr?.message ?? rpcErr}`,
         );
-        contributors = status.contributors || [];
-      }
-      // Fall back to Avalanche
-      else if (wishlistItem.avalancheEscrowAddress) {
-        const status = await this.escrowService.getCampaignStatus(
-          wishlistItem.avalancheEscrowAddress,
-          'avalanche',
-          true,
-        );
-        contributors = status.contributors || [];
+        // fall through with empty on-chain list; DB sync below is a no-op
       }
 
       this.logger.log(
-        `📋 Found ${contributors.length} contributors for bounty ${id}`,
+        `📋 Found ${contributors.length} on-chain contributors for bounty ${id}`,
       );
 
-      // Sync contributors to database
-      await this.syncContributorsToDatabase(id, contributors);
+      // Sync contributors to database (non-fatal)
+      if (contributors.length) {
+        await this.syncContributorsToDatabase(id, contributors);
+      }
 
-      return contributors;
+      // Always return whatever is in the DB so the UI always gets data
+      const dbContributions = await this.contributionRepository.find({
+        where: { wishlistItemId: id, isRefunded: false },
+        order: { contributedAt: 'DESC' },
+      });
+
+      // Merge: prefer on-chain data where available, supplement with DB-only records
+      const onChainAddresses = new Set(contributors.map((c) => c.address.toLowerCase()));
+      const dbOnly = dbContributions.filter(
+        (c) => !onChainAddresses.has(c.contributorAddress.toLowerCase()),
+      );
+      const dbMapped: ContributorInfo[] = dbOnly.map((c) => ({
+        address: c.contributorAddress,
+        amount: c.amountWei ?? '0',
+        amountEth: c.amountEth?.toString() ?? '0',
+      }));
+
+      return [...contributors, ...dbMapped];
     } catch (error) {
+      if (error instanceof HttpException) throw error;
       this.logger.error(
         `❌ Failed to get contributors for bounty ${id}:`,
         error,
       );
-      throw error;
+      throw new HttpException(
+        'Failed to fetch contributors',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
@@ -389,9 +496,22 @@ export class BountiesService {
         });
 
         if (!existing) {
+          // Resolve userId by looking up the contributor's master wallet
+          let resolvedUserId: string | undefined;
+          try {
+            const uw = await this.userWalletRepository.findOne({
+              where: [
+                { ethAddress: address },
+                { avaxAddress: address },
+              ],
+            });
+            if (uw) resolvedUserId = uw.userId;
+          } catch { /* non-fatal */ }
+
           // Create new contribution record
           const contribution = this.contributionRepository.create({
             contributorAddress: address,
+            userId: resolvedUserId,
             escrowDeploymentId: escrowDeployment.id,
             wishlistItemId,
             contractAddress,
@@ -553,49 +673,77 @@ export class BountiesService {
         targetAmountEth: deployment.targetAmountEth ?? null,
       }));
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.warn(
         `⚠️  Failed to fetch deployments for ${wishlistItem.id}:`,
-        error.message,
+        errorMessage,
       );
     }
 
-    // Fetch blockchain data if contracts exist
+    // Fetch blockchain data for ALL deployed EVM contracts independently
+    let ethRaisedNative = 0;
+    let avaxRaisedNative = 0;
+
     if (
       wishlistItem.ethereumEscrowAddress ||
       wishlistItem.avalancheEscrowAddress
     ) {
-      try {
-        if (wishlistItem.ethereumEscrowAddress) {
-          const ethStatus = await this.escrowService.getCampaignStatus(
-            wishlistItem.ethereumEscrowAddress,
-            'ethereum',
-          );
-          raisedAmount = ethStatus.totalRaised;
-          evmRaisedEth = parseFloat(ethStatus.totalRaised);
-          contributorCount = ethStatus.contributorCount;
-          blockchainStatus = this.mapBlockchainStatus(
-            ethStatus.deadline,
-            parseFloat(ethStatus.totalRaised),
-            parseFloat(wishlistItem.value?.toString() || '0'),
-          );
-        } else if (wishlistItem.avalancheEscrowAddress) {
-          const avaxStatus = await this.escrowService.getCampaignStatus(
-            wishlistItem.avalancheEscrowAddress,
-            'avalanche',
-          );
-          raisedAmount = avaxStatus.totalRaised;
-          evmRaisedEth = parseFloat(avaxStatus.totalRaised);
-          contributorCount = avaxStatus.contributorCount;
+      // Fetch both contracts in parallel; failures are non-fatal
+      const [ethResult, avaxResult] = await Promise.allSettled([
+        wishlistItem.ethereumEscrowAddress
+          ? this.escrowService.getCampaignStatus(
+              wishlistItem.ethereumEscrowAddress,
+              'ethereum',
+            )
+          : Promise.resolve(null),
+        wishlistItem.avalancheEscrowAddress
+          ? this.escrowService.getCampaignStatus(
+              wishlistItem.avalancheEscrowAddress,
+              'avalanche',
+            )
+          : Promise.resolve(null),
+      ]);
+
+      if (ethResult.status === 'fulfilled' && ethResult.value) {
+        const ethStatus = ethResult.value;
+        ethRaisedNative = parseFloat(ethStatus.totalRaised);
+        evmRaisedEth += ethRaisedNative;
+        contributorCount += ethStatus.contributorCount;
+        // Use ETH deadline/status as the primary campaign status
+        blockchainStatus = this.mapBlockchainStatus(
+          ethStatus.deadline,
+          ethRaisedNative,
+          parseFloat(wishlistItem.value?.toString() || '0'),
+        );
+        raisedAmount = ethStatus.totalRaised; // kept for backward compat display
+      } else if (ethResult.status === 'rejected') {
+        this.logger.warn(
+          `⚠️  Failed to fetch ETH blockchain data for ${wishlistItem.id}:`,
+          ethResult.reason,
+        );
+      }
+
+      if (avaxResult.status === 'fulfilled' && avaxResult.value) {
+        const avaxStatus = avaxResult.value;
+        avaxRaisedNative = parseFloat(avaxStatus.totalRaised);
+        contributorCount += avaxStatus.contributorCount;
+        // Only use AVAX for campaign status if ETH contract was not present
+        if (!wishlistItem.ethereumEscrowAddress) {
+          evmRaisedEth += avaxRaisedNative;
           blockchainStatus = this.mapBlockchainStatus(
             avaxStatus.deadline,
-            parseFloat(avaxStatus.totalRaised),
+            avaxRaisedNative,
             parseFloat(wishlistItem.value?.toString() || '0'),
           );
+          raisedAmount = avaxStatus.totalRaised;
+        } else {
+          // Both contracts deployed — add AVAX on top of ETH already counted
+          evmRaisedEth += avaxRaisedNative;
         }
-      } catch (error) {
+      } else if (avaxResult.status === 'rejected') {
         this.logger.warn(
-          `⚠️  Failed to fetch blockchain data for ${wishlistItem.id}:`,
-          error.message,
+          `⚠️  Failed to fetch AVAX blockchain data for ${wishlistItem.id}:`,
+          avaxResult.reason,
         );
       }
     }
@@ -603,11 +751,18 @@ export class BountiesService {
     // ---- Cross-chain EUR aggregation ------------------------------------
     const targetAmountEur = parseFloat(wishlistItem.value?.toString() || '0');
 
-    // Convert EVM raised amount to EUR
+    // Convert each EVM chain's native amount to EUR independently
     let evmRaisedEur = 0;
     try {
-      const priceSymbol = wishlistItem.ethereumEscrowAddress ? 'ETH' : 'AVAX';
-      evmRaisedEur = await this.pricesService.toEur(priceSymbol, evmRaisedEth);
+      const [ethEur, avaxEur] = await Promise.all([
+        ethRaisedNative > 0
+          ? this.pricesService.toEur('ETH', ethRaisedNative)
+          : Promise.resolve(0),
+        avaxRaisedNative > 0
+          ? this.pricesService.toEur('AVAX', avaxRaisedNative)
+          : Promise.resolve(0),
+      ]);
+      evmRaisedEur = ethEur + avaxEur;
     } catch {
       // price fetch failed — evmRaisedEur stays 0
     }
@@ -657,22 +812,37 @@ export class BountiesService {
       progressPercentage = 0;
     }
 
-    // ---- Company child wallet addresses for non-EVM contributions -------
+    // ---- Non-EVM deposit addresses for this bounty (per-item preferred) -------
     let solanaWalletAddress: string | null = null;
     let stellarWalletAddress: string | null = null;
     let bitcoinWalletAddress: string | null = null;
-    try {
-      const cw = await this.companyWalletRepository.findOne({
-        where: { companyId: wishlistItem.company.id },
-        select: ['solanaAddress', 'stellarAddress', 'bitcoinAddress'],
-      });
-      if (cw) {
-        solanaWalletAddress = cw.solanaAddress ?? null;
-        stellarWalletAddress = cw.stellarAddress ?? null;
-        bitcoinWalletAddress = cw.bitcoinAddress ?? null;
+
+    // prefer the unique addresses stored on the wishlist item itself
+    if (wishlistItem.solanaEscrowAddress) {
+      solanaWalletAddress = wishlistItem.solanaEscrowAddress;
+    }
+    if (wishlistItem.stellarEscrowAddress) {
+      stellarWalletAddress = wishlistItem.stellarEscrowAddress;
+    }
+    if (wishlistItem.bitcoinEscrowAddress) {
+      bitcoinWalletAddress = wishlistItem.bitcoinEscrowAddress;
+    }
+
+    // fallback to the company-level child wallet if item-specific not set
+    if (!solanaWalletAddress || !stellarWalletAddress || !bitcoinWalletAddress) {
+      try {
+        const cw = await this.companyWalletRepository.findOne({
+          where: { companyId: wishlistItem.company.id },
+          select: ['solanaAddress', 'stellarAddress', 'bitcoinAddress'],
+        });
+        if (cw) {
+          if (!solanaWalletAddress) solanaWalletAddress = cw.solanaAddress ?? null;
+          if (!stellarWalletAddress) stellarWalletAddress = cw.stellarAddress ?? null;
+          if (!bitcoinWalletAddress) bitcoinWalletAddress = cw.bitcoinAddress ?? null;
+        }
+      } catch {
+        /* missing wallet is not fatal */
       }
-    } catch {
-      /* missing wallet is not fatal */
     }
 
     // ---- Determine final status -----------------------------------------
@@ -694,6 +864,8 @@ export class BountiesService {
       targetAmount: wishlistItem.value?.toString() || '0',
       targetAmountEur,
       targetAmountEth: ethTargetFromDeployment,
+      raisedEth: ethRaisedNative.toString(),
+      raisedAvax: avaxRaisedNative.toString(),
       raisedAmount,
       totalRaisedEur: Math.round(totalRaisedEur * 100) / 100,
       progressPercentage: Math.round(progressPercentage),
@@ -787,6 +959,127 @@ export class BountiesService {
   }
 
   /**
+   * Immediately record a contribution to the database after a successful
+   * on-chain transaction, so the profile page reflects it without needing
+   * a separate `getContributors` poll.
+   */
+  async recordImmediateContribution(
+    wishlistItemId: string,
+    txHash: string,
+    contributorAddress: string,
+    userId: string,
+    chain: 'ethereum' | 'avalanche',
+    amountEth: number,
+  ): Promise<void> {
+    try {
+      const wishlistItem = await this.wishlistRepository.findOne({
+        where: { id: wishlistItemId },
+      });
+      if (!wishlistItem) {
+        this.logger.warn(`recordImmediateContribution: wishlist item ${wishlistItemId} not found`);
+        return;
+      }
+
+      const contractAddress =
+        chain === 'ethereum'
+          ? wishlistItem.ethereumEscrowAddress
+          : wishlistItem.avalancheEscrowAddress;
+
+      if (!contractAddress) {
+        this.logger.warn(
+          `recordImmediateContribution: no ${chain} escrow address on item ${wishlistItemId}`,
+        );
+        return;
+      }
+
+      const escrowDeployment = await this.escrowDeploymentRepository.findOne({
+        where: { wishlistItemId, chain },
+      });
+
+      const address = contributorAddress.toLowerCase();
+
+      // Upsert: update if the address+contract combo already exists,
+      // otherwise create a fresh row.
+      const existing = await this.contributionRepository.findOne({
+        where: { contributorAddress: address, contractAddress, wishlistItemId },
+      });
+
+      if (existing) {
+        existing.amountWei = BigInt(Math.round(amountEth * 1e18)).toString();
+        existing.amountEth = amountEth;
+        existing.transactionHash = txHash;
+        await this.contributionRepository.save(existing);
+      } else {
+        const contribution = this.contributionRepository.create({
+          contributorAddress: address,
+          userId,
+          escrowDeploymentId: escrowDeployment?.id,
+          wishlistItemId,
+          contractAddress,
+          chain,
+          amountWei: BigInt(Math.round(amountEth * 1e18)).toString(),
+          amountEth,
+          transactionHash: txHash,
+          contributedAt: new Date(),
+        });
+        await this.contributionRepository.save(contribution);
+      }
+
+      this.logger.log(
+        `💾 Immediate contribution saved: ${address} → ${contractAddress} (${amountEth} on ${chain})`,
+      );
+    } catch (err) {
+      // Non-fatal — the on-chain tx succeeded; don't throw.
+      this.logger.error('recordImmediateContribution failed (non-fatal):', err);
+    }
+  }
+
+  /**
+   * Return contributions linked to a particular user.
+   * Relies on the userId column being populated during blockchain sync or
+   * manual recording. Includes associated wishlist item and company info so
+   * the frontend can display list entries without further API calls.
+   */
+  async getUserContributions(userId: string): Promise<Contribution[]> {
+    // First resolve the user's registered wallet addresses so we can match
+    // on-chain contributions that were saved before userId was backfilled.
+    let ethAddress: string | undefined;
+    let avaxAddress: string | undefined;
+    try {
+      const uw = await this.userWalletRepository.findOne({ where: { userId } });
+      if (uw) {
+        ethAddress = uw.ethAddress;
+        avaxAddress = uw.avaxAddress;
+      }
+    } catch { /* non-fatal, fall through to userId-only search */ }
+
+    if (!ethAddress) {
+      // No wallet found – just query by userId
+      return this.contributionRepository.find({
+        where: { userId },
+        relations: ['wishlistItem', 'wishlistItem.company', 'escrowDeployment'],
+        order: { contributedAt: 'DESC' },
+      });
+    }
+
+    // Query by userId OR by the user's registered wallet addresses so we
+    // catch historic contributions that were synced without a userId.
+    const qb = this.contributionRepository
+      .createQueryBuilder('c')
+      .leftJoinAndSelect('c.wishlistItem', 'wi')
+      .leftJoinAndSelect('wi.company', 'company')
+      .leftJoinAndSelect('c.escrowDeployment', 'ed')
+      .where('c.userId = :userId', { userId })
+      .orWhere('c.contributorAddress = :ethAddress', { ethAddress });
+
+    if (avaxAddress && avaxAddress !== ethAddress) {
+      qb.orWhere('c.contributorAddress = :avaxAddress', { avaxAddress });
+    }
+
+    return qb.orderBy('c.contributedAt', 'DESC').getMany();
+  }
+
+  /**
    * Get the leaderboard: all public companies ranked by total raised ETH,
    * then by number of completed (funded) bounties.
    */
@@ -811,33 +1104,56 @@ export class BountiesService {
         'activeBounties',
       )
       .addSelect('COUNT(DISTINCT ed.id)', 'totalBounties')
-      .addSelect('COALESCE(SUM(con."amountEth"), 0)', 'totalRaisedEth')
+      .addSelect(
+        `COALESCE(SUM(CASE WHEN con.chain = 'ethereum' THEN con."amountEth" ELSE 0 END), 0)`,
+        'totalRaisedEth',
+      )
+      .addSelect(
+        `COALESCE(SUM(CASE WHEN con.chain = 'avalanche' THEN con."amountEth" ELSE 0 END), 0)`,
+        'totalRaisedAvax',
+      )
+      // manual eur contributions (solana, stellar, bitcoin, etc.)
+      .addSelect('COALESCE(SUM(con."amountEur"), 0)', 'totalRaisedManualEur')
       .groupBy('company.id')
       .getRawMany();
 
-    return raw
-      .map((r) => ({
-        rank: 0, // set after sort
-        id: r.id,
-        name: r.name,
-        description: r.description ?? undefined,
-        industry: r.industry ?? undefined,
-        logoUrl: r.logoUrl ?? undefined,
-        completedBounties: parseInt(r.completedBounties, 10) || 0,
-        activeBounties: parseInt(r.activeBounties, 10) || 0,
-        totalBounties: parseInt(r.totalBounties, 10) || 0,
-        totalRaisedEth: parseFloat(r.totalRaisedEth) || 0,
-      }))
-      .sort((a, b) => {
-        if (b.totalRaisedEth !== a.totalRaisedEth)
-          return b.totalRaisedEth - a.totalRaisedEth;
-        if (b.completedBounties !== a.completedBounties)
-          return b.completedBounties - a.completedBounties;
-        if (b.totalBounties !== a.totalBounties)
-          return b.totalBounties - a.totalBounties;
-        return a.name.localeCompare(b.name);
-      })
-      .map((entry, idx) => ({ ...entry, rank: idx + 1 }));
+    // convert strings and compute eur totals
+    const entries = await Promise.all(
+      raw.map(async (r) => {
+        const eth = parseFloat(r.totalRaisedEth) || 0;
+        const avax = parseFloat(r.totalRaisedAvax) || 0;
+        const manualEur = parseFloat(r.totalRaisedManualEur) || 0;
+
+        // convert eth/avax to eur for ranking
+        const ethEur = await this.pricesService.toEur('ETH', eth);
+        const avaxEur = await this.pricesService.toEur('AVAX', avax);
+
+        return {
+          rank: 0,
+          id: r.id,
+          name: r.name,
+          description: r.description ?? undefined,
+          industry: r.industry ?? undefined,
+          logoUrl: r.logoUrl ?? undefined,
+          completedBounties: parseInt(r.completedBounties, 10) || 0,
+          activeBounties: parseInt(r.activeBounties, 10) || 0,
+          totalBounties: parseInt(r.totalBounties, 10) || 0,
+          totalRaisedEth: eth,
+          totalRaisedAvax: avax,
+          totalRaisedManualEur: manualEur,
+          totalRaisedEur: ethEur + avaxEur + manualEur,
+        };
+      }),
+    );
+
+    entries.sort((a, b) => {
+      if (b.totalRaisedEur !== a.totalRaisedEur) return b.totalRaisedEur - a.totalRaisedEur;
+      if (b.completedBounties !== a.completedBounties) return b.completedBounties - a.completedBounties;
+      if (b.totalBounties !== a.totalBounties) return b.totalBounties - a.totalBounties;
+      return a.name.localeCompare(b.name);
+    });
+
+    return entries.map((entry, idx) => ({ ...entry, rank: idx + 1 }));
   }
 
   /**

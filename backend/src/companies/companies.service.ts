@@ -102,6 +102,14 @@ export class CompaniesService {
       throw new Error('User not found');
     }
 
+    // prevent duplicate company names for the same user (case‑insensitive)
+    const existing = await this.companiesRepo.findOne({
+      where: { ownerId: userId, name: data.name },
+    });
+    if (existing) {
+      throw new Error('You already have a company registered with that name');
+    }
+
     const company = this.companiesRepo.create({
       ...data,
       ownerId: userId,

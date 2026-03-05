@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { 
     ArrowLeft, 
@@ -19,60 +19,66 @@
   import { authStore } from '$lib/stores/auth';
   import { toastStore } from '$lib/stores/toast';
 
-  let bounty = $state<any>(null);
-  let contributors = $state<any[]>([]);
-  let isLoading = $state(true);
+  let { data } = $props();
+
+  // $page.params.id is the canonical, always-up-to-date route param.
+  // Reading it through the Svelte store (not $derived) is the most reliable
+  // way to react to SvelteKit client-side navigations.
+  const bountyId = $derived(page.params.id);
+
+  let bounty = $state<any>(data.bounty ?? null);
+  let contributors = $state<any[]>(data.contributors ?? []);
+  let isLoading = $state(false);
   let isLoadingContributors = $state(false);
   let isSyncing = $state(false);
   let error = $state<string | null>(null);
   let showContributors = $state(false);
   let copiedAddress = $state<string | null>(null);
 
-  const bountyId = $derived($page.params.id);
   const isInvestor = $derived($authStore.user?.role === 'investor');
 
-  // Prefer on-chain campaign name if available
-  let displayTitle = $state<string>('Bounty');
+  const displayTitle = $derived(
+    (bounty?.deployments?.length && bounty.deployments[0].campaignName)
+      ? bounty.deployments[0].campaignName
+      : (bounty?.title || 'Bounty')
+  );
+
+  // Re-fetch whenever the URL param changes.
+  // bountyId changes → new value recorded → fetch runs with the snapshotted id.
+  let currentId = '';
   $effect(() => {
-    displayTitle = (bounty && bounty.deployments && bounty.deployments.length && bounty.deployments[0].campaignName) ? bounty.deployments[0].campaignName : (bounty?.title || 'Bounty');
+    const id = bountyId; // registers reactive dependency on page.params.id
+    if (id && id !== currentId) {
+      currentId = id;
+      // Don't null out bounty — the template reads bounty.title inside {#if bounty}
+      // and Svelte 5 re-evaluates inner expressions before tearing down the block,
+      // causing "Cannot read properties of null". Keep stale data until fetch completes.
+      error = null;
+      doFetchBounty(id);
+      doFetchContributors(id);
+    }
   });
 
   onMount(() => {
-    fetchBounty();
-    fetchContributors();
-    // Poll for updates every 30 seconds
     const interval = setInterval(() => {
-      fetchBounty();
-      if (showContributors) {
-        fetchContributors();
+      if (currentId) {
+        doFetchBounty(currentId);
+        if (showContributors) doFetchContributors(currentId);
       }
     }, 30000);
     return () => clearInterval(interval);
   });
 
-  async function fetchBounty() {
-    if (!bountyId) return;
-
+  async function doFetchBounty(id: string) {
     isLoading = true;
     error = null;
-
     try {
-      const response = await fetch(`${PUBLIC_API_URL}/bounties/${bountyId}`);
-      const data = await response.json();
-
-      if (data.success) {
-        bounty = data.data;
-        console.log('📦 Bounty data loaded:', {
-          id: bounty.id,
-          title: bounty.title,
-          isEscrowActive: bounty.isEscrowActive,
-          ethereumEscrowAddress: bounty.ethereumEscrowAddress,
-          avalancheEscrowAddress: bounty.avalancheEscrowAddress,
-          hasEthAddress: !!bounty.ethereumEscrowAddress,
-          hasAvaxAddress: !!bounty.avalancheEscrowAddress
-        });
+      const response = await fetch(`${PUBLIC_API_URL}/bounties/${id}`);
+      const result = await response.json();
+      if (result.success) {
+        bounty = result.data;
       } else {
-        error = data.message || 'Failed to fetch bounty';
+        error = result.message || 'Failed to fetch bounty';
       }
     } catch (err: any) {
       error = err.message || 'Failed to fetch bounty';
@@ -81,18 +87,12 @@
     }
   }
 
-  async function fetchContributors() {
-    if (!bountyId) return;
-
+  async function doFetchContributors(id: string) {
     isLoadingContributors = true;
-
     try {
-      const response = await fetch(`${PUBLIC_API_URL}/bounties/${bountyId}/contributors`);
-      const data = await response.json();
-
-      if (data.success) {
-        contributors = data.data || [];
-      }
+      const response = await fetch(`${PUBLIC_API_URL}/bounties/${id}/contributors`);
+      const result = await response.json();
+      if (result.success) contributors = result.data || [];
     } catch (err: any) {
       console.error('Failed to fetch contributors:', err);
     } finally {
@@ -101,19 +101,15 @@
   }
 
   async function syncWithBlockchain() {
-    if (!bountyId) return;
-
+    const id = currentId;
+    if (!id) return;
     isSyncing = true;
-
     try {
-      const response = await fetch(`${PUBLIC_API_URL}/bounties/${bountyId}/sync`, {
-        method: 'POST',
-      });
-      const data = await response.json();
-
-      if (data.success) {
-        bounty = data.data;
-        await fetchContributors();
+      const response = await fetch(`${PUBLIC_API_URL}/bounties/${id}/sync`, { method: 'POST' });
+      const result = await response.json();
+      if (result.success) {
+        bounty = result.data;
+        await doFetchContributors(id);
         toastStore.add({ message: 'Synced with blockchain', type: 'success' });
       } else {
         toastStore.add({ message: 'Failed to sync', type: 'error' });
@@ -178,7 +174,7 @@
   function toggleContributors() {
     showContributors = !showContributors;
     if (showContributors && contributors.length === 0) {
-      fetchContributors();
+      doFetchContributors(currentId);
     }
   }
 
@@ -242,7 +238,7 @@
     {/if}
 
     <!-- Bounty Details -->
-    {#if bounty && !isLoading}
+    {#if bounty}
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Main Content -->
         <div class="lg:col-span-2 space-y-6">
@@ -251,7 +247,7 @@
             <div class="card-body">
               <!-- Status Badge -->
               <div class="flex justify-between items-start mb-4">
-                <span class="badge {getStatusBadge(bounty.status).class} badge-lg">
+                <span class="badge {getStatusBadge(bounty.status).class} badge-sm">
                   {getStatusBadge(bounty.status).label}
                 </span>
                 <div class="flex items-center gap-2 text-sm opacity-70">
@@ -329,12 +325,12 @@
                     </div>
                   </div>
                 {:else}
-                  <div class="space-y-4">
+                  <div class="space-y-4 overflow-x-auto">
                     {#if bounty.deployments && bounty.deployments.length > 0}
                       {#each bounty.deployments as deployment}
                         {#if deployment.chain === 'ethereum'}
-                          <div class="p-4 bg-base-100 border-2 border-primary/20 rounded-lg hover:border-primary/40 transition-colors">
-                            <div class="flex items-center justify-between mb-3">
+                          <div class="p-4 bg-base-100 border-2 border-primary/20 rounded-lg hover:border-primary/40 transition-colors w-full max-w-full">
+                            <div class="flex flex-wrap items-center justify-between mb-3">
                               <div class="flex items-center gap-2">
                                 <div class="badge badge-primary gap-1">
                                   <span class="w-2 h-2 bg-primary-content rounded-full"></span>
@@ -491,15 +487,21 @@
 
               <!-- Progress Bar -->
               <div class="mb-4">
-                <progress 
-                  class="progress progress-primary w-full h-4" 
-                  value={bounty.progressPercentage || 0} 
-                  max="100"
-                ></progress>
-                <div class="text-center mt-2">
-                  <span class="text-2xl font-bold">{bounty.progressPercentage || 0}%</span>
-                  <span class="text-sm opacity-70 ml-1">funded</span>
-                </div>
+                {#if bounty}
+                  {@const displayPercentage = bounty.progressPercentage != null ? bounty.progressPercentage : 0}
+                  <!-- wrap progress to clip browser thumb/icon overflow -->
+                  <div class="overflow-hidden rounded">
+                    <progress 
+                      class="progress progress-primary w-full h-4" 
+                      value={Math.min(displayPercentage, 100)} 
+                      max="100"
+                    ></progress>
+                  </div>
+                  <div class="text-center mt-2">
+                    <span class="text-2xl font-bold">{displayPercentage}%</span>
+                    <span class="text-sm opacity-70 ml-1">funded</span>
+                  </div>
+                {/if}
               </div>
 
               <!-- Amounts -->
@@ -507,10 +509,21 @@
                 <div class="flex justify-between">
                   <span class="opacity-70">Raised</span>
                   <span class="font-bold text-success">
-                    {#if bounty.targetAmountEth}
-                      {formatCrypto(bounty.raisedAmount || 0)} ETH
+                    {#if bounty.ethereumEscrowAddress}
+                      {formatCrypto(bounty.raisedEth || 0)} ETH
+                      {#if bounty.avalancheEscrowAddress}
+                        <span class="text-xs opacity-60 block">+ {formatCrypto(bounty.raisedAvax || 0)} AVAX</span>
+                      {/if}
+                      {#if bounty.totalRaisedEur != null}
+                        <div class="text-xs opacity-60">≈ €{bounty.totalRaisedEur.toFixed(2)} (all chains)</div>
+                      {/if}
+                    {:else if bounty.avalancheEscrowAddress}
+                      {formatCrypto(bounty.raisedAvax || 0)} AVAX
+                      {#if bounty.totalRaisedEur != null}
+                        <div class="text-xs opacity-60">≈ €{bounty.totalRaisedEur.toFixed(2)} (all chains)</div>
+                      {/if}
                     {:else}
-                      {formatCurrency(bounty.raisedAmount || 0)}
+                      {formatCurrency(bounty.totalRaisedEur || 0)}
                     {/if}
                   </span>
                 </div>
@@ -518,9 +531,12 @@
                 <div class="flex justify-between">
                   <span class="opacity-70">Target</span>
                   <div class="text-right">
-                    {#if bounty.targetAmountEth}
+                    {#if bounty.ethereumEscrowAddress}
                       <span class="font-bold text-primary">{formatCrypto(bounty.targetAmountEth)} ETH</span>
                       <div class="text-xs opacity-60">≈ {formatCurrency(bounty.targetAmount || 0)}</div>
+                    {:else if bounty.avalancheEscrowAddress}
+                      <!-- when only AVAX contract exists, show EUR target since we don't track AVAX amount separately -->
+                      <span class="font-bold text-primary">≈ {formatCurrency(bounty.targetAmount || 0)}</span>
                     {:else}
                       <span class="font-bold text-primary">{formatCurrency(bounty.targetAmount || 0)}</span>
                     {/if}
@@ -537,12 +553,14 @@
                   <div class="stat-value text-2xl">{bounty.contributorCount || 0}</div>
                   <div class="stat-desc">Backers</div>
                 </div>
-                <div class="stat bg-base-100 rounded-lg p-3">
-                  <div class="stat-figure text-warning">
+                <div class="stat bg-base-100 rounded-lg p-3 overflow-hidden flex items-center">
+                  <div class="stat-figure text-warning flex-shrink-0">
                     <Clock class="w-6 h-6" />
                   </div>
-                  <div class="stat-value text-2xl">{formatTimeRemaining(bounty.deadline)}</div>
-                  <div class="stat-desc">Remaining</div>
+                  <div class="ml-2">
+                    <div class="stat-value text-sm">{formatTimeRemaining(bounty.deadline)}</div>
+                    <div class="stat-desc">Remaining</div>
+                  </div>
                 </div>
               </div>
 
@@ -629,7 +647,7 @@
                     <span class="font-semibold">Total Raised</span>
                     <div class="text-right">
                       <p class="font-bold text-lg text-primary">
-                        {formatCrypto(contributors.reduce((sum, c) => sum + parseFloat(c.amountEth), 0))} ETH
+                        {formatCrypto(contributors.reduce((sum: number, c: any) => sum + parseFloat(c.amountEth), 0))} ETH
                       </p>
                       <p class="text-sm opacity-70">
                         from {contributors.length} contributor{contributors.length !== 1 ? 's' : ''}

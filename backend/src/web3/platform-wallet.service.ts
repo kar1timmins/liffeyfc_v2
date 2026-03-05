@@ -27,17 +27,18 @@ export class PlatformWalletService {
   private readonly ethereumAddress: string;
   private readonly avalancheAddress: string;
 
-  // RPC Providers with fallbacks
-  private ethereumProvider: ethers.JsonRpcProvider;
-  private avalancheProvider: ethers.JsonRpcProvider;
+  // RPC Providers with fallbacks (FallbackProvider distributes across all RPCs automatically)
+  private ethereumProvider: ethers.AbstractProvider;
+  private avalancheProvider: ethers.AbstractProvider;
 
   // RPC Endpoint fallbacks
   private ethereumRPCEndpoints = [
+    'https://ethereum-sepolia-rpc.publicnode.com',
     'https://sepolia.drpc.org',
-    'https://sepolia-rpc.publicnode.com',
-    'https://ethereum-sepolia.publicnode.com',
-    'https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
     'https://rpc.sepolia.org',
+    'https://eth-sepolia.public.blastapi.io',
+    'https://sepolia.gateway.tenderly.co',
+    'https://1rpc.io/sepolia',
   ];
 
   private avalancheRPCEndpoints = [
@@ -107,19 +108,35 @@ export class PlatformWalletService {
       this.logger.log(`🔑 Platform Avalanche wallet: ${this.avalancheAddress}`);
     }
 
-    // Initialize RPC providers
-    const ethereumRpcUrl =
-      this.configService.get<string>('ETHEREUM_RPC_URL') ||
-      this.ethereumRPCEndpoints[0];
-    const avalancheRpcUrl =
-      this.configService.get<string>('AVALANCHE_RPC_URL') ||
-      this.avalancheRPCEndpoints[0];
+    // Use testnet-specific RPC lists only (do NOT include ETHEREUM_RPC_URL which
+    // may be a mainnet endpoint on a different chain ID).
+    // staticNetwork skips per-call chain-ID polling for faster first requests.
+    const sepoliaNetwork = ethers.Network.from(11155111);
+    const fujiNetwork = ethers.Network.from(43113);
 
-    this.ethereumProvider = new ethers.JsonRpcProvider(ethereumRpcUrl);
-    this.avalancheProvider = new ethers.JsonRpcProvider(avalancheRpcUrl);
+    this.ethereumProvider = new ethers.FallbackProvider(
+      this.ethereumRPCEndpoints.map((url, i) => ({
+        provider: new ethers.JsonRpcProvider(url, sepoliaNetwork, { staticNetwork: sepoliaNetwork }),
+        priority: i + 1,
+        weight: 1,
+        stallTimeout: 2500,
+      })),
+      sepoliaNetwork,
+      { quorum: 1 },
+    );
+    this.avalancheProvider = new ethers.FallbackProvider(
+      this.avalancheRPCEndpoints.map((url, i) => ({
+        provider: new ethers.JsonRpcProvider(url, fujiNetwork, { staticNetwork: fujiNetwork }),
+        priority: i + 1,
+        weight: 1,
+        stallTimeout: 2500,
+      })),
+      fujiNetwork,
+      { quorum: 1 },
+    );
 
-    this.logger.log(`📡 Platform using Ethereum RPC: ${ethereumRpcUrl}`);
-    this.logger.log(`📡 Platform using Avalanche RPC: ${avalancheRpcUrl}`);
+    this.logger.log(`📡 Platform Ethereum FallbackProvider: ${this.ethereumRPCEndpoints.length} Sepolia RPC(s) [staticNetwork]`);
+    this.logger.log(`📡 Platform Avalanche FallbackProvider: ${this.avalancheRPCEndpoints.length} Fuji RPC(s) [staticNetwork]`);
   }
 
   /**
@@ -145,71 +162,17 @@ export class PlatformWalletService {
   }
 
   /**
-   * Get working Ethereum provider with fallback
+   * Returns the Ethereum FallbackProvider (handles retries/rotation internally).
    */
-  private async getWorkingEthereumProvider(): Promise<ethers.JsonRpcProvider> {
-    try {
-      await this.ethereumProvider.getNetwork();
-      return this.ethereumProvider;
-    } catch (error) {
-      const now = Date.now();
-      if (now - this.lastEthereumRpcWarn > 60_000) {
-        this.logger.warn(
-          '⚠️  Current Ethereum RPC endpoint failed, trying fallbacks...',
-        );
-        this.lastEthereumRpcWarn = now;
-      }
-
-      for (const rpcUrl of this.ethereumRPCEndpoints) {
-        try {
-          const provider = new ethers.JsonRpcProvider(rpcUrl);
-          await provider.getNetwork();
-          this.logger.log(
-            `✅ Successfully switched to Ethereum RPC: ${rpcUrl}`,
-          );
-          this.ethereumProvider = provider;
-          this.lastEthereumRpcWarn = 0;
-          return provider;
-        } catch (e) {
-          this.logger.debug(`Failed to connect to ${rpcUrl}`);
-        }
-      }
-      throw new Error('No working Ethereum RPC endpoint available');
-    }
+  private async getWorkingEthereumProvider(): Promise<ethers.AbstractProvider> {
+    return this.ethereumProvider;
   }
 
   /**
-   * Get working Avalanche provider with fallback
+   * Returns the Avalanche FallbackProvider (handles retries/rotation internally).
    */
-  private async getWorkingAvalancheProvider(): Promise<ethers.JsonRpcProvider> {
-    try {
-      await this.avalancheProvider.getNetwork();
-      return this.avalancheProvider;
-    } catch (error) {
-      const now = Date.now();
-      if (now - this.lastAvalancheRpcWarn > 60_000) {
-        this.logger.warn(
-          '⚠️  Current Avalanche RPC endpoint failed, trying fallbacks...',
-        );
-        this.lastAvalancheRpcWarn = now;
-      }
-
-      for (const rpcUrl of this.avalancheRPCEndpoints) {
-        try {
-          const provider = new ethers.JsonRpcProvider(rpcUrl);
-          await provider.getNetwork();
-          this.logger.log(
-            `✅ Successfully switched to Avalanche RPC: ${rpcUrl}`,
-          );
-          this.avalancheProvider = provider;
-          this.lastAvalancheRpcWarn = 0;
-          return provider;
-        } catch (e) {
-          this.logger.debug(`Failed to connect to ${rpcUrl}`);
-        }
-      }
-      throw new Error('No working Avalanche RPC endpoint available');
-    }
+  private async getWorkingAvalancheProvider(): Promise<ethers.AbstractProvider> {
+    return this.avalancheProvider;
   }
 
   /**
@@ -223,7 +186,7 @@ export class PlatformWalletService {
     }
 
     const provider = await this.getWorkingEthereumProvider();
-    return new ethers.Wallet(this.ethereumPrivateKey, provider);
+    return new ethers.Wallet(this.ethereumPrivateKey, provider as ethers.Provider);
   }
 
   /**
@@ -237,7 +200,7 @@ export class PlatformWalletService {
     }
 
     const provider = await this.getWorkingAvalancheProvider();
-    return new ethers.Wallet(this.avalanchePrivateKey, provider);
+    return new ethers.Wallet(this.avalanchePrivateKey, provider as ethers.Provider);
   }
 
   /**

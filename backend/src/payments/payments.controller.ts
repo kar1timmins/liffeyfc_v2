@@ -1,3 +1,4 @@
+
 import {
   Controller,
   Post,
@@ -77,7 +78,7 @@ export class PaymentsController {
           confirmedAt: payment.confirmedAt,
         },
       };
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`❌ Payment creation failed: ${error.message}`);
       throw new HttpException(
         error.message || 'Failed to create payment',
@@ -87,20 +88,40 @@ export class PaymentsController {
   }
 
   /**
-   * Create a payment using the user's master wallet (off-chain acknowledgement)
-   * This does not require an on-chain USDC transaction from the user's MetaMask
+   * Deploy bounty escrow contracts, funded from the user's platform master wallet.
+   * No MetaMask / on-chain USDC tx required — deducted from stored master wallet.
+   * Also available at POST /payments/create-master-wallet for backwards compatibility.
    */
+  @Post('deploy')
+  @UseGuards(AuthGuard('jwt'))
+  async deployBounty(
+    @Body() dto: CreateMasterWalletPaymentDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.createMasterWalletPayment(dto, user);
+  }
+
+  /** @deprecated Use POST /payments/deploy instead */
   @Post('create-master-wallet')
   @UseGuards(AuthGuard('jwt'))
   async createMasterWalletPayment(
     @Body() dto: CreateMasterWalletPaymentDto,
     @CurrentUser() user: any,
   ) {
+    return this.deployBountyInternal(dto, user);
+  }
+
+  private async deployBountyInternal(
+    dto: CreateMasterWalletPaymentDto,
+    user: any,
+  ) {
     try {
       this.logger.log(`💳 Master wallet payment request from user ${user.sub}`);
 
-      // Ensure user has a master wallet configured
-      if (!user?.wallet?.ethAddress) {
+      // Resolve the user's master wallet ETH address from the database
+      const masterWalletEthAddress =
+        await this.paymentsService.getMasterWalletEthAddress(user.sub);
+      if (!masterWalletEthAddress) {
         throw new Error('Master wallet not configured for user');
       }
 
@@ -119,7 +140,7 @@ export class PaymentsController {
         userId: user.sub,
         wishlistItemId: dto.wishlistItemId,
         companyWalletAddress: wishlistItem.company.ethAddress || '',
-        masterWalletAddress: user.wallet?.ethAddress || '',
+        masterWalletAddress: masterWalletEthAddress,
         targetAmountEth: dto.targetAmountEth,
         durationInDays: dto.durationInDays,
         chains: dto.deploymentChains,
@@ -136,7 +157,7 @@ export class PaymentsController {
           status: payment.status,
         },
       };
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`❌ Master wallet payment failed: ${error.message}`);
       throw new HttpException(
         error.message || 'Failed to process master wallet payment',
@@ -191,10 +212,11 @@ export class PaymentsController {
         },
       };
     } catch (error) {
-      this.logger.error(`❌ Payment verification failed: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`❌ Payment verification failed: ${errorMessage}`);
       return {
         success: false,
-        message: error.message || 'Payment verification failed',
+        message: errorMessage || 'Payment verification failed',
         data: null,
       };
     }
@@ -218,7 +240,7 @@ export class PaymentsController {
         success: true,
         data: payment,
       };
-    } catch (error) {
+    } catch (error: any) {
       throw new HttpException(
         error.message || 'Failed to get payment',
         error.status || HttpStatus.BAD_REQUEST,
@@ -239,7 +261,7 @@ export class PaymentsController {
         success: true,
         data: payments,
       };
-    } catch (error) {
+    } catch (error: any) {
       throw new HttpException(
         error.message || 'Failed to get payments',
         error.status || HttpStatus.INTERNAL_SERVER_ERROR,
@@ -272,7 +294,7 @@ export class PaymentsController {
         success: true,
         data: estimate,
       };
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error('Failed to estimate deployment costs:', error.message);
       throw new HttpException(
         error.message || 'Failed to estimate costs',
@@ -294,7 +316,7 @@ export class PaymentsController {
         success: true,
         data: jobStatus,
       };
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(
         `Failed to get job status for ${jobId}:`,
         error.message,
@@ -324,10 +346,49 @@ export class PaymentsController {
           network: chain === 'ethereum' ? 'Sepolia Testnet' : 'Fuji Testnet',
         },
       };
-    } catch (error) {
+    } catch (error: any) {
       throw new HttpException(
         error.message || 'Failed to get payment info',
         HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+    /**
+   * Get all payments for a wishlist item (for frontend to merge deployed contracts)
+   */
+  @Get('wishlist/:wishlistItemId')
+  async getPaymentsForWishlistItem(@Param('wishlistItemId') wishlistItemId: string) {
+    try {
+      const payments = await this.paymentsService.getPaymentsForWishlistItem(wishlistItemId);
+      return {
+        success: true,
+        data: payments,
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        error.message || 'Failed to get payments for wishlist item',
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * Get all payments for a company (across all wishlist items)
+   * Useful for loading all deployments/payments in a single request.
+   */
+  @Get('company/:companyId')
+  async getPaymentsForCompany(@Param('companyId') companyId: string) {
+    try {
+      const payments = await this.paymentsService.getPaymentsForCompany(companyId);
+      return {
+        success: true,
+        data: payments,
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        error.message || 'Failed to get payments for company',
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }

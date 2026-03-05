@@ -13,17 +13,18 @@ export class USDCValidatorService {
   private readonly USDC_SEPOLIA = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238';
   private readonly USDC_FUJI = '0x5425890298aed601595a70AB815c96711a31Bc65';
 
-  // RPC providers
-  private ethereumProvider: ethers.JsonRpcProvider;
-  private avalancheProvider: ethers.JsonRpcProvider;
+  // RPC providers (FallbackProvider distributes across all RPCs automatically)
+  private ethereumProvider: ethers.AbstractProvider;
+  private avalancheProvider: ethers.AbstractProvider;
 
   // RPC Endpoint fallbacks (same as escrow-contract.service)
   private ethereumRPCEndpoints = [
+    'https://ethereum-sepolia-rpc.publicnode.com',
     'https://sepolia.drpc.org',
-    'https://sepolia-rpc.publicnode.com',
-    'https://ethereum-sepolia.publicnode.com',
-    'https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
     'https://rpc.sepolia.org',
+    'https://eth-sepolia.public.blastapi.io',
+    'https://sepolia.gateway.tenderly.co',
+    'https://1rpc.io/sepolia',
   ];
 
   private avalancheRPCEndpoints = [
@@ -33,74 +34,52 @@ export class USDCValidatorService {
   ];
 
   constructor() {
-    const ethereumRpcUrl =
-      process.env.ETHEREUM_RPC_URL || this.ethereumRPCEndpoints[0];
-    const avalancheRpcUrl =
-      process.env.AVALANCHE_RPC_URL || this.avalancheRPCEndpoints[0];
+    // Use testnet-specific RPC lists only (do NOT include ETHEREUM_RPC_URL which
+    // may be a mainnet endpoint on a different chain ID).
+    // staticNetwork skips per-call chain-ID polling for faster first requests.
+    const sepoliaNetwork = ethers.Network.from(11155111);
+    const fujiNetwork = ethers.Network.from(43113);
 
-    this.ethereumProvider = new ethers.JsonRpcProvider(ethereumRpcUrl);
-    this.avalancheProvider = new ethers.JsonRpcProvider(avalancheRpcUrl);
+    this.ethereumProvider = new ethers.FallbackProvider(
+      this.ethereumRPCEndpoints.map((url, i) => ({
+        provider: new ethers.JsonRpcProvider(url, sepoliaNetwork, { staticNetwork: sepoliaNetwork }),
+        priority: i + 1,
+        weight: 1,
+        stallTimeout: 2500,
+      })),
+      sepoliaNetwork,
+      { quorum: 1 },
+    );
+    this.avalancheProvider = new ethers.FallbackProvider(
+      this.avalancheRPCEndpoints.map((url, i) => ({
+        provider: new ethers.JsonRpcProvider(url, fujiNetwork, { staticNetwork: fujiNetwork }),
+        priority: i + 1,
+        weight: 1,
+        stallTimeout: 2500,
+      })),
+      fujiNetwork,
+      { quorum: 1 },
+    );
 
-    this.logger.log(`📡 USDC Validator - Ethereum RPC: ${ethereumRpcUrl}`);
-    this.logger.log(`📡 USDC Validator - Avalanche RPC: ${avalancheRpcUrl}`);
+    this.logger.log(`📡 USDC Validator - Ethereum FallbackProvider: ${this.ethereumRPCEndpoints.length} Sepolia RPC(s) [staticNetwork]`);
+    this.logger.log(`📡 USDC Validator - Avalanche FallbackProvider: ${this.avalancheRPCEndpoints.length} Fuji RPC(s) [staticNetwork]`);
   }
 
   /**
-   * Get working Ethereum provider with fallback
+   * Returns the Ethereum FallbackProvider (handles retries/rotation internally).
    */
-  private async getWorkingEthereumProvider(): Promise<ethers.JsonRpcProvider> {
-    try {
-      await this.ethereumProvider.getNetwork();
-      return this.ethereumProvider;
-    } catch (error) {
-      this.logger.warn(
-        '⚠️  Current Ethereum RPC endpoint failed, trying fallbacks...',
-      );
-
-      for (const rpcUrl of this.ethereumRPCEndpoints) {
-        try {
-          const provider = new ethers.JsonRpcProvider(rpcUrl);
-          await provider.getNetwork();
-          this.logger.log(
-            `✅ Successfully switched to Ethereum RPC: ${rpcUrl}`,
-          );
-          this.ethereumProvider = provider;
-          return provider;
-        } catch (e) {
-          this.logger.debug(`Failed to connect to ${rpcUrl}`);
-        }
-      }
-      throw new Error('No working Ethereum RPC endpoint available');
-    }
+  private async getWorkingEthereumProvider(): Promise<ethers.AbstractProvider> {
+    return this.ethereumProvider;
   }
 
   /**
    * Get working Avalanche provider with fallback
    */
-  private async getWorkingAvalancheProvider(): Promise<ethers.JsonRpcProvider> {
-    try {
-      await this.avalancheProvider.getNetwork();
-      return this.avalancheProvider;
-    } catch (error) {
-      this.logger.warn(
-        '⚠️  Current Avalanche RPC endpoint failed, trying fallbacks...',
-      );
-
-      for (const rpcUrl of this.avalancheRPCEndpoints) {
-        try {
-          const provider = new ethers.JsonRpcProvider(rpcUrl);
-          await provider.getNetwork();
-          this.logger.log(
-            `✅ Successfully switched to Avalanche RPC: ${rpcUrl}`,
-          );
-          this.avalancheProvider = provider;
-          return provider;
-        } catch (e) {
-          this.logger.debug(`Failed to connect to ${rpcUrl}`);
-        }
-      }
-      throw new Error('No working Avalanche RPC endpoint available');
-    }
+  /**
+   * Returns the Avalanche FallbackProvider (handles retries/rotation internally).
+   */
+  private async getWorkingAvalancheProvider(): Promise<ethers.AbstractProvider> {
+    return this.avalancheProvider;
   }
 
   /**
@@ -275,26 +254,32 @@ export class USDCValidatorService {
   }
 
   /**
-   * Get platform's USDC receiver address for a chain
+   * Get platform's USDC receiver address for a chain.
+   * Reads USDC_RECEIVER_ETH / USDC_RECEIVER_AVAX env vars first.
+   * Falls back to deriving the address from PLATFORM_ETH_PRIVATE_KEY /
+   * PLATFORM_AVAX_PRIVATE_KEY so the system is self-healing even if the
+   * dedicated receiver vars are not set.
    */
   getPlatformUSDCAddress(chain: 'ethereum' | 'avalanche'): string {
-    const ethAddress = process.env.USDC_RECEIVER_ETH;
-    const avaxAddress = process.env.USDC_RECEIVER_AVAX;
-
     if (chain === 'ethereum') {
-      if (!ethAddress) {
-        throw new Error(
-          'USDC_RECEIVER_ETH not configured in environment variables',
-        );
+      const explicit = process.env.USDC_RECEIVER_ETH;
+      if (explicit?.trim()) return explicit.trim();
+      const key = process.env.PLATFORM_ETH_PRIVATE_KEY;
+      if (key?.trim()) {
+        const normalized = key.trim().startsWith('0x') ? key.trim() : `0x${key.trim()}`;
+        return new ethers.Wallet(normalized).address;
       }
-      return ethAddress;
+      throw new Error('Platform ETH receiver address not configured. Set USDC_RECEIVER_ETH or PLATFORM_ETH_PRIVATE_KEY.');
     } else {
-      if (!avaxAddress) {
-        throw new Error(
-          'USDC_RECEIVER_AVAX not configured in environment variables',
-        );
+      const explicit = process.env.USDC_RECEIVER_AVAX;
+      if (explicit?.trim()) return explicit.trim();
+      // AVAX uses same key format as ETH; check dedicated key first then fall back to ETH key
+      const key = process.env.PLATFORM_AVAX_PRIVATE_KEY || process.env.PLATFORM_ETH_PRIVATE_KEY;
+      if (key?.trim()) {
+        const normalized = key.trim().startsWith('0x') ? key.trim() : `0x${key.trim()}`;
+        return new ethers.Wallet(normalized).address;
       }
-      return avaxAddress;
+      throw new Error('Platform AVAX receiver address not configured. Set USDC_RECEIVER_AVAX or PLATFORM_AVAX_PRIVATE_KEY.');
     }
   }
 }

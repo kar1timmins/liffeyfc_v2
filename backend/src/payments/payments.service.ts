@@ -1,3 +1,4 @@
+
 import {
   Injectable,
   Logger,
@@ -5,10 +6,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Payment, PaymentStatus } from '../entities/payment.entity';
 import { WishlistItem } from '../entities/wishlist-item.entity';
 import { Company } from '../entities/company.entity';
+import { UserWallet } from '../entities/user-wallet.entity';
 import { USDCValidatorService } from './usdc-validator.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { PlatformWalletService } from '../web3/platform-wallet.service';
@@ -24,9 +26,20 @@ export class PaymentsService {
     private wishlistRepo: Repository<WishlistItem>,
     @InjectRepository(Company)
     private companyRepo: Repository<Company>,
+    @InjectRepository(UserWallet)
+    private userWalletRepo: Repository<UserWallet>,
     private usdcValidator: USDCValidatorService,
     private platformWalletService: PlatformWalletService,
   ) {}
+
+  /**
+   * Fetch the user's master wallet ETH address from the database.
+   * Returns null if no master wallet has been generated yet.
+   */
+  async getMasterWalletEthAddress(userId: string): Promise<string | null> {
+    const wallet = await this.userWalletRepo.findOne({ where: { userId } });
+    return wallet?.ethAddress ?? null;
+  }
 
   /**
    * Create and validate a payment for contract deployment
@@ -54,7 +67,18 @@ export class PaymentsService {
       );
     }
 
-    // 2. Check if transaction has already been used
+    // 2. Check wishlist item status – expiry or fulfilled
+    if (wishlistItem.isFulfilled) {
+      throw new BadRequestException('Wishlist item already fulfilled');
+    }
+    if (
+      wishlistItem.campaignDeadline &&
+      new Date(wishlistItem.campaignDeadline) < new Date()
+    ) {
+      throw new BadRequestException('Wishlist item expired; create a new item instead');
+    }
+
+    // 3. Check if transaction has already been used
     const existingPayment = await this.paymentRepo.findOne({
       where: { usdcTxHash: dto.usdcTxHash },
     });
@@ -137,17 +161,28 @@ export class PaymentsService {
       );
     }
 
-    // Prevent duplicate confirmed payments for same wishlist item
+    // Prevent duplicate payments — block if already confirmed (queued) OR deployed
     const existing = await this.paymentRepo.findOne({
       where: {
         wishlistItemId: dto.wishlistItemId,
-        status: PaymentStatus.CONFIRMED,
+        status: In([PaymentStatus.CONFIRMED, PaymentStatus.DEPLOYED]),
       },
     });
     if (existing) {
       throw new BadRequestException(
         'A confirmed payment already exists for this wishlist item',
       );
+    }
+
+    // Guard against expired/fulfilled items as well
+    if (wishlistItem.isFulfilled) {
+      throw new BadRequestException('Wishlist item already fulfilled');
+    }
+    if (
+      wishlistItem.campaignDeadline &&
+      new Date(wishlistItem.campaignDeadline) < new Date()
+    ) {
+      throw new BadRequestException('Wishlist item expired; cannot deploy');
     }
 
     // Platform receiver address for record keeping
@@ -289,7 +324,12 @@ export class PaymentsService {
 
     const ETH_TO_USD = 3800; // Approximate rate (in production, fetch from price oracle like Chainlink)
     const AVAX_TO_USD = 40; // Approximate rate (in production, fetch from price oracle)
-    const PLATFORM_FEE_USD = 0; // No platform fee currently
+    // Platform fee percentage on top of gas costs.
+    // Controlled by PLATFORM_FEE_PCT env var (default 5 = 5%).
+    // The collected USDC goes to USDC_RECEIVER_ETH / USDC_RECEIVER_AVAX —
+    // set those env vars to the admin master wallet ETH / AVAX address.
+    const PLATFORM_FEE_PCT =
+      parseFloat(process.env.PLATFORM_FEE_PCT ?? '5') / 100;
 
     // Historical gas cost estimates for contract deployment
     // Based on CompanyWishlistEscrow.sol deployment costs
@@ -321,17 +361,40 @@ export class PaymentsService {
     }
 
     const totalUSD = breakdown.reduce((sum, item) => sum + item.gasCostUSD, 0);
-    const grandTotalUSD = Math.round((totalUSD + PLATFORM_FEE_USD) * 100) / 100;
+    const platformFeeUSD = Math.round(totalUSD * PLATFORM_FEE_PCT * 100) / 100;
+    const grandTotalUSD = Math.round((totalUSD + platformFeeUSD) * 100) / 100;
 
     this.logger.log(
-      `💰 Total estimated cost: $${grandTotalUSD.toFixed(2)} USDC`,
+      `💰 Gas: $${totalUSD.toFixed(2)} + Fee (${(PLATFORM_FEE_PCT * 100).toFixed(0)}%): $${platformFeeUSD.toFixed(2)} = $${grandTotalUSD.toFixed(2)} USDC`,
     );
 
     return {
       breakdown,
       totalUSD: Math.round(totalUSD * 100) / 100,
-      platformFeeUSD: PLATFORM_FEE_USD,
+      platformFeeUSD,
       grandTotalUSD,
     };
+  }
+
+    /**
+   * Get all payments for a wishlist item (for frontend to merge deployed contracts)
+   */
+  async getPaymentsForWishlistItem(wishlistItemId: string): Promise<Payment[]> {
+    return this.paymentRepo.find({
+      where: { wishlistItemId },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  /**
+   * Get payments for all wishlist items that belong to a given company.
+   * Joins through the wishlist_items table for filtering.
+   */
+  async getPaymentsForCompany(companyId: string): Promise<Payment[]> {
+    return this.paymentRepo
+      .createQueryBuilder('p')
+      .innerJoin('p.wishlistItem', 'w', 'w.companyId = :companyId', { companyId })
+      .orderBy('p.createdAt', 'DESC')
+      .getMany();
   }
 }

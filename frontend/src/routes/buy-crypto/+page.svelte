@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
   import { loadStripeOnramp } from '@stripe/crypto';
   import { authStore } from '$lib/stores/auth';
@@ -100,11 +100,29 @@
   let sessionState = $state<'idle' | 'loading' | 'mounted' | 'error'>('idle');
   let errorMessage = $state('');
   let statusMessage = $state('');
+  // when the onramp reaches a terminal state we show a final notice so the
+  // user knows the flow finished; it stays until they press "Reconfigure".
+  let showFinalNotice = $state(false);
+
+  // history of previous onramp purchases
+  type HistoryItem = {
+    id: string;
+    currency: string;
+    network: string;
+    amount: string;
+    status: string;
+    createdAt: string;
+  };
+  let purchaseHistory = $state<HistoryItem[]>([]);
+  let historyLoading = $state(false);
 
   let onrampContainer: HTMLDivElement;
   let activeSession: ReturnType<
     NonNullable<Awaited<ReturnType<typeof loadStripeOnramp>>>['createSession']
   > | null = null;
+
+  // remember the listener so it can be removed when we destroy/unmount
+  let sessionListener: ((e: any) => void) | null = null;
 
   // ---------------------------------------------------------------------------
   // Derived
@@ -146,6 +164,7 @@
   onMount(async () => {
     if (!$authStore.isAuthenticated) { goto('/auth'); return; }
     await loadMasterWallet();
+    await loadHistory();
   });
 
   async function loadMasterWallet() {
@@ -188,6 +207,8 @@
 
   async function launchOnramp() {
     if (!$authStore.isAuthenticated) { goto('/auth'); return; }
+    // avoid accidental double clicks or re-entry while widget is already running
+    if (sessionState === 'loading' || sessionState === 'mounted') return;
 
     activeSession = null;
     if (onrampContainer) onrampContainer.innerHTML = '';
@@ -231,11 +252,12 @@
         },
       });
 
+      unmountSession();
       activeSession = session;
       session.mount(onrampContainer);
       sessionState = 'mounted';
 
-      session.addEventListener('onramp_session_updated', (e: any) => {
+      sessionListener = (e: any) => {
         const STATUS_LABELS: Record<string, string> = {
           initialized:            'Session initialised — complete the form to proceed.',
           rejected:               'Session was declined. You may try again.',
@@ -247,22 +269,73 @@
         };
         const status: string = e?.payload?.session?.status ?? '';
         statusMessage = STATUS_LABELS[status] ?? `Session status: ${status}`;
-      });
+
+        // when session reaches a terminal state, show a persistent notice
+        if (status === 'fulfillment_complete' || status === 'payment_failed' || status === 'rejected') {
+          showFinalNotice = true;
+          if (status === 'fulfillment_complete') {
+            loadHistory();
+          }
+          // we deliberately do NOT call reconfigure() here; the user can
+          // hit 'Reconfigure' or navigate away when they're ready.
+        }
+      };
+
+      // wire the listener up to the session so we can tear it down later
+      session.addEventListener('onramp_session_updated', sessionListener);
     } catch (err: any) {
       errorMessage = err?.message ?? 'Something went wrong. Please try again.';
       sessionState = 'error';
     }
   }
 
-  function reconfigure() {
-    sessionState = 'idle';
+  function unmountSession() {
+    if (activeSession) {
+      // the current typings don't yet include unmount/destroy, so cast to any
+      // most recent Stripe SDKs support unmount()/destroy(); call both defensively
+      try { (activeSession as any).unmount?.(); } catch {}
+      try { (activeSession as any).destroy?.(); } catch {}
+    }
+    if (sessionListener && activeSession) {
+      activeSession.removeEventListener('onramp_session_updated', sessionListener);
+    }
+    sessionListener = null;
     activeSession = null;
+  }
+
+  function reconfigure() {
+    unmountSession();
+    sessionState = 'idle';
     if (onrampContainer) onrampContainer.innerHTML = '';
   }
+
+  // ensure any active stripe session is torn down when leaving the page
+  onDestroy(() => {
+    unmountSession();
+  });
 
   function onWalletGenerated(_data: any) {
     showGenerateModal = false;
     loadMasterWallet();
+  }
+
+  async function loadHistory() {
+    historyLoading = true;
+    try {
+      const res = await fetch(`${PUBLIC_API_URL}/crypto/history`, {
+        headers: { Authorization: `Bearer ${$authStore.accessToken}` },
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const body = await res.json();
+        if (body.success && Array.isArray(body.data)) {
+          purchaseHistory = body.data;
+        }
+      }
+    } catch (_) {
+      // ignore
+    }
+    historyLoading = false;
   }
 </script>
 
@@ -274,7 +347,7 @@
 <div class="min-h-screen pt-4 pb-24 px-4 sm:px-6 flex flex-col items-center">
   <!-- Page header -->
   <div class="w-full max-w-2xl mb-6">
-    <button class="btn btn-ghost btn-sm gap-2 mb-4 -ml-1" onclick={() => history.back()} aria-label="Go back">
+    <button class="btn btn-ghost btn-sm gap-2 mb-4 -ml-1" onclick={() => goto('/dashboard')} aria-label="Go back">
       <ArrowLeft size={16} /> Back
     </button>
     <div class="flex items-center gap-3 mb-1">
@@ -437,9 +510,53 @@
       </div>
     {/if}
 
+    {#if showFinalNotice}
+      <div class="alert alert-success text-sm py-2 mb-3">
+        <span>
+          {statusMessage || 'The onramp session has completed. You may close this widget or click Reconfigure to start again.'}
+        </span>
+      </div>
+    {/if}
+
     <!-- Stripe injects an iframe here -->
     <div bind:this={onrampContainer} id="onramp-element" class="rounded-2xl overflow-hidden w-full"></div>
   </div>
+
+  {#if purchaseHistory.length || historyLoading}
+    <div class="w-full max-w-2xl mt-8">
+      <h2 class="text-lg font-semibold mb-2">Purchase History</h2>
+      {#if historyLoading}
+        <div class="text-sm text-base-content/60 flex items-center gap-2">
+          <span class="loading loading-spinner loading-xs"></span> Loading…
+        </div>
+      {:else if purchaseHistory.length === 0}
+        <p class="text-sm text-base-content/60">No previous purchases found.</p>
+      {:else}
+        <table class="table table-zebra w-full">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Network</th>
+              <th>Currency</th>
+              <th>Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each purchaseHistory as item}
+              <tr>
+                <td>{new Date(item.createdAt).toLocaleString()}</td>
+                <td>{item.network}</td>
+                <td>{item.currency.toUpperCase()}</td>
+                <td>{parseFloat(item.amount).toFixed(2)}</td>
+                <td>{item.status.replace('_',' ')}</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      {/if}
+    </div>
+  {/if}
 
   <p class="text-center text-xs text-base-content/40 max-w-md mt-8">
     Powered by

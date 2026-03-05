@@ -3,7 +3,7 @@
   import { goto } from '$app/navigation';
   import { authStore } from '$lib/stores/auth';
   import { PUBLIC_API_URL } from '$env/static/public';
-  import { Wallet, Key, Download, Copy, AlertCircle, ArrowLeft, Settings } from 'lucide-svelte';
+  import { Wallet, Key, Download, Copy, AlertCircle, ArrowLeft, Settings, Eye, EyeOff } from 'lucide-svelte';
 
   let addresses: any = $state(null);
   let secrets: any = $state(null);
@@ -11,6 +11,16 @@
   let loadingSecrets = $state(false);
   let error = $state<string | null>(null);
   let secretError = $state<string | null>(null);
+
+  // control visibility per secret field
+  let showSecret = $state({
+    mnemonic: false,
+    privateKey: false,
+    avaxPrivateKey: false,
+    solanaPrivateKey: false,
+    stellarPrivateKey: false,
+    bitcoinPrivateKey: false
+  });
 
   async function fetchAddresses() {
     try {
@@ -85,7 +95,7 @@
 </svelte:head>
 
 <div class="container mx-auto px-4 py-8 max-w-3xl">
-  <button class="btn btn-ghost mb-6" onclick={() => goto('/profile')}>
+  <button class="btn btn-ghost mb-6" onclick={() => goto('/dashboard')}>
     <ArrowLeft size={16} /> Back
   </button>
 
@@ -105,25 +115,25 @@
       </div>
     {/if}
 
-    <div class="card bg-base-100 shadow-lg mb-6">
+    <div class="card bg-base-100 shadow-lg mb-6 w-full mx-auto overflow-x-auto">
       <div class="card-body">
         <h2 class="card-title">Master Wallet Addresses</h2>
         {#if addresses}
           <ul class="space-y-2 mt-3">
             <li>
-              <strong>Ethereum:</strong> {addresses.ethAddress || 'N/A'}
+              <strong>Ethereum:</strong> <code class="break-words min-w-0">{addresses.ethAddress || 'N/A'}</code>
             </li>
             <li>
-              <strong>Avalanche:</strong> {addresses.avaxAddress || 'N/A'}
+              <strong>Avalanche:</strong> <code class="break-words min-w-0">{addresses.avaxAddress || 'N/A'}</code>
             </li>
             <li>
-              <strong>Solana:</strong> {addresses.solanaAddress || 'N/A'}
+              <strong>Solana:</strong> <code class="break-words min-w-0">{addresses.solanaAddress || 'N/A'}</code>
             </li>
             <li>
-              <strong>Stellar:</strong> {addresses.stellarAddress || 'N/A'}
+              <strong>Stellar:</strong> <code class="break-words min-w-0">{addresses.stellarAddress || 'N/A'}</code>
             </li>
             <li>
-              <strong>Bitcoin:</strong> {addresses.bitcoinAddress || 'N/A'}
+              <strong>Bitcoin:</strong> <code class="break-words min-w-0">{addresses.bitcoinAddress || 'N/A'}</code>
             </li>
           </ul>
         {/if}
@@ -147,7 +157,7 @@
     {/if}
 
     {#if secrets}
-      <div class="card bg-base-100 shadow-lg mb-6">
+      <div class="card bg-base-100 shadow-lg mb-6 w-full mx-auto overflow-x-auto">
         <div class="card-body space-y-3">
           <div class="flex items-center justify-between">
             <h2 class="card-title">Secrets</h2>
@@ -158,7 +168,12 @@
           <div>
             <p class="text-xs opacity-70">Mnemonic phrase (keep offline):</p>
             <div class="flex gap-2 items-center">
-              <code class="break-words w-full p-2 bg-base-200 rounded">{secrets.mnemonic}</code>
+              <code class="break-words w-full p-2 bg-base-200 rounded overflow-x-auto min-w-0">
+                {showSecret.mnemonic ? secrets.mnemonic : '••••••••••••••••••••••••••••'}
+              </code>
+              <button class="btn btn-ghost btn-xs" onclick={() => { showSecret.mnemonic = !showSecret.mnemonic; }} title="Toggle visibility">
+                {#if showSecret.mnemonic}<EyeOff class="w-4 h-4" />{:else}<Eye class="w-4 h-4" />{/if}
+              </button>
               <button class="btn btn-ghost btn-xs" onclick={() => copy(secrets.mnemonic)} title="Copy">
                 <Copy class="w-4 h-4" />
               </button>
@@ -167,7 +182,12 @@
           <div>
             <p class="text-xs opacity-70">Ethereum / Avalanche private key:</p>
             <div class="flex gap-2 items-center">
-              <code class="break-words w-full p-2 bg-base-200 rounded">{secrets.privateKey}</code>
+              <code class="break-words w-full p-2 bg-base-200 rounded overflow-x-auto min-w-0">
+                {showSecret.privateKey ? secrets.privateKey : '••••••••••••••••••••••••••'}
+              </code>
+              <button class="btn btn-ghost btn-xs" onclick={() => { showSecret.privateKey = !showSecret.privateKey; }} title="Toggle visibility">
+                {#if showSecret.privateKey}<EyeOff class="w-4 h-4" />{:else}<Eye class="w-4 h-4" />{/if}
+              </button>
               <button class="btn btn-ghost btn-xs" onclick={() => copy(secrets.privateKey)} title="Copy">
                 <Copy class="w-4 h-4" />
               </button>
@@ -177,7 +197,12 @@
             <div>
               <p class="text-xs opacity-70">Avalanche private key:</p>
               <div class="flex gap-2 items-center">
-                <code class="break-words w-full p-2 bg-base-200 rounded">{secrets.avaxPrivateKey}</code>
+                <code class="break-words w-full p-2 bg-base-200 rounded overflow-x-auto min-w-0">
+                  {showSecret.avaxPrivateKey ? secrets.avaxPrivateKey : '••••••••••••••••••••••'}
+                </code>
+                <button class="btn btn-ghost btn-xs" onclick={() => { showSecret.avaxPrivateKey = !showSecret.avaxPrivateKey; }} title="Toggle visibility">
+                  {#if showSecret.avaxPrivateKey}<EyeOff class="w-4 h-4" />{:else}<Eye class="w-4 h-4" />{/if}
+                </button>
                 <button class="btn btn-ghost btn-xs" onclick={() => copy(secrets.avaxPrivateKey)} title="Copy">
                   <Copy class="w-4 h-4" />
                 </button>
@@ -188,7 +213,12 @@
             <div>
               <p class="text-xs opacity-70">Solana private key (hex):</p>
               <div class="flex gap-2 items-center">
-                <code class="break-words w-full p-2 bg-base-200 rounded">{secrets.solanaPrivateKey}</code>
+                <code class="break-words w-full p-2 bg-base-200 rounded overflow-x-auto min-w-0">
+                  {showSecret.solanaPrivateKey ? secrets.solanaPrivateKey : '••••••••••••••••••••••••••••••••••••••••'}
+                </code>
+                <button class="btn btn-ghost btn-xs" onclick={() => { showSecret.solanaPrivateKey = !showSecret.solanaPrivateKey; }} title="Toggle visibility">
+                  {#if showSecret.solanaPrivateKey}<EyeOff class="w-4 h-4" />{:else}<Eye class="w-4 h-4" />{/if}
+                </button>
                 <button class="btn btn-ghost btn-xs" onclick={() => copy(secrets.solanaPrivateKey)} title="Copy">
                   <Copy class="w-4 h-4" />
                 </button>
@@ -199,7 +229,12 @@
             <div>
               <p class="text-xs opacity-70">Stellar secret seed:</p>
               <div class="flex gap-2 items-center">
-                <code class="break-words w-full p-2 bg-base-200 rounded">{secrets.stellarPrivateKey}</code>
+                <code class="break-words w-full p-2 bg-base-200 rounded overflow-x-auto min-w-0">
+                  {showSecret.stellarPrivateKey ? secrets.stellarPrivateKey : '••••••••••••••••••••••••••••••'}
+                </code>
+                <button class="btn btn-ghost btn-xs" onclick={() => { showSecret.stellarPrivateKey = !showSecret.stellarPrivateKey; }} title="Toggle visibility">
+                  {#if showSecret.stellarPrivateKey}<EyeOff class="w-4 h-4" />{:else}<Eye class="w-4 h-4" />{/if}
+                </button>
                 <button class="btn btn-ghost btn-xs" onclick={() => copy(secrets.stellarPrivateKey)} title="Copy">
                   <Copy class="w-4 h-4" />
                 </button>
@@ -210,7 +245,12 @@
             <div>
               <p class="text-xs opacity-70">Bitcoin private key (WIF):</p>
               <div class="flex gap-2 items-center">
-                <code class="break-words w-full p-2 bg-base-200 rounded">{secrets.bitcoinPrivateKey}</code>
+                <code class="break-words w-full p-2 bg-base-200 rounded overflow-x-auto min-w-0">
+                  {showSecret.bitcoinPrivateKey ? secrets.bitcoinPrivateKey : '••••••••••••••••••••••••••'}
+                </code>
+                <button class="btn btn-ghost btn-xs" onclick={() => { showSecret.bitcoinPrivateKey = !showSecret.bitcoinPrivateKey; }} title="Toggle visibility">
+                  {#if showSecret.bitcoinPrivateKey}<EyeOff class="w-4 h-4" />{:else}<Eye class="w-4 h-4" />{/if}
+                </button>
                 <button class="btn btn-ghost btn-xs" onclick={() => copy(secrets.bitcoinPrivateKey)} title="Copy">
                   <Copy class="w-4 h-4" />
                 </button>

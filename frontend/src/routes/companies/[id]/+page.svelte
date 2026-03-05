@@ -21,6 +21,9 @@
   // Live bounty data for escrow-enabled wishlist items (keyed by wishlist item id)
   let liveBounties = $state<Record<string, any>>({});
   let isFetchingBounties = $state(false);
+  // payments keyed by wishlist item id
+  let paymentsByItem: Record<string, any[]> = $state({});
+  let isFetchingPayments = $state(false);
   
   // Donation state for wishlist items
   let donationAmounts = $state<Record<string, string>>({});
@@ -56,6 +59,18 @@
     established: 'Established'
   };
 
+  // determines if a bounty/wishlist item is no longer open for contributions
+  function isBountyClosed(item: any, liveBounty: any): boolean {
+    if (item.isFulfilled) return true;
+    const now = new Date();
+    if (liveBounty) {
+      return liveBounty.status !== 'active';
+    } else if (item.campaignDeadline) {
+      return new Date(item.campaignDeadline) < now;
+    }
+    return false;
+  }
+
   const fundingLabels: Record<string, string> = {
     bootstrapped: 'Bootstrapped',
     pre_seed: 'Pre-Seed',
@@ -76,8 +91,22 @@
     other: Circle
   };
 
+  // automatically pick a default network when a new escrow address becomes available
+  $effect(() => {
+    for (const item of wishlistItems) {
+      if (item.isEscrowActive && !selectedBountyChain[item.id]) {
+        if (item.ethereumEscrowAddress) {
+          selectedBountyChain[item.id] = 'ethereum';
+        } else if (item.avalancheEscrowAddress) {
+          selectedBountyChain[item.id] = 'avalanche';
+        }
+      }
+    }
+  });
+
   onMount(async () => {
     await fetchCompany();
+    await fetchCompanyPayments();
     await fetchCompanyBounties();
   });
 
@@ -104,6 +133,46 @@
 
   function goBack() {
     goto('/companies');
+  }
+
+  async function fetchCompanyPayments() {
+    if (!companyId) return;
+    isFetchingPayments = true;
+    try {
+      const res = await fetch(`${PUBLIC_API_URL}/payments/company/${companyId}`);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        // group by wishlistItemId
+        const map: Record<string, any[]> = {};
+        for (const p of data.data) {
+          if (!map[p.wishlistItemId]) map[p.wishlistItemId] = [];
+          map[p.wishlistItemId].push(p);
+        }
+        paymentsByItem = map;
+
+        // merge deployed contracts into items
+        for (const item of wishlistItems) {
+          const payments = paymentsByItem[item.id] || [];
+          const deployed = payments.find((p) => p.status === 'deployed' && p.deployedContracts);
+          if (deployed) {
+            item.isEscrowActive = true;
+            const contracts = deployed.deployedContracts || {};
+            if (!item.ethereumEscrowAddress && contracts.ethereum) {
+              item.ethereumEscrowAddress = contracts.ethereum;
+            }
+            if (!item.avalancheEscrowAddress && contracts.avalanche) {
+              item.avalancheEscrowAddress = contracts.avalanche;
+            }
+          }
+          // flag that a confirmed payment exists (deployment may be pending)
+          item.hasConfirmedPayment = payments.some((p) => p.status === 'confirmed');
+        }
+      }
+    } catch (e) {
+      console.error('Failed to fetch company payments:', e);
+    } finally {
+      isFetchingPayments = false;
+    }
   }
 
   async function fetchCompanyBounties() {
@@ -195,36 +264,33 @@
       return;
     }
 
-    if (typeof window === 'undefined' || !window.ethereum) {
-      sendError = 'MetaMask not detected. Please install MetaMask to send funds.';
-      return;
-    }
-
     isSending = true;
     sendError = null;
     sendSuccess = null;
 
     try {
-      // Request account access
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      if (!accounts || accounts.length === 0) {
-        throw new Error('No accounts found');
-      }
+      const token = $authStore.accessToken;
+      if (!token) throw new Error('Not authenticated');
 
-      // Convert amount to Wei (assuming ETH/AVAX)
-      const amountInWei = '0x' + (parseFloat(sendAmount) * 1e18).toString(16);
-
-      // Send transaction
-      const txHash = await window.ethereum.request({
-        method: 'eth_sendTransaction',
-        params: [{
-          from: accounts[0],
-          to: toAddress,
-          value: amountInWei,
-        }],
+      const response = await fetch(`${PUBLIC_API_URL}/wallet/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          recipientAddress: toAddress,
+          chain: chain === 'eth' ? 'ethereum' : 'avalanche',
+          amountEth: parseFloat(sendAmount),
+        }),
       });
 
-      sendSuccess = `Transaction sent! Hash: ${txHash}`;
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Transaction failed');
+      }
+
+      sendSuccess = `Transaction sent! Hash: ${result.data.transactionHash}`;
       sendAmount = '';
       selectedChain = null;
     } catch (err: any) {
@@ -286,81 +352,63 @@
     const amount = bountyContributions[itemId];
     if (!amount || parseFloat(amount) <= 0) {
       bountyContributionError = 'Please enter a valid amount';
-      setTimeout(() => bountyContributionError = null, 3000);
+      setTimeout(() => (bountyContributionError = null), 3000);
       return;
     }
 
-    const item = wishlistItems.find(i => i.id === itemId);
+    const item = wishlistItems.find((i) => i.id === itemId);
     if (!item) {
       bountyContributionError = 'Bounty not found';
-      setTimeout(() => bountyContributionError = null, 3000);
+      setTimeout(() => (bountyContributionError = null), 3000);
       return;
     }
 
-    const escrowAddress = chain === 'ethereum' ? item.ethereumEscrowAddress : item.avalancheEscrowAddress;
+    const escrowAddress =
+      chain === 'ethereum' ? item.ethereumEscrowAddress : item.avalancheEscrowAddress;
     if (!escrowAddress) {
       bountyContributionError = `No ${chain} escrow contract deployed for this bounty`;
-      setTimeout(() => bountyContributionError = null, 3000);
+      setTimeout(() => (bountyContributionError = null), 3000);
       return;
     }
 
-    if (typeof window === 'undefined' || !window.ethereum) {
-      bountyContributionError = 'MetaMask not detected. Please install MetaMask.';
-      setTimeout(() => bountyContributionError = null, 3000);
-      return;
-    }
-
+    // Use backend wallet proxy instead of MetaMask
     contributingBountyId = itemId;
     bountyContributionError = null;
     bountyContributionSuccess = null;
 
     try {
-      // Request accounts
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      if (!accounts || accounts.length === 0) {
-        throw new Error('No wallet connected');
-      }
+      const token = $authStore.accessToken;
+      if (!token) throw new Error('Not authenticated');
 
-      // Network switching
-      const chainId = chain === 'ethereum' ? '0xaa36a7' : '0xa869'; // Sepolia or Fuji
-      try {
-        await window.ethereum.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId }],
-        });
-      } catch (switchError: any) {
-        if (switchError.code === 4902) {
-          throw new Error(`Please add ${chain === 'ethereum' ? 'Sepolia' : 'Fuji'} network to MetaMask`);
-        }
-        throw switchError;
-      }
-
-      // Convert to wei
-      const amountInWei = BigInt(Math.floor(parseFloat(amount) * 1e18)).toString(16);
-
-      // Send transaction to escrow contract
-      const txHash = await window.ethereum.request({
-        method: 'eth_sendTransaction',
-        params: [{
-          from: accounts[0],
-          to: escrowAddress,
-          value: '0x' + amountInWei,
-          data: '0xd7bb99ba', // contribute() function selector
-        }],
+      const response = await fetch(`${PUBLIC_API_URL}/wallet/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          recipientAddress: escrowAddress,
+          chain,
+          amountEth: parseFloat(amount),
+          wishlistItemId: itemId,
+        }),
       });
 
-      bountyContributionSuccess = `Contribution successful! Transaction: ${txHash.slice(0, 10)}...`;
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Transaction failed');
+      }
+
+      bountyContributionSuccess = `Contribution sent! Hash: ${result.data.transactionHash}`;
       bountyContributions[itemId] = '';
-      
-      // Refresh company data after a delay
+
       setTimeout(async () => {
         await fetchCompany();
         bountyContributionSuccess = null;
       }, 3000);
-      
     } catch (err: any) {
       bountyContributionError = err.message || 'Transaction failed';
-      setTimeout(() => bountyContributionError = null, 5000);
+      setTimeout(() => (bountyContributionError = null), 5000);
     } finally {
       contributingBountyId = null;
     }
@@ -548,9 +596,8 @@
             </div>
           {:else if canDonate}
             <p class="opacity-80 mb-6">
-              Send cryptocurrency directly to this company's wallet. All transactions are processed securely through MetaMask.
+              Send cryptocurrency directly to this company's wallet using your on-platform wallet. No external wallet is required or allowed.
             </p>
-
           <div class="space-y-4">
             <!-- Ethereum Address -->
             {#if company.ethAddress}
@@ -785,8 +832,16 @@
                   ? `€${parseFloat(liveBounty.targetAmount || item.value || '0').toLocaleString()}`
                   : `€${(item.value || 0).toLocaleString()}`}
                 {@const remaining = liveBounty ? null : (item.value ? Math.max(0, item.value - (item.amountRaised || 0)) : 0)}
-                
-                <div class="glass-subtle rounded-xl p-4 {item.isFulfilled ? 'opacity-60' : ''}">
+                {@const closed = isBountyClosed(item, liveBounty)}
+
+                <details class="card mb-4 {closed ? 'opacity-60' : ''} shadow-lg" >
+                  <summary class="cursor-pointer flex justify-between items-center py-2">
+                    <span class="font-semibold text-lg">{item.title}</span>
+                    {#if closed}
+                      <span class="badge badge-ghost">Closed</span>
+                    {/if}
+                  </summary>
+                  <div class="glass-subtle rounded-xl p-4">
                   <div class="flex items-start gap-4">
                     <div class="flex-shrink-0 mt-1">
                       {#if item.isFulfilled}
@@ -833,6 +888,20 @@
                             {:else if remaining !== null && remaining > 0}
                               <p class="text-sm mt-2 opacity-60">
                                 €{remaining.toLocaleString()} remaining to reach goal
+                              </p>
+                            {/if}
+                            {#if closed && !item.isFulfilled}
+                              <p class="text-sm mt-2 text-warning font-semibold">
+                                ⏳ This bounty has expired and is no longer accepting contributions.
+                              </p>
+                            {/if}
+                            {#if closed && !item.hasConfirmedPayment && !item.isEscrowActive}
+                              <p class="text-sm mt-2 text-warning font-semibold">
+                                ⚠️ This wishlist item has expired and cannot be redeployed. Create a new item instead.
+                              </p>
+                            {:else if item.hasConfirmedPayment && !item.isEscrowActive}
+                              <p class="text-sm mt-2 text-warning font-semibold">
+                                🕒 Deployment pending – payment has been confirmed.
                               </p>
                             {/if}
 
@@ -889,7 +958,7 @@
                           {/if}
 
                           <!-- Escrow Contribution for Investors (Blockchain) -->
-                          {#if item.isEscrowActive && isInvestor && !isOwner && percentage < 100}
+                          {#if item.isEscrowActive && isInvestor && !isOwner && percentage < 100 && !closed}
                             <div class="mt-4 p-4 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-lg border-2 border-primary/20">
                               <div class="flex items-center gap-2 mb-3">
                                 <span class="badge badge-primary badge-sm">🔗 Blockchain Escrow</span>
@@ -927,7 +996,7 @@
                                   <button
                                     class="btn btn-xs {selectedBountyChain[item.id] === 'avalanche' ? 'btn-primary' : 'btn-outline'}"
                                     onclick={() => selectedBountyChain[item.id] = 'avalanche'}
-                                    disabled={contributingBountyId === item.id || recordingManualContribId === item.id}
+                                    disabled={contributingBountyId === item.id || recordingManualContribId === item.id || closed}
                                   >
                                     AVAX Fuji
                                   </button>
@@ -962,7 +1031,7 @@
                               </div>
                               
                               {#if selectedBountyChain[item.id] === 'ethereum' || selectedBountyChain[item.id] === 'avalanche'}
-                                <!-- EVM: MetaMask smart contract contribution -->
+                                <!-- EVM: contribution via platform wallet (no MetaMask) -->
                                 <div class="flex gap-2">
                                   <input
                                     type="number"
@@ -976,7 +1045,7 @@
                                   <button 
                                     class="btn btn-primary btn-sm"
                                     onclick={() => contributeToEscrow(item.id, selectedBountyChain[item.id] as 'ethereum' | 'avalanche')}
-                                    disabled={contributingBountyId === item.id || !bountyContributions[item.id]}
+                                    disabled={contributingBountyId === item.id || !bountyContributions[item.id] || closed}
                                   >
                                     {#if contributingBountyId === item.id}
                                       <span class="loading loading-spinner loading-xs"></span>
@@ -986,9 +1055,11 @@
                                     Contribute
                                   </button>
                                 </div>
-                                <p class="text-xs opacity-60 mt-2">
-                                  ⚠️ Funds locked until {new Date(item.campaignDeadline).toLocaleDateString()}. Refunded if target not met (minus gas fees split among contributors).
-                                </p>
+                                {#if item.campaignDeadline}
+                                  <p class="text-xs opacity-60 mt-2">
+                                    ⚠️ Funds locked until {new Date(item.campaignDeadline).toLocaleDateString()}. Refunded if target not met (minus gas fees split among contributors).
+                                  </p>
+                                {/if}
 
                               {:else if selectedBountyChain[item.id] === 'solana' || selectedBountyChain[item.id] === 'stellar' || selectedBountyChain[item.id] === 'bitcoin'}
                                 <!-- Non-EVM: send directly to company wallet, then record here -->
@@ -1061,7 +1132,7 @@
                               {/if}
                             </div>
                           <!-- Regular Donation for Investors (Non-escrow) -->
-                          {:else if !item.isEscrowActive && isInvestor && !isOwner && (remaining ?? 0) > 0}
+                          {:else if !item.isEscrowActive && isInvestor && !isOwner && (remaining ?? 0) > 0 && !closed}
                             <div class="mt-4 p-4 bg-base-200/50 rounded-lg">
                               <p class="text-sm font-semibold mb-2">Support this need:</p>
                               <div class="flex gap-2">
@@ -1078,7 +1149,7 @@
                                 <button 
                                   class="btn btn-primary btn-sm"
                                   onclick={() => donateToWishlistItem(item.id)}
-                                  disabled={donatingItemId === item.id || !donationAmounts[item.id]}
+                                  disabled={donatingItemId === item.id || !donationAmounts[item.id] || closed}
                                 >
                                   {#if donatingItemId === item.id}
                                     <span class="loading loading-spinner loading-xs"></span>
@@ -1110,6 +1181,7 @@
                     </div>
                   </div>
                 </div>
+              </details>
               {/each}
             </div>
           {:else}

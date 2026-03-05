@@ -24,6 +24,9 @@
     twitterUrl?: string;
     ethAddress?: string;
     avaxAddress?: string;
+    solanaAddress?: string;
+    stellarAddress?: string;
+    bitcoinAddress?: string;
     tags?: string[];
     isPublic: boolean;
     wishlistItems?: any[];
@@ -49,8 +52,24 @@
   let isCheckingWallet = $state(false);
   let walletAddresses = $state<{ eth: string; avax: string } | null>(null);
   let expandedWishlistId = $state<string | null>(null);
+  let expandedCompanyIds = $state<Set<string>>(new Set());
+
+  function toggleCompanyExpand(id: string) {
+    const next = new Set(expandedCompanyIds);
+    if (next.has(id)) { next.delete(id); } else { next.add(id); }
+    expandedCompanyIds = next;
+  }
   let bountyModalOpen = $state(false);
   let bountyModalX402Open = $state(false);
+
+  // helper to determine if wishlist item is expired/closed
+  function isWishlistItemClosed(item: any): boolean {
+    if (item.isFulfilled) return true;
+    if (item.campaignDeadline) {
+      return new Date(item.campaignDeadline) < new Date();
+    }
+    return false;
+  }
   let selectedWishlistItem = $state<any | null>(null);
   let selectedCompany = $state<Company | null>(null);
   
@@ -241,12 +260,40 @@
   }
 
   function openBountyModal(item: any, company: Company) {
+    if (item.hasConfirmedPayment) {
+      toastStore.add({
+        message: 'A confirmed payment already exists for this wishlist item. Please wait for deployment.',
+        type: 'info',
+      });
+      return;
+    }
+    if (isWishlistItemClosed(item)) {
+      toastStore.add({
+        message: 'This wishlist item is closed/expired and cannot be redeployed. Create a new item.',
+        type: 'warning',
+      });
+      return;
+    }
     selectedWishlistItem = item;
     selectedCompany = company;
     bountyModalOpen = true;
   }
 
   function openBountyModalX402(item: any, company: Company) {
+    if (item.hasConfirmedPayment) {
+      toastStore.add({
+        message: 'A confirmed payment already exists for this wishlist item. Please wait for deployment.',
+        type: 'info',
+      });
+      return;
+    }
+    if (isWishlistItemClosed(item)) {
+      toastStore.add({
+        message: 'This wishlist item is closed/expired and cannot be redeployed. Create a new item.',
+        type: 'warning',
+      });
+      return;
+    }
     selectedWishlistItem = item;
     selectedCompany = company;
     bountyModalX402Open = true;
@@ -263,6 +310,8 @@
         if (typeof itemIndex === 'number' && itemIndex !== -1) {
           const item = companies[companyIndex].wishlistItems?.[itemIndex];
           if (item) {
+            // when any payment result comes back we should mark pending immediately
+            item.hasConfirmedPayment = true;
             if (deployed.ethereumAddress) item.ethereumEscrowAddress = deployed.ethereumAddress;
             if (deployed.avalancheAddress) item.avalancheEscrowAddress = deployed.avalancheAddress;
             item.isEscrowActive = true;
@@ -325,6 +374,17 @@
       return;
     }
 
+    // client-side uniqueness check (case-insensitive) for new companies
+    if (!editingCompany) {
+      const duplicate = companies.some(
+        (c) => c.name.trim().toLowerCase() === name.trim().toLowerCase()
+      );
+      if (duplicate) {
+        errorMessage = 'You already have a company registered with that name';
+        return;
+      }
+    }
+
     isSubmitting = true;
     errorMessage = null;
 
@@ -375,13 +435,19 @@
       const result = await response.json();
 
       if (result.success) {
+        toastStore.add({
+          message: editingCompany
+            ? 'Company saved successfully'
+            : 'Company registered successfully',
+          type: 'success',
+        });
+
         // For newly created companies, capture the company data to show address reveal/status
         if (!editingCompany && result.data) {
           newlyCreatedCompany = result.data;
           revealedAddresses = {}; // Reset reveal state
-          // Show modal and keep form open - closeForm will be called when user dismisses modal
-          console.log('[CompanyCreation] Company created:', result.data.id, 'ETH:', result.data.ethAddress, 'AVAX:', result.data.avaxAddress);
-          // Refresh companies list
+          // Close the form and refresh companies list
+          closeForm();
           onUpdate();
         } else {
           // For edits, close form immediately and refresh
@@ -985,6 +1051,137 @@
               </p>
             </div>
           {/if}
+          {#if newlyCreatedCompany.solanaAddress}
+            <div class="bg-base-200/50 rounded-lg p-4">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                  <span class="badge badge-accent">Solana</span>
+                  <span class="text-xs opacity-60">devnet</span>
+                </div>
+              </div>
+              <div class="flex items-center justify-between gap-3">
+                <code class="text-sm font-mono bg-base-100 px-3 py-2 rounded flex-1 break-all">
+                  {displayAddress(newlyCreatedCompany.solanaAddress, 'sol')}
+                </code>
+                <div class="flex gap-2">
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    onclick={() => toggleReveal('sol')}
+                    title={revealedAddresses['sol'] ? 'Hide address' : 'Show full address'}
+                    aria-label={revealedAddresses['sol'] ? 'Hide address' : 'Show full address'}
+                  >
+                    {#if revealedAddresses['sol']}
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-4.5-11-4.5s1.6-3.3 4.3-5.3m2.6-2.6A9.88 9.88 0 0 1 12 4c7 0 11 4.5 11 4.5s-1.6 3.3-4.3 5.3"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    {:else}
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    {/if}
+                  </button>
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    onclick={() => {
+                      navigator.clipboard.writeText(newlyCreatedCompany?.solanaAddress || '');
+                      toastStore.add({ message: 'SOL address copied!', type: 'success' });
+                    }}
+                    title="Copy to clipboard"
+                    aria-label="Copy to clipboard"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  </button>
+                </div>
+              </div>
+              <p class="text-xs opacity-60 mt-2">
+                Use this address to receive SOL contributions on Solana devnet
+              </p>
+            </div>
+          {/if}
+
+          {#if newlyCreatedCompany.stellarAddress}
+            <div class="bg-base-200/50 rounded-lg p-4">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                  <span class="badge badge-warning">Stellar</span>
+                  <span class="text-xs opacity-60">testnet</span>
+                </div>
+              </div>
+              <div class="flex items-center justify-between gap-3">
+                <code class="text-sm font-mono bg-base-100 px-3 py-2 rounded flex-1 break-all">
+                  {displayAddress(newlyCreatedCompany.stellarAddress, 'xlm')}
+                </code>
+                <div class="flex gap-2">
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    onclick={() => toggleReveal('xlm')}
+                    title={revealedAddresses['xlm'] ? 'Hide address' : 'Show full address'}
+                    aria-label={revealedAddresses['xlm'] ? 'Hide address' : 'Show full address'}
+                  >
+                    {#if revealedAddresses['xlm']}
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-4.5-11-4.5s1.6-3.3 4.3-5.3m2.6-2.6A9.88 9.88 0 0 1 12 4c7 0 11 4.5 11 4.5s-1.6 3.3-4.3 5.3"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    {:else}
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    {/if}
+                  </button>
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    onclick={() => {
+                      navigator.clipboard.writeText(newlyCreatedCompany?.stellarAddress || '');
+                      toastStore.add({ message: 'XLM address copied!', type: 'success' });
+                    }}
+                    title="Copy to clipboard"
+                    aria-label="Copy to clipboard"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  </button>
+                </div>
+              </div>
+              <p class="text-xs opacity-60 mt-2">
+                Use this address to receive XLM contributions on Stellar testnet
+              </p>
+            </div>
+          {/if}
+
+          {#if newlyCreatedCompany.bitcoinAddress}
+            <div class="bg-base-200/50 rounded-lg p-4">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                  <span class="badge badge-secondary">Bitcoin</span>
+                  <span class="text-xs opacity-60">testnet</span>
+                </div>
+              </div>
+              <div class="flex items-center justify-between gap-3">
+                <code class="text-sm font-mono bg-base-100 px-3 py-2 rounded flex-1 break-all">
+                  {displayAddress(newlyCreatedCompany.bitcoinAddress, 'btc')}
+                </code>
+                <div class="flex gap-2">
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    onclick={() => toggleReveal('btc')}
+                    title={revealedAddresses['btc'] ? 'Hide address' : 'Show full address'}
+                    aria-label={revealedAddresses['btc'] ? 'Hide address' : 'Show full address'}
+                  >
+                    {#if revealedAddresses['btc']}
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-4.5-11-4.5s1.6-3.3 4.3-5.3m2.6-2.6A9.88 9.88 0 0 1 12 4c7 0 11 4.5 11 4.5s-1.6 3.3-4.3 5.3"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    {:else}
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    {/if}
+                  </button>
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    onclick={() => {
+                      navigator.clipboard.writeText(newlyCreatedCompany?.bitcoinAddress || '');
+                      toastStore.add({ message: 'BTC address copied!', type: 'success' });
+                    }}
+                    title="Copy to clipboard"
+                    aria-label="Copy to clipboard"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  </button>
+                </div>
+              </div>
+              <p class="text-xs opacity-60 mt-2">
+                Use this address to receive BTC contributions on Bitcoin testnet
+              </p>
+            </div>
+          {/if}
         </div>
 
         <div class="alert alert-info mt-4">
@@ -1026,404 +1223,401 @@
       </button>
     </div>
   {:else if !showForm}
-    <div class="space-y-4">
-      {#each companies as company}
-        <div class="glass-subtle rounded-2xl p-6">
-          <div class="flex flex-col md:flex-row gap-4">
-            <div class="flex-1">
-              <div class="flex items-start justify-between mb-2">
-                <div>
-                  <h3 class="text-xl font-bold">{company.name}</h3>
-                  <div class="flex flex-wrap gap-2 mt-2">
-                    {#if company.industry}
-                      <span class="badge badge-primary badge-sm">{company.industry}</span>
-                    {/if}
-                    <span class="badge {company.isPublic ? 'badge-success' : 'badge-ghost'} badge-sm">
-                      {company.isPublic ? 'Public' : 'Private'}
+    <div class="space-y-3">
+      {#each companies as company, idx}
+        <!-- Company accordion card -->
+        <div class="rounded-xl border border-base-300 bg-base-100 shadow-sm overflow-hidden">
+
+          <!-- ── Header (always visible) ─────────────────────────────── -->
+          <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+          <div
+            class="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-base-200/40 transition-colors cursor-pointer"
+            onclick={(e) => { if ((e.target as HTMLElement).closest('button')) return; toggleCompanyExpand(company.id); }}
+            role="button"
+            tabindex="0"
+            aria-expanded={expandedCompanyIds.has(company.id)}
+            onkeydown={(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') toggleCompanyExpand(company.id); }}
+          >
+            <!-- Avatar + name/meta -->
+            <div class="flex items-center gap-3 flex-1 min-w-0">
+              <div class="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center shrink-0 select-none">
+                <span class="text-primary font-bold text-lg leading-none">{company.name?.[0]?.toUpperCase() ?? '?'}</span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="font-bold text-base">{company.name}</span>
+                  {#if company.industry}
+                    <span class="badge badge-primary badge-sm">{company.industry}</span>
+                  {/if}
+                  <span class="badge {company.isPublic ? 'badge-success' : 'badge-ghost'} badge-sm">
+                    {company.isPublic ? 'Public' : 'Private'}
+                  </span>
+                  {#if company.wishlistItems && company.wishlistItems.length > 0}
+                    <span class="badge badge-outline badge-sm flex items-center gap-1">
+                      <Target class="w-3 h-3" />
+                      {company.wishlistItems.length} item{company.wishlistItems.length === 1 ? '' : 's'}
                     </span>
-                  </div>
+                  {/if}
+                </div>
+                <div class="flex flex-wrap items-center gap-3 text-xs opacity-50 mt-0.5">
+                  {#if company.stage}
+                    <span>{stageOptions.find(s => s.value === company.stage)?.label ?? company.stage}</span>
+                  {/if}
+                  {#if company.location}
+                    <span>📍 {company.location}</span>
+                  {/if}
+                  {#if company.fundingStage}
+                    <span>💰 {fundingOptions.find(f => f.value === company.fundingStage)?.label ?? company.fundingStage}</span>
+                  {/if}
                 </div>
               </div>
+            </div>
 
-              <p class="opacity-80 mb-3">{company.description}</p>
+            <!-- Action buttons + chevron -->
+            <div class="flex items-center gap-1 shrink-0">
+              <button
+                class="btn btn-ghost btn-sm btn-square"
+                onclick={(e) => { e.stopPropagation(); openForm(company); }}
+                title="Edit company"
+                aria-label="Edit {company.name}"
+              >
+                <Edit class="w-4 h-4" />
+              </button>
+              <button
+                class="btn btn-ghost btn-sm btn-square text-error"
+                onclick={(e) => { e.stopPropagation(); deleteCompany(company.id, company.name); }}
+                title="Delete company"
+                aria-label="Delete {company.name}"
+              >
+                <Trash2 class="w-4 h-4" />
+              </button>
+              {#if expandedCompanyIds.has(company.id)}
+                <ChevronUp class="w-5 h-5 opacity-40" />
+              {:else}
+                <ChevronDown class="w-5 h-5 opacity-40" />
+              {/if}
+            </div>
+          </div>
 
-              <div class="flex flex-wrap gap-2 text-sm mb-4">
-                {#if company.website}
-                  <a 
-                    href={company.website} 
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="link link-primary flex items-center gap-1"
-                  >
-                    <Globe class="w-4 h-4" />
-                    Website
-                  </a>
+          <!-- ── Expanded body ────────────────────────────────────────── -->
+          {#if expandedCompanyIds.has(company.id)}
+            <div class="border-t border-base-300">
+
+              <!-- Description + links + metadata -->
+              <div class="px-5 py-4 space-y-3">
+                <p class="text-sm opacity-80 leading-relaxed">{company.description}</p>
+
+                <!-- External links -->
+                {#if company.website || company.linkedinUrl || company.twitterUrl}
+                  <div class="flex flex-wrap gap-3 text-sm">
+                    {#if company.website}
+                      <a href={company.website} target="_blank" rel="noopener noreferrer" class="link link-primary flex items-center gap-1">
+                        <Globe class="w-4 h-4" /> Website
+                      </a>
+                    {/if}
+                    {#if company.linkedinUrl}
+                      <a href={company.linkedinUrl} target="_blank" rel="noopener noreferrer" class="link link-primary flex items-center gap-1">
+                        <Linkedin class="w-4 h-4" /> LinkedIn
+                      </a>
+                    {/if}
+                    {#if company.twitterUrl}
+                      <a href={company.twitterUrl} target="_blank" rel="noopener noreferrer" class="link link-primary flex items-center gap-1">
+                        <Twitter class="w-4 h-4" /> X / Twitter
+                      </a>
+                    {/if}
+                  </div>
                 {/if}
-                {#if company.linkedinUrl}
-                  <a 
-                    href={company.linkedinUrl} 
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="link link-primary flex items-center gap-1"
-                  >
-                    <Linkedin class="w-4 h-4" />
-                    LinkedIn
-                  </a>
-                {/if}
-                {#if company.wishlistItems && company.wishlistItems.length > 0}
-                  <span class="flex items-center gap-1 opacity-70">
-                    <Target class="w-4 h-4" />
-                    {company.wishlistItems.length} wishlist {company.wishlistItems.length === 1 ? 'item' : 'items'}
-                  </span>
+
+                <!-- Metadata chips -->
+                <div class="flex flex-wrap gap-3 text-xs opacity-55">
+                  {#if company.employeeCount}
+                    <span>👥 {company.employeeCount} {company.employeeCount === 1 ? 'person' : 'people'}</span>
+                  {/if}
+                  {#if company.foundedDate}
+                    <span>📅 Founded {new Date(company.foundedDate).getFullYear()}</span>
+                  {/if}
+                </div>
+
+                {#if company.tags && company.tags.length > 0}
+                  <div class="flex flex-wrap gap-1">
+                    {#each company.tags as tag}
+                      <span class="badge badge-outline badge-xs">{tag}</span>
+                    {/each}
+                  </div>
                 {/if}
               </div>
 
-              <!-- Wallet Addresses Section -->
-              {#if company.ethAddress || company.avaxAddress}
-                <div class="mt-4 p-3 bg-base-200/50 rounded-lg">
-                  <div class="flex items-center gap-2 mb-2">
-                    <Wallet class="w-4 h-4 text-primary" />
-                    <span class="text-sm font-semibold">Wallet Addresses</span>
-                  </div>
-                  <div class="space-y-2">
+              <!-- ── Wallet Addresses ──────────────────────────────────── -->
+              <div class="border-t border-base-200 px-5 py-4">
+                <div class="flex items-center gap-2 mb-3">
+                  <Wallet class="w-4 h-4 text-primary" />
+                  <span class="text-sm font-semibold">Wallet Addresses</span>
+                </div>
+
+                {#if company.ethAddress || company.avaxAddress}
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {#if company.ethAddress}
-                      <div class="flex items-center justify-between gap-2">
-                        <div class="flex items-center gap-2 flex-1 min-w-0">
-                          <span class="badge badge-primary badge-xs">ETH</span>
-                          <code class="text-xs font-mono flex-1" title={company.ethAddress}>
-                            {displayAddress(company.ethAddress, `eth-${company.id}`)}
-                          </code>
+                      <div class="bg-base-200/60 rounded-lg px-3 py-2">
+                        <div class="flex items-center justify-between mb-1">
+                          <span class="badge badge-primary badge-xs">ETH Sepolia</span>
+                          <div class="flex gap-1">
+                            <button
+                              class="btn btn-ghost btn-xs btn-square"
+                              onclick={() => toggleReveal(`eth-${company.id}`)}
+                              title={revealedAddresses[`eth-${company.id}`] ? 'Hide' : 'Show full address'}
+                            >
+                              {#if revealedAddresses[`eth-${company.id}`]}
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-4.5-11-4.5s1.6-3.3 4.3-5.3m2.6-2.6A9.88 9.88 0 0 1 12 4c7 0 11 4.5 11 4.5s-1.6 3.3-4.3 5.3"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                              {:else}
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                              {/if}
+                            </button>
+                            <button
+                              class="btn btn-ghost btn-xs btn-square"
+                              onclick={() => { navigator.clipboard.writeText(company.ethAddress || ''); toastStore.add({ message: 'ETH address copied!', type: 'success' }); }}
+                              title="Copy ETH address"
+                              aria-label="Copy ETH address"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                            </button>
+                          </div>
                         </div>
-                        <div class="flex gap-1">
-                          <button
-                            class="btn btn-ghost btn-xs"
-                            onclick={() => toggleReveal(`eth-${company.id}`)}
-                            title={revealedAddresses[`eth-${company.id}`] ? 'Hide address' : 'Show full address'}
-                            aria-label={revealedAddresses[`eth-${company.id}`] ? 'Hide' : 'Show'}
-                          >
-                            {#if revealedAddresses[`eth-${company.id}`]}
-                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-4.5-11-4.5s1.6-3.3 4.3-5.3m2.6-2.6A9.88 9.88 0 0 1 12 4c7 0 11 4.5 11 4.5s-1.6 3.3-4.3 5.3"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                            {:else}
-                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                            {/if}
-                          </button>
-                          <button
-                            class="btn btn-ghost btn-xs"
-                            onclick={() => {
-                              navigator.clipboard.writeText(company.ethAddress || '');
-                              toastStore.add({ message: 'Address copied!', type: 'success' });
-                            }}
-                            title="Copy Ethereum address"
-                            aria-label="Copy Ethereum address"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-                          </button>
-                        </div>
+                        <code class="text-xs font-mono break-all opacity-80">{displayAddress(company.ethAddress, `eth-${company.id}`)}</code>
                       </div>
                     {/if}
                     {#if company.avaxAddress}
-                      <div class="flex items-center justify-between gap-2">
-                        <div class="flex items-center gap-2 flex-1 min-w-0">
-                          <span class="badge badge-error badge-xs">AVAX</span>
-                          <code class="text-xs font-mono flex-1" title={company.avaxAddress}>
-                            {displayAddress(company.avaxAddress, `avax-${company.id}`)}
-                          </code>
+                      <div class="bg-base-200/60 rounded-lg px-3 py-2">
+                        <div class="flex items-center justify-between mb-1">
+                          <span class="badge badge-error badge-xs">AVAX Fuji</span>
+                          <div class="flex gap-1">
+                            <button
+                              class="btn btn-ghost btn-xs btn-square"
+                              onclick={() => toggleReveal(`avax-${company.id}`)}
+                              title={revealedAddresses[`avax-${company.id}`] ? 'Hide' : 'Show full address'}
+                            >
+                              {#if revealedAddresses[`avax-${company.id}`]}
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-4.5-11-4.5s1.6-3.3 4.3-5.3m2.6-2.6A9.88 9.88 0 0 1 12 4c7 0 11 4.5 11 4.5s-1.6 3.3-4.3 5.3"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                              {:else}
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                              {/if}
+                            </button>
+                            <button
+                              class="btn btn-ghost btn-xs btn-square"
+                              onclick={() => { navigator.clipboard.writeText(company.avaxAddress || ''); toastStore.add({ message: 'AVAX address copied!', type: 'success' }); }}
+                              title="Copy AVAX address"
+                              aria-label="Copy AVAX address"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                            </button>
+                          </div>
                         </div>
-                        <div class="flex gap-1">
-                          <button
-                            class="btn btn-ghost btn-xs"
-                            onclick={() => toggleReveal(`avax-${company.id}`)}
-                            title={revealedAddresses[`avax-${company.id}`] ? 'Hide address' : 'Show full address'}
-                            aria-label={revealedAddresses[`avax-${company.id}`] ? 'Hide' : 'Show'}
-                          >
-                            {#if revealedAddresses[`avax-${company.id}`]}
-                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-4.5-11-4.5s1.6-3.3 4.3-5.3m2.6-2.6A9.88 9.88 0 0 1 12 4c7 0 11 4.5 11 4.5s-1.6 3.3-4.3 5.3"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                            {:else}
-                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                            {/if}
-                          </button>
-                          <button
-                            class="btn btn-ghost btn-xs"
-                            onclick={() => {
-                              navigator.clipboard.writeText(company.avaxAddress || '');
-                              toastStore.add({ message: 'Address copied!', type: 'success' });
-                            }}
-                            title="Copy Avalanche address"
-                            aria-label="Copy Avalanche address"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-                          </button>
-                        </div>
+                        <code class="text-xs font-mono break-all opacity-80">{displayAddress(company.avaxAddress, `avax-${company.id}`)}</code>
                       </div>
                     {/if}
                   </div>
-                </div>
-              {:else}
-                <div class="mt-4 p-3 bg-warning/10 border border-warning/30 rounded-lg">
-                  <div class="flex items-center gap-2 mb-2">
-                    <AlertCircle class="w-4 h-4 text-warning" />
-                    <span class="text-sm font-semibold">No Wallet Addresses</span>
+                {:else}
+                  <div class="bg-warning/10 border border-warning/30 rounded-lg p-3">
+                    <div class="flex items-start gap-2">
+                      <AlertCircle class="w-4 h-4 text-warning mt-0.5 shrink-0" />
+                      <div>
+                        <p class="text-sm font-semibold mb-1">No wallet addresses yet</p>
+                        <p class="text-xs opacity-75 mb-3">Generate addresses to enable blockchain features for this company.</p>
+                        <button
+                          class="btn btn-sm btn-warning gap-2"
+                          onclick={() => {
+                            fetch(`${PUBLIC_API_URL}/wallet/company/${company.id}`, {
+                              method: 'POST',
+                              headers: { 'Authorization': `Bearer ${$authStore.accessToken}` }
+                            })
+                              .then(res => res.json())
+                              .then(data => {
+                                if (data.success) {
+                                  toastStore.add({ message: 'Wallet addresses generated!', type: 'success' });
+                                  onUpdate();
+                                } else {
+                                  toastStore.add({ message: data.message || 'Failed to generate wallet', type: 'error' });
+                                }
+                              })
+                              .catch(() => toastStore.add({ message: 'Error generating wallet', type: 'error' }));
+                          }}
+                        >
+                          <Wallet class="w-4 h-4" />
+                          Generate Wallet Addresses
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <p class="text-sm opacity-80 mb-3">
-                    This company doesn't have blockchain wallet addresses yet. Wallet addresses are automatically generated when a company is created if you have a master wallet. If this company was created before your master wallet, you can regenerate addresses now.
-                  </p>
-                  <button
-                    class="btn btn-sm btn-warning gap-2"
-                    onclick={() => {
-                      errorMessage = null;
-                      // Trigger wallet generation for this company
-                      fetch(`${PUBLIC_API_URL}/wallet/company/${company.id}`, {
-                        method: 'POST',
-                        headers: {
-                          'Authorization': `Bearer ${$authStore.accessToken}`
-                        }
-                      })
-                        .then(res => res.json())
-                        .then(data => {
-                          if (data.success) {
-                            toastStore.add({ message: 'Wallet addresses generated successfully!', type: 'success' });
-                            onUpdate(); // Refresh companies
-                          } else {
-                            toastStore.add({ message: data.message || 'Failed to generate wallet', type: 'error' });
-                          }
-                        })
-                        .catch(err => {
-                          toastStore.add({ message: 'Error generating wallet', type: 'error' });
-                        });
-                    }}
-                  >
-                    <Wallet class="w-4 h-4" />
-                    Generate Wallet Addresses
-                  </button>
-                </div>
-              {/if}
+                {/if}
+              </div>
 
-              <!-- Wishlist Section - Expandable -->
-              <div class="mt-4">
+              <!-- ── Wishlist Section ──────────────────────────────────── -->
+              <div class="border-t border-base-200 px-5 py-4">
                 <button
-                  class="btn btn-sm btn-outline w-full justify-between"
+                  class="w-full flex items-center justify-between text-sm font-semibold mb-3 hover:opacity-70 transition-opacity"
                   onclick={() => toggleWishlist(company.id)}
                 >
                   <span class="flex items-center gap-2">
-                    <Target class="w-4 h-4" />
-                    Company Wishlist
+                    <Target class="w-4 h-4 text-primary" />
+                    Wishlist
                     {#if company.wishlistItems && company.wishlistItems.length > 0}
                       <span class="badge badge-primary badge-sm">{company.wishlistItems.length}</span>
                     {/if}
                   </span>
                   {#if expandedWishlistId === company.id}
-                    <ChevronUp class="w-4 h-4" />
+                    <ChevronUp class="w-4 h-4 opacity-50" />
                   {:else}
-                    <ChevronDown class="w-4 h-4" />
+                    <ChevronDown class="w-4 h-4 opacity-50" />
                   {/if}
                 </button>
 
                 {#if expandedWishlistId === company.id}
-                  <div class="mt-4 space-y-4 border-t border-base-300 pt-4">
-                    <!-- Add New Wishlist Item -->
-                    <WishlistForm 
+                  <div class="space-y-4">
+                    <WishlistForm
                       companyId={company.id}
                       companyWallet={company.ethAddress || company.avaxAddress}
                       masterWallet={masterWallet}
                       onItemAdded={handleWishlistItemAdded}
-                      onCreateBounty={(item) => openBountyModal(item, company)}
+                      onCreateBounty={(item: any) => openBountyModal(item, company)}
                     />
 
-                    <!-- Existing Wishlist Items -->
                     {#if company.wishlistItems && company.wishlistItems.length > 0}
-                      <div class="space-y-3">
-                        <h4 class="text-sm font-semibold opacity-70">Current Wishlist Items:</h4>
+                      <div class="space-y-2">
+                        <p class="text-xs font-semibold opacity-50 uppercase tracking-wide">Current items</p>
                         {#each company.wishlistItems as item}
-                          <div class="bg-base-200/50 rounded-lg p-3">
-                            <div class="flex items-start justify-between mb-2 gap-2">
-                              <div class="flex-1">
-                                <h5 class="font-semibold text-sm">{item.title}</h5>
-                                {#if item.description}
-                                  <p class="text-xs opacity-70 mt-1">{item.description}</p>
-                                {/if}
-                                <div class="flex gap-2 mt-2">
-                                  <span class="badge badge-sm">{item.category}</span>
-                                  <span class="badge badge-sm badge-{item.priority === 'critical' ? 'error' : item.priority === 'high' ? 'warning' : 'ghost'}">
-                                    {item.priority}
-                                  </span>
+                          <!-- Wishlist item card -->
+                          <div class="rounded-lg border border-base-300 bg-base-200/30 overflow-hidden">
+                            <!-- Item header -->
+                            <div class="flex items-start justify-between gap-2 px-4 py-3">
+                              <div class="flex-1 min-w-0">
+                                <div class="flex flex-wrap items-center gap-2 mb-1">
+                                  <h5 class="font-semibold text-sm">{item.title}</h5>
+                                  <span class="badge badge-sm badge-outline">{item.category}</span>
+                                  <span class="badge badge-sm badge-{item.priority === 'critical' ? 'error' : item.priority === 'high' ? 'warning' : 'ghost'}">{item.priority}</span>
+                                  {#if item.isEscrowActive}
+                                    <span class="badge badge-success badge-sm">🎯 Active Bounty</span>
+                                  {/if}
                                 </div>
+                                {#if item.description}
+                                  <p class="text-xs opacity-65 leading-relaxed">{item.description}</p>
+                                {/if}
                               </div>
                               <button
-                                class="btn btn-ghost btn-xs btn-square text-error"
+                                class="btn btn-ghost btn-xs btn-square text-error shrink-0"
                                 onclick={() => deleteWishlistItem(company.id, item.id, item.title, item.isEscrowActive)}
-                                title="Delete wishlist item"
+                                title="Delete item"
                               >
                                 <Trash2 class="w-3 h-3" />
                               </button>
                             </div>
-                            
+
+                            <!-- Progress bar -->
                             {#if item.value}
                               {@const percentage = Math.min(100, ((item.amountRaised || 0) / item.value) * 100)}
                               {@const remaining = Math.max(0, item.value - (item.amountRaised || 0))}
-                              <div class="mt-2">
-                                <div class="flex justify-between text-xs mb-1">
-                                  <span class="opacity-70">Progress</span>
-                                  <span class="font-semibold">{percentage.toFixed(0)}% complete</span>
+                              <div class="px-4 pb-3">
+                                <progress class="progress progress-primary w-full h-1.5" value={percentage} max="100"></progress>
+                                <div class="flex justify-between text-xs opacity-60 mt-1">
+                                  <span>€{(item.amountRaised || 0).toLocaleString()} raised</span>
+                                  {#if remaining > 0}
+                                    <span>{percentage.toFixed(0)}% · €{remaining.toLocaleString()} to go</span>
+                                  {:else}
+                                    <span class="text-success font-semibold">🎉 Goal reached!</span>
+                                  {/if}
                                 </div>
-                                <progress class="progress progress-primary w-full h-2" value={percentage} max="100"></progress>
-                                <div class="flex justify-between text-xs mt-1 opacity-70">
-                                  <span>Raised: ${(item.amountRaised || 0).toLocaleString()}</span>
-                                  <span>Goal: ${item.value.toLocaleString()}</span>
-                                </div>
-                                {#if remaining > 0}
-                                  <p class="text-xs mt-1 opacity-60">
-                                    ${remaining.toLocaleString()} remaining to reach goal
-                                  </p>
-                                {:else}
-                                  <p class="text-xs mt-1 text-success font-semibold">
-                                    🎉 Goal reached!
-                                  </p>
-                                {/if}
                               </div>
                             {:else}
-                              <p class="text-xs opacity-60 mt-2">
-                                Raised: ${(item.amountRaised || 0).toLocaleString()}
-                              </p>
+                              <div class="px-4 pb-3">
+                                <p class="text-xs opacity-55">Raised: €{(item.amountRaised || 0).toLocaleString()}</p>
+                              </div>
                             {/if}
 
-                            <!-- Create Bounty Button - Debug Version -->
+                            <!-- Bounty actions / info -->
                             {#if !item.isEscrowActive}
-                              <div class="mt-3 pt-3 border-t border-base-300">
-                                {#if item.value && (company.ethAddress || company.avaxAddress)}
-                                  <div class="space-y-2">
+                              <div class="border-t border-base-300 bg-base-200/50 px-4 py-3">
+                                {#if item.hasConfirmedPayment}
+                                  <p class="text-xs opacity-60">
+                                    🚧 A confirmed payment has already been submitted for this wishlist item. Deployment is pending — no further action required.
+                                  </p>
+                                {:else if isWishlistItemClosed(item)}
+                                  <p class="text-xs opacity-60">
+                                    ⚠️ This wishlist item is closed/expired. Create a new one to start a fresh bounty.
+                                  </p>
+                                {:else if item.value && (company.ethAddress || company.avaxAddress)}
+                                  <div class="flex flex-col sm:flex-row gap-2">
                                     <button
-                                      class="btn btn-sm btn-primary w-full gap-2"
+                                      class="btn btn-sm btn-primary flex-1 gap-1"
                                       onclick={() => openBountyModal(item, company)}
                                     >
-                                      <Target class="w-4 h-4" />
-                                      Create Bounty (Traditional)
+                                      <Target class="w-3.5 h-3.5" />
+                                      Create Bounty
                                     </button>
                                     <button
-                                      class="btn btn-sm btn-accent w-full gap-2"
+                                      class="btn btn-sm btn-accent flex-1 gap-1"
                                       onclick={() => openBountyModalX402(item, company)}
                                     >
-                                      <Wallet class="w-4 h-4" />
-                                      Create Bounty (Pay with USDC)
+                                      <Wallet class="w-3.5 h-3.5" />
+                                      Pay with USDC
                                     </button>
                                   </div>
-                                  <p class="text-xs opacity-60 mt-1 text-center">
-                                    Choose payment method for deployment
-                                  </p>
                                 {:else}
-                                  <div class="alert alert-warning py-2">
-                                    <div class="text-xs">
-                                      {#if !item.value}
-                                        ⚠️ Set a target value to enable bounty creation
-                                      {:else if !company.ethAddress && !company.avaxAddress}
-                                        ⚠️ Add a wallet address to your company to enable bounties
-                                      {/if}
-                                    </div>
-                                  </div>
+                                  <p class="text-xs opacity-60">
+                                    {#if !item.value}
+                                      ⚠️ Set a target value to enable bounty creation
+                                    {:else}
+                                      ⚠️ Wallet address required to create a bounty
+                                    {/if}
+                                  </p>
                                 {/if}
                               </div>
                             {:else}
-                              <div class="mt-3 pt-3 border-t border-base-300">
-                                <div class="alert alert-success py-2 mb-3">
-                                  <div class="flex items-center gap-2 text-xs">
-                                    <Target class="w-4 h-4" />
-                                    <span class="font-semibold">Active Bounty Campaign</span>
-                                  </div>
-                                </div>
-                                
+                              <div class="border-t border-base-300 bg-success/5 px-4 py-3 space-y-2">
                                 {#if item.ethereumEscrowAddress || item.avalancheEscrowAddress}
-                                  <div class="bg-base-200/50 rounded-lg p-3 space-y-2">
-                                    <p class="text-xs font-semibold opacity-70 mb-2">Smart Contract Addresses:</p>
-                                    
-                                    {#if item.ethereumEscrowAddress}
-                                      <div class="space-y-1">
-                                        <div class="flex items-center justify-between">
-                                          <span class="text-xs font-semibold flex items-center gap-1">
-                                            <span class="badge badge-primary badge-xs">ETH</span>
-                                            Ethereum Sepolia
-                                          </span>
-                                          <a
-                                            href="https://sepolia.etherscan.io/address/{item.ethereumEscrowAddress}"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            class="btn btn-ghost btn-xs gap-1"
-                                          >
-                                            View
-                                            <ExternalLink class="w-3 h-3" />
-                                          </a>
-                                        </div>
-                                        <code class="text-xs bg-base-300 px-2 py-1 rounded block truncate">{item.ethereumEscrowAddress}</code>
-                                      </div>
-                                    {/if}
-                                    
-                                    {#if item.avalancheEscrowAddress}
-                                      <div class="space-y-1">
-                                        <div class="flex items-center justify-between">
-                                          <span class="text-xs font-semibold flex items-center gap-1">
-                                            <span class="badge badge-error badge-xs">AVAX</span>
-                                            Avalanche Fuji
-                                          </span>
-                                          <a
-                                            href="https://testnet.snowtrace.io/address/{item.avalancheEscrowAddress}"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            class="btn btn-ghost btn-xs gap-1"
-                                          >
-                                            View
-                                            <ExternalLink class="w-3 h-3" />
-                                          </a>
-                                        </div>
-                                        <code class="text-xs bg-base-300 px-2 py-1 rounded block truncate">{item.avalancheEscrowAddress}</code>
-                                      </div>
-                                    {/if}
-                                    
-                                    {#if item.deployments && item.deployments.length > 0}
-                                      <div class="mt-3 pt-3 border-t border-base-300">
-                                        <p class="text-xs font-semibold opacity-70 mb-2">📋 Deployment History:</p>
+                                  <p class="text-xs font-semibold opacity-60 uppercase tracking-wide">Deployed contracts</p>
+                                  {#if item.ethereumEscrowAddress}
+                                    <div class="flex items-center justify-between gap-2">
+                                      <span class="badge badge-primary badge-xs">ETH</span>
+                                      <code class="text-xs font-mono flex-1 truncate opacity-75">{item.ethereumEscrowAddress}</code>
+                                      <a href="https://sepolia.etherscan.io/address/{item.ethereumEscrowAddress}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-xs gap-1">
+                                        <ExternalLink class="w-3 h-3" />
+                                      </a>
+                                    </div>
+                                  {/if}
+                                  {#if item.avalancheEscrowAddress}
+                                    <div class="flex items-center justify-between gap-2">
+                                      <span class="badge badge-error badge-xs">AVAX</span>
+                                      <code class="text-xs font-mono flex-1 truncate opacity-75">{item.avalancheEscrowAddress}</code>
+                                      <a href="https://testnet.snowtrace.io/address/{item.avalancheEscrowAddress}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-xs gap-1">
+                                        <ExternalLink class="w-3 h-3" />
+                                      </a>
+                                    </div>
+                                  {/if}
+                                  {#if item.deployments && item.deployments.length > 0}
+                                    <details class="mt-1">
+                                      <summary class="text-xs opacity-55 cursor-pointer hover:opacity-80">📋 Deployment history ({item.deployments.length})</summary>
+                                      <div class="mt-2 space-y-1.5">
                                         {#each item.deployments as deployment}
-                                          <div class="bg-base-300/30 rounded p-2 mb-2 text-xs space-y-1">
-                                            <div class="flex items-center justify-between">
-                                              <span class="font-semibold">{deployment.chain === 'ethereum' ? '⟠ Ethereum' : '▲ Avalanche'} {deployment.network}</span>
+                                          <div class="bg-base-300/40 rounded px-2 py-1.5 text-xs flex items-center justify-between gap-2">
+                                            <span>{deployment.chain === 'ethereum' ? '⟠' : '▲'} {deployment.network}</span>
+                                            {#if deployment.deploymentTxHash}
                                               <a
-                                                href={deployment.chain === 'ethereum' 
+                                                href={deployment.chain === 'ethereum'
                                                   ? `https://sepolia.etherscan.io/tx/${deployment.deploymentTxHash}`
                                                   : `https://testnet.snowtrace.io/tx/${deployment.deploymentTxHash}`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                class="link link-primary text-xs"
-                                                title="View deployment transaction"
-                                              >
-                                                Tx
-                                              </a>
-                                            </div>
-                                            {#if deployment.deploymentTxHash}
-                                              <div class="font-mono text-[10px] opacity-70 truncate">
-                                                TX: {deployment.deploymentTxHash.slice(0, 10)}...{deployment.deploymentTxHash.slice(-8)}
-                                              </div>
+                                                target="_blank" rel="noopener noreferrer"
+                                                class="link link-primary font-mono"
+                                              >{deployment.deploymentTxHash.slice(0,8)}…</a>
                                             {/if}
-                                            <div class="text-[10px] opacity-60">
-                                              {new Date(deployment.deployedAt).toLocaleDateString()} {new Date(deployment.deployedAt).toLocaleTimeString()}
-                                            </div>
-                                              {#if deployment.campaignName}
-                                                <div class="mt-1 text-sm font-semibold">{deployment.campaignName}</div>
-                                              {/if}
-                                              {#if deployment.campaignDescription}
-                                                <div class="text-xs opacity-80">{deployment.campaignDescription}</div>
-                                              {/if}
+                                            <span class="opacity-50">{new Date(deployment.deployedAt).toLocaleDateString()}</span>
                                           </div>
                                         {/each}
                                       </div>
-                                    {/if}
-                                    
-                                    <p class="text-xs opacity-60 mt-2 pt-2 border-t border-base-300">
-                                      Investors can contribute via <a href="/companies/{company.id}" class="link">company page</a> or <a href="/bounties" class="link">bounties page</a>
-                                    </p>
-                                  </div>
+                                    </details>
+                                  {/if}
+                                  <p class="text-xs opacity-50 pt-1">
+                                    Investors can contribute via <a href="/companies/{company.id}" class="link">company page</a> or <a href="/bounties" class="link">bounties page</a>
+                                  </p>
                                 {:else}
-                                  <div class="bg-warning/10 rounded-lg p-3 border border-warning/30">
-                                    <p class="text-xs opacity-80">
-                                      ⏳ Contracts are being deployed... This may take a few moments. Refresh the page to see contract addresses.
-                                    </p>
-                                  </div>
+                                  <p class="text-xs opacity-60">⏳ Contracts deploying… refresh in a moment.</p>
                                 {/if}
                               </div>
                             {/if}
@@ -1431,7 +1625,7 @@
                         {/each}
                       </div>
                     {:else}
-                      <div class="text-center py-6 opacity-60">
+                      <div class="text-center py-6 opacity-50">
                         <Target class="w-8 h-8 mx-auto mb-2 opacity-30" />
                         <p class="text-sm">No wishlist items yet. Add your first item above!</p>
                       </div>
@@ -1439,23 +1633,9 @@
                   </div>
                 {/if}
               </div>
-            </div>
 
-            <div class="flex md:flex-col gap-2">
-              <button 
-                class="btn btn-sm btn-ghost"
-                onclick={() => openForm(company)}
-              >
-                <Edit class="w-4 h-4" />
-              </button>
-              <button 
-                class="btn btn-sm btn-ghost text-error"
-                onclick={() => deleteCompany(company.id, company.name)}
-              >
-                <Trash2 class="w-4 h-4" />
-              </button>
             </div>
-          </div>
+          {/if}
         </div>
       {/each}
     </div>

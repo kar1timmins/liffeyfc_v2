@@ -182,8 +182,8 @@ export class WalletBalanceController {
   // --------------------------------------------------------------------
   // Solana / Stellar Balances
   // --------------------------------------------------------------------
-  private readonly solanaRpc = 'https://api.mainnet-beta.solana.com';
-  private readonly stellarHorizon = 'https://horizon.stellar.org';
+  private readonly solanaRpc = 'https://api.devnet.solana.com';
+  private readonly stellarHorizon = 'https://horizon-testnet.stellar.org';
 
   private async getSolanaBalance(address: string) {
     try {
@@ -218,6 +218,14 @@ export class WalletBalanceController {
   private async getStellarBalance(address: string) {
     try {
       const res = await fetch(`${this.stellarHorizon}/accounts/${address}`);
+      // Horizon returns 404 for accounts that have never been funded; treat as zero balance
+      if (res.status === 404) {
+        return {
+          chain: 'stellar',
+          address,
+          balanceXlm: '0.000000',
+        };
+      }
       if (!res.ok) {
         throw new Error(`Horizon returned ${res.status}`);
       }
@@ -277,15 +285,27 @@ export class WalletBalanceController {
         HttpStatus.BAD_REQUEST,
       );
     }
-    if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+
+    const supportedChains = ['ethereum', 'avalanche', 'solana', 'stellar'];
+    if (!supportedChains.includes(chain)) {
       throw new HttpException(
-        'Invalid EVM address format',
+        'USDC balance is only available for ethereum, avalanche, solana, and stellar',
         HttpStatus.BAD_REQUEST,
       );
     }
-    if (chain !== 'ethereum' && chain !== 'avalanche') {
+
+    if (chain === 'solana') {
+      return await this.getSolanaUsdcBalance(address);
+    }
+
+    if (chain === 'stellar') {
+      return await this.getStellarUsdcBalance(address);
+    }
+
+    // EVM chains (ethereum / avalanche)
+    if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
       throw new HttpException(
-        'USDC balance is only available for ethereum and avalanche',
+        'Invalid EVM address format',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -341,6 +361,77 @@ export class WalletBalanceController {
       `Failed to fetch USDC balance: ${lastError?.message ?? 'Unknown error'}`,
       HttpStatus.SERVICE_UNAVAILABLE,
     );
+  }
+
+  private async getSolanaUsdcBalance(address: string) {
+    // Mainnet USDC SPL token mint (Circle)
+    const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+    try {
+      const response = await fetch(this.solanaRpc, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'getTokenAccountsByOwner',
+          params: [
+            address,
+            { mint: USDC_MINT },
+            { encoding: 'jsonParsed' },
+          ],
+        }),
+      });
+      const data = await response.json();
+      const accounts: any[] = data.result?.value ?? [];
+      let totalUsdc = 0;
+      for (const account of accounts) {
+        const uiAmount =
+          account.account?.data?.parsed?.info?.tokenAmount?.uiAmount;
+        if (uiAmount) totalUsdc += Number(uiAmount);
+      }
+      return {
+        chain: 'solana',
+        address,
+        balanceUsdc: totalUsdc.toFixed(2),
+      };
+    } catch (err) {
+      console.error('Failed to fetch Solana USDC balance:', err);
+      throw new HttpException(
+        'Failed to fetch Solana USDC balance',
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+  }
+
+  private async getStellarUsdcBalance(address: string) {
+    // Centre/Circle USDC on Stellar mainnet
+    const USDC_ISSUER = 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN';
+    try {
+      const res = await fetch(`${this.stellarHorizon}/accounts/${address}`);
+      if (!res.ok) {
+        // Account not yet funded on Stellar – return zero balance gracefully
+        if (res.status === 404) {
+          return { chain: 'stellar', address, balanceUsdc: '0.00' };
+        }
+        throw new Error(`Horizon returned ${res.status}`);
+      }
+      const data = await res.json();
+      const usdcEntry = (data.balances ?? []).find(
+        (b: any) => b.asset_code === 'USDC' && b.asset_issuer === USDC_ISSUER,
+      );
+      const balanceUsdc = usdcEntry ? parseFloat(usdcEntry.balance) : 0;
+      return {
+        chain: 'stellar',
+        address,
+        balanceUsdc: balanceUsdc.toFixed(2),
+      };
+    } catch (err) {
+      console.error('Failed to fetch Stellar USDC balance:', err);
+      throw new HttpException(
+        'Failed to fetch Stellar USDC balance',
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
   }
 
   @Get('gas-price')
