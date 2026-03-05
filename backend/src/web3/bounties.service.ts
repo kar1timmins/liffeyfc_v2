@@ -959,6 +959,82 @@ export class BountiesService {
   }
 
   /**
+   * Immediately record a contribution to the database after a successful
+   * on-chain transaction, so the profile page reflects it without needing
+   * a separate `getContributors` poll.
+   */
+  async recordImmediateContribution(
+    wishlistItemId: string,
+    txHash: string,
+    contributorAddress: string,
+    userId: string,
+    chain: 'ethereum' | 'avalanche',
+    amountEth: number,
+  ): Promise<void> {
+    try {
+      const wishlistItem = await this.wishlistRepository.findOne({
+        where: { id: wishlistItemId },
+      });
+      if (!wishlistItem) {
+        this.logger.warn(`recordImmediateContribution: wishlist item ${wishlistItemId} not found`);
+        return;
+      }
+
+      const contractAddress =
+        chain === 'ethereum'
+          ? wishlistItem.ethereumEscrowAddress
+          : wishlistItem.avalancheEscrowAddress;
+
+      if (!contractAddress) {
+        this.logger.warn(
+          `recordImmediateContribution: no ${chain} escrow address on item ${wishlistItemId}`,
+        );
+        return;
+      }
+
+      const escrowDeployment = await this.escrowDeploymentRepository.findOne({
+        where: { wishlistItemId, chain },
+      });
+
+      const address = contributorAddress.toLowerCase();
+
+      // Upsert: update if the address+contract combo already exists,
+      // otherwise create a fresh row.
+      const existing = await this.contributionRepository.findOne({
+        where: { contributorAddress: address, contractAddress, wishlistItemId },
+      });
+
+      if (existing) {
+        existing.amountWei = BigInt(Math.round(amountEth * 1e18)).toString();
+        existing.amountEth = amountEth;
+        existing.transactionHash = txHash;
+        await this.contributionRepository.save(existing);
+      } else {
+        const contribution = this.contributionRepository.create({
+          contributorAddress: address,
+          userId,
+          escrowDeploymentId: escrowDeployment?.id,
+          wishlistItemId,
+          contractAddress,
+          chain,
+          amountWei: BigInt(Math.round(amountEth * 1e18)).toString(),
+          amountEth,
+          transactionHash: txHash,
+          contributedAt: new Date(),
+        });
+        await this.contributionRepository.save(contribution);
+      }
+
+      this.logger.log(
+        `💾 Immediate contribution saved: ${address} → ${contractAddress} (${amountEth} on ${chain})`,
+      );
+    } catch (err) {
+      // Non-fatal — the on-chain tx succeeded; don't throw.
+      this.logger.error('recordImmediateContribution failed (non-fatal):', err);
+    }
+  }
+
+  /**
    * Return contributions linked to a particular user.
    * Relies on the userId column being populated during blockchain sync or
    * manual recording. Includes associated wishlist item and company info so

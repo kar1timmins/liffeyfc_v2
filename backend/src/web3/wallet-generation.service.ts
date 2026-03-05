@@ -616,7 +616,7 @@ export class WalletGenerationService {
   async generateCompanyWallet(
     userId: string,
     companyId: string,
-  ): Promise<{ ethAddress: string; avaxAddress: string }> {
+  ): Promise<{ ethAddress: string; avaxAddress: string; solanaAddress: string | null; stellarAddress: string | null; bitcoinAddress: string | null }> {
     devLog.log(
       'Starting generateCompanyWallet for userId:',
       userId,
@@ -652,6 +652,9 @@ export class WalletGenerationService {
       return {
         ethAddress: existingCompanyWallet.ethAddress,
         avaxAddress: existingCompanyWallet.avaxAddress,
+        solanaAddress: existingCompanyWallet.solanaAddress ?? null,
+        stellarAddress: existingCompanyWallet.stellarAddress ?? null,
+        bitcoinAddress: existingCompanyWallet.bitcoinAddress ?? null,
       };
     }
 
@@ -775,6 +778,9 @@ export class WalletGenerationService {
       const updateResult = await this.companyRepo.update(companyId, {
         ethAddress: childWallet.address,
         avaxAddress: avaxAddress,
+        ...(solanaAddress && { solanaAddress }),
+        ...(stellarAddress && { stellarAddress }),
+        ...(bitcoinAddress && { bitcoinAddress }),
       });
       devLog.log(
         'Company update result:',
@@ -793,7 +799,13 @@ export class WalletGenerationService {
         updatedCompany?.avaxAddress,
       );
 
-      return { ethAddress: savedWallet.ethAddress, avaxAddress: savedWallet.avaxAddress };
+      return {
+        ethAddress: savedWallet.ethAddress,
+        avaxAddress: savedWallet.avaxAddress,
+        solanaAddress: savedWallet.solanaAddress ?? null,
+        stellarAddress: savedWallet.stellarAddress ?? null,
+        bitcoinAddress: savedWallet.bitcoinAddress ?? null,
+      };
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);

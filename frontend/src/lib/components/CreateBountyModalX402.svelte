@@ -371,8 +371,8 @@
 </script>
 
 {#if isOpen}
-  <div class="modal modal-open" role="dialog">
-    <div class="modal-box max-w-lg p-0 overflow-hidden">
+  <div class="modal modal-open overflow-y-auto" role="dialog">
+    <div class="modal-box max-w-lg p-0 overflow-y-auto max-h-[90vh]">
 
       <!-- Header -->
       <div class="flex items-center justify-between px-6 py-4 border-b border-base-300">

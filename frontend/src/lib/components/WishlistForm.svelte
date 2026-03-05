@@ -220,11 +220,14 @@
     try {
       const token = $authStore.accessToken;
       if (!token) { userUsdcWallet = null; return; }
-      const res  = await fetch(`${PUBLIC_API_URL}/users/usdc-wallet`, {
+      // Use /wallet/addresses so we check the master wallet (same source the
+      // X402 modal and the deployment worker both rely on) rather than the
+      // legacy usdcWalletAddress field which may not be set on older accounts.
+      const res  = await fetch(`${PUBLIC_API_URL}/wallet/addresses`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       const data = await res.json();
-      userUsdcWallet = data.success ? (data.data?.usdcWalletAddress ?? null) : null;
+      userUsdcWallet = data.success ? (data.data?.ethAddress ?? null) : null;
     } catch { userUsdcWallet = null; }
     finally   { isLoadingUserWallet = false; }
   }
@@ -835,8 +838,8 @@
 
   <!-- ── Payment Method Choice Modal ─────────────────────────── -->
   {#if showPaymentMethodChoice && pendingWishlistItem}
-    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div class="bg-base-100 rounded-lg shadow-2xl max-w-md w-full mx-4 border border-base-300">
+    <div class="fixed inset-0 bg-black/50 flex items-start justify-center z-50 overflow-y-auto py-8">
+      <div class="bg-base-100 rounded-lg shadow-2xl max-w-md w-full mx-4 border border-base-300 overflow-y-auto max-h-[90vh]">
         <div class="border-b border-base-300 p-6">
           <h2 class="text-xl font-bold">Choose Deployment Method</h2>
           <p class="text-sm opacity-70 mt-1">How would you like to pay for contract deployment?</p>
@@ -868,9 +871,9 @@
               disabled={isSubmitting || (!userUsdcWallet && !isLoadingUserWallet)}>
               <div class="font-semibold flex items-center gap-2">💳 Pay with USDC</div>
               <div class="text-sm opacity-70 mt-1">Use testnet USDC for deployment</div>
-              {#if !userUsdcWallet}
+              {#if !userUsdcWallet && !isLoadingUserWallet}
                 <p class="text-xs text-error mt-2">
-                  No USDC wallet found. <a href="/profile" class="link link-primary">Add one in your profile</a>.
+                  No master wallet found. <a href="/profile" class="link link-primary">Generate one in your profile</a>.
                 </p>
               {/if}
             </button>

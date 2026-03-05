@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsEthereumAddress, IsIn } from 'class-validator';
+import { IsString, IsNumber, IsIn, IsOptional, IsUUID } from 'class-validator';
 
 export class SendTransactionDto {
   @IsString()
@@ -10,4 +10,10 @@ export class SendTransactionDto {
 
   @IsNumber()
   amountEth: number; // Amount in native token (ETH, AVAX, SOL, XLM)
+
+  /** Optional: when sending to an escrow contract, pass the wishlist item ID
+   *  so a Contribution record is immediately saved to the database. */
+  @IsOptional()
+  @IsUUID()
+  wishlistItemId?: string;
 }

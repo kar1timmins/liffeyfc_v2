@@ -85,6 +85,15 @@ export class Company {
   @Column({ type: 'varchar', length: 42, nullable: true })
   avaxAddress?: string;
 
+  @Column({ type: 'varchar', length: 66, nullable: true })
+  solanaAddress?: string;
+
+  @Column({ type: 'varchar', length: 69, nullable: true })
+  stellarAddress?: string;
+
+  @Column({ type: 'varchar', length: 62, nullable: true })
+  bitcoinAddress?: string;
+
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 

@@ -113,9 +113,9 @@ export class EscrowContractService {
   private readonly ENCRYPTION_ALGORITHM = 'aes-256-gcm';
   private readonly ENCRYPTION_KEY: Buffer;
 
-  // RPC Providers with fallbacks
-  private ethereumProvider: ethers.JsonRpcProvider;
-  private avalancheProvider: ethers.JsonRpcProvider;
+  // RPC Providers with fallbacks (FallbackProvider distributes across all RPCs automatically)
+  private ethereumProvider: ethers.AbstractProvider;
+  private avalancheProvider: ethers.AbstractProvider;
 
   // Factory contract addresses
   private ethereumFactoryAddress: string;
@@ -168,15 +168,36 @@ export class EscrowContractService {
     }
     this.ENCRYPTION_KEY = Buffer.from(key, 'hex');
 
-    // Get RPC URLs from environment or use first fallback
-    const ethereumRpcUrl =
-      process.env.ETHEREUM_RPC_URL || this.ethereumRPCEndpoints[0];
-    const avalancheRpcUrl =
-      process.env.AVALANCHE_RPC_URL || this.avalancheRPCEndpoints[0];
+    // Build FallbackProvider using only the testnet-specific free RPC lists.
+    // We intentionally do NOT include ETHEREUM_RPC_URL / AVALANCHE_RPC_URL here
+    // because those env vars may point to mainnet endpoints (different chain IDs)
+    // which would cause FallbackProvider to throw a "network changed" error.
+    //
+    // staticNetwork avoids per-call chain-ID polling (eliminates the ~2s latency
+    // spike on the first request after startup).
+    const sepoliaNetwork = ethers.Network.from(11155111);
+    const fujiNetwork = ethers.Network.from(43113);
 
-    // Initialize providers with fallback retry logic
-    this.ethereumProvider = new ethers.JsonRpcProvider(ethereumRpcUrl);
-    this.avalancheProvider = new ethers.JsonRpcProvider(avalancheRpcUrl);
+    this.ethereumProvider = new ethers.FallbackProvider(
+      this.ethereumRPCEndpoints.map((url, i) => ({
+        provider: new ethers.JsonRpcProvider(url, sepoliaNetwork, { staticNetwork: sepoliaNetwork }),
+        priority: i + 1,
+        weight: 1,
+        stallTimeout: 2500,
+      })),
+      sepoliaNetwork,
+      { quorum: 1 },
+    );
+    this.avalancheProvider = new ethers.FallbackProvider(
+      this.avalancheRPCEndpoints.map((url, i) => ({
+        provider: new ethers.JsonRpcProvider(url, fujiNetwork, { staticNetwork: fujiNetwork }),
+        priority: i + 1,
+        weight: 1,
+        stallTimeout: 2500,
+      })),
+      fujiNetwork,
+      { quorum: 1 },
+    );
 
     // Throttle repeated RPC warnings to avoid log spam on transient network issues
     this.lastEthereumRpcWarn = 0;
@@ -192,8 +213,8 @@ export class EscrowContractService {
       );
     }
 
-    this.logger.log(`📡 Using Ethereum RPC: ${ethereumRpcUrl}`);
-    this.logger.log(`📡 Using Avalanche RPC: ${avalancheRpcUrl}`);
+    this.logger.log(`📡 Ethereum FallbackProvider: ${this.ethereumRPCEndpoints.length} Sepolia RPC(s) [staticNetwork]`);
+    this.logger.log(`📡 Avalanche FallbackProvider: ${this.avalancheRPCEndpoints.length} Fuji RPC(s) [staticNetwork]`);
   }
 
   /**
@@ -223,85 +244,17 @@ export class EscrowContractService {
   }
 
   /**
-   * Get working Ethereum provider with fallback
+   * Returns the Ethereum FallbackProvider (handles retries/rotation internally).
    */
-  private async getWorkingEthereumProvider(): Promise<ethers.JsonRpcProvider> {
-    try {
-      // Test current provider
-      await this.ethereumProvider.getNetwork();
-      return this.ethereumProvider;
-    } catch (error) {
-      // Avoid spamming logs if network is flapping - only warn once per minute
-      const now = Date.now();
-      if (now - (this.lastEthereumRpcWarn || 0) > 60_000) {
-        this.logger.warn(
-          '⚠️  Current Ethereum RPC endpoint failed, trying fallbacks...',
-        );
-        this.lastEthereumRpcWarn = now;
-      } else {
-        this.logger.debug(
-          'Ethereum RPC endpoint temporarily failing; retrying silently.',
-        );
-      }
-
-      for (const rpcUrl of this.ethereumRPCEndpoints) {
-        try {
-          const provider = new ethers.JsonRpcProvider(rpcUrl);
-          await provider.getNetwork();
-          this.logger.log(
-            `✅ Successfully switched to Ethereum RPC: ${rpcUrl}`,
-          );
-          this.ethereumProvider = provider;
-          // Reset the warn timer on success
-          this.lastEthereumRpcWarn = 0;
-          return provider;
-        } catch (e) {
-          this.logger.debug(`Failed to connect to ${rpcUrl}`);
-        }
-      }
-      throw new Error('No working Ethereum RPC endpoint available');
-    }
+  private async getWorkingEthereumProvider(): Promise<ethers.AbstractProvider> {
+    return this.ethereumProvider;
   }
 
   /**
-   * Get working Avalanche provider with fallback
+   * Returns the Avalanche FallbackProvider (handles retries/rotation internally).
    */
-  private async getWorkingAvalancheProvider(): Promise<ethers.JsonRpcProvider> {
-    try {
-      // Test current provider
-      await this.avalancheProvider.getNetwork();
-      return this.avalancheProvider;
-    } catch (error) {
-      // Avoid spamming logs if network is flapping - only warn once per minute
-      const now = Date.now();
-      if (now - (this.lastAvalancheRpcWarn || 0) > 60_000) {
-        this.logger.warn(
-          '⚠️  Current Avalanche RPC endpoint failed, trying fallbacks...',
-        );
-        this.lastAvalancheRpcWarn = now;
-      } else {
-        this.logger.debug(
-          'Avalanche RPC endpoint temporarily failing; retrying silently.',
-        );
-      }
-
-      for (const rpcUrl of this.avalancheRPCEndpoints) {
-        try {
-          const provider = new ethers.JsonRpcProvider(rpcUrl);
-          await provider.getNetwork();
-          this.logger.log(
-            `✅ Successfully switched to Avalanche RPC: ${rpcUrl}`,
-          );
-          this.avalancheProvider = provider;
-          // Reset the warn timer on success
-          this.lastAvalancheRpcWarn = 0;
-          return provider;
-        } catch (e) {
-          this.logger.debug(`Failed to connect to ${rpcUrl}`);
-        }
-      }
-      throw new Error('No working Avalanche RPC endpoint available');
-    }
+  private async getWorkingAvalancheProvider(): Promise<ethers.AbstractProvider> {
+    return this.avalancheProvider;
   }
 
   /**
@@ -392,14 +345,11 @@ export class EscrowContractService {
     chain: 'ethereum' | 'avalanche',
   ): Promise<ethers.Wallet> {
     const privateKey = await this.getUserPrivateKey(userId, chain);
-
-    if (chain === 'ethereum') {
-      const provider = await this.getWorkingEthereumProvider();
-      return new ethers.Wallet(privateKey, provider);
-    } else {
-      const provider = await this.getWorkingAvalancheProvider();
-      return new ethers.Wallet(privateKey, provider);
-    }
+    // FallbackProvider implements AbstractProvider which Wallet accepts
+    const provider = chain === 'ethereum'
+      ? this.ethereumProvider
+      : this.avalancheProvider;
+    return new ethers.Wallet(privateKey, provider as ethers.Provider);
   }
 
   /**
@@ -2105,7 +2055,7 @@ export class EscrowContractService {
   /**
    * Get provider for reading blockchain data
    */
-  getProvider(chain: 'ethereum' | 'avalanche'): ethers.JsonRpcProvider {
+  getProvider(chain: 'ethereum' | 'avalanche'): ethers.AbstractProvider {
     return chain === 'ethereum'
       ? this.ethereumProvider
       : this.avalancheProvider;

@@ -390,6 +390,7 @@
           recipientAddress: escrowAddress,
           chain,
           amountEth: parseFloat(amount),
+          wishlistItemId: itemId,
         }),
       });
 

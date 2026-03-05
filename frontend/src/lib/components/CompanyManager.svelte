@@ -24,6 +24,9 @@
     twitterUrl?: string;
     ethAddress?: string;
     avaxAddress?: string;
+    solanaAddress?: string;
+    stellarAddress?: string;
+    bitcoinAddress?: string;
     tags?: string[];
     isPublic: boolean;
     wishlistItems?: any[];
@@ -443,9 +446,8 @@
         if (!editingCompany && result.data) {
           newlyCreatedCompany = result.data;
           revealedAddresses = {}; // Reset reveal state
-          // clear form fields so user can register another if desired
-          resetForm();
-          // Refresh companies list
+          // Close the form and refresh companies list
+          closeForm();
           onUpdate();
         } else {
           // For edits, close form immediately and refresh
@@ -1046,6 +1048,137 @@
               </div>
               <p class="text-xs opacity-60 mt-2">
                 Use this address to receive contributions to bounties on Avalanche Fuji testnet
+              </p>
+            </div>
+          {/if}
+          {#if newlyCreatedCompany.solanaAddress}
+            <div class="bg-base-200/50 rounded-lg p-4">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                  <span class="badge badge-accent">Solana</span>
+                  <span class="text-xs opacity-60">devnet</span>
+                </div>
+              </div>
+              <div class="flex items-center justify-between gap-3">
+                <code class="text-sm font-mono bg-base-100 px-3 py-2 rounded flex-1 break-all">
+                  {displayAddress(newlyCreatedCompany.solanaAddress, 'sol')}
+                </code>
+                <div class="flex gap-2">
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    onclick={() => toggleReveal('sol')}
+                    title={revealedAddresses['sol'] ? 'Hide address' : 'Show full address'}
+                    aria-label={revealedAddresses['sol'] ? 'Hide address' : 'Show full address'}
+                  >
+                    {#if revealedAddresses['sol']}
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-4.5-11-4.5s1.6-3.3 4.3-5.3m2.6-2.6A9.88 9.88 0 0 1 12 4c7 0 11 4.5 11 4.5s-1.6 3.3-4.3 5.3"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    {:else}
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    {/if}
+                  </button>
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    onclick={() => {
+                      navigator.clipboard.writeText(newlyCreatedCompany?.solanaAddress || '');
+                      toastStore.add({ message: 'SOL address copied!', type: 'success' });
+                    }}
+                    title="Copy to clipboard"
+                    aria-label="Copy to clipboard"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  </button>
+                </div>
+              </div>
+              <p class="text-xs opacity-60 mt-2">
+                Use this address to receive SOL contributions on Solana devnet
+              </p>
+            </div>
+          {/if}
+
+          {#if newlyCreatedCompany.stellarAddress}
+            <div class="bg-base-200/50 rounded-lg p-4">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                  <span class="badge badge-warning">Stellar</span>
+                  <span class="text-xs opacity-60">testnet</span>
+                </div>
+              </div>
+              <div class="flex items-center justify-between gap-3">
+                <code class="text-sm font-mono bg-base-100 px-3 py-2 rounded flex-1 break-all">
+                  {displayAddress(newlyCreatedCompany.stellarAddress, 'xlm')}
+                </code>
+                <div class="flex gap-2">
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    onclick={() => toggleReveal('xlm')}
+                    title={revealedAddresses['xlm'] ? 'Hide address' : 'Show full address'}
+                    aria-label={revealedAddresses['xlm'] ? 'Hide address' : 'Show full address'}
+                  >
+                    {#if revealedAddresses['xlm']}
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-4.5-11-4.5s1.6-3.3 4.3-5.3m2.6-2.6A9.88 9.88 0 0 1 12 4c7 0 11 4.5 11 4.5s-1.6 3.3-4.3 5.3"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    {:else}
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    {/if}
+                  </button>
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    onclick={() => {
+                      navigator.clipboard.writeText(newlyCreatedCompany?.stellarAddress || '');
+                      toastStore.add({ message: 'XLM address copied!', type: 'success' });
+                    }}
+                    title="Copy to clipboard"
+                    aria-label="Copy to clipboard"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  </button>
+                </div>
+              </div>
+              <p class="text-xs opacity-60 mt-2">
+                Use this address to receive XLM contributions on Stellar testnet
+              </p>
+            </div>
+          {/if}
+
+          {#if newlyCreatedCompany.bitcoinAddress}
+            <div class="bg-base-200/50 rounded-lg p-4">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                  <span class="badge badge-secondary">Bitcoin</span>
+                  <span class="text-xs opacity-60">testnet</span>
+                </div>
+              </div>
+              <div class="flex items-center justify-between gap-3">
+                <code class="text-sm font-mono bg-base-100 px-3 py-2 rounded flex-1 break-all">
+                  {displayAddress(newlyCreatedCompany.bitcoinAddress, 'btc')}
+                </code>
+                <div class="flex gap-2">
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    onclick={() => toggleReveal('btc')}
+                    title={revealedAddresses['btc'] ? 'Hide address' : 'Show full address'}
+                    aria-label={revealedAddresses['btc'] ? 'Hide address' : 'Show full address'}
+                  >
+                    {#if revealedAddresses['btc']}
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-4.5-11-4.5s1.6-3.3 4.3-5.3m2.6-2.6A9.88 9.88 0 0 1 12 4c7 0 11 4.5 11 4.5s-1.6 3.3-4.3 5.3"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    {:else}
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    {/if}
+                  </button>
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    onclick={() => {
+                      navigator.clipboard.writeText(newlyCreatedCompany?.bitcoinAddress || '');
+                      toastStore.add({ message: 'BTC address copied!', type: 'success' });
+                    }}
+                    title="Copy to clipboard"
+                    aria-label="Copy to clipboard"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  </button>
+                </div>
+              </div>
+              <p class="text-xs opacity-60 mt-2">
+                Use this address to receive BTC contributions on Bitcoin testnet
               </p>
             </div>
           {/if}
