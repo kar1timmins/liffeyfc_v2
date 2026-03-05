@@ -41,12 +41,15 @@ fi
 
 # Run migrations using compiled JavaScript from dist/
 echo "🚀 Running TypeORM migrations from compiled JavaScript..."
-if node ./node_modules/typeorm/cli.js migration:run -d dist/src/data-source.js 2>&1; then
+MIGRATION_OUTPUT=$(node ./node_modules/typeorm/cli.js migration:run -d dist/src/data-source.js 2>&1)
+MIGRATION_EXIT_CODE=$?
+echo "$MIGRATION_OUTPUT"
+if [ $MIGRATION_EXIT_CODE -eq 0 ]; then
   echo "✅ Migrations completed successfully"
 else
-  MIGRATION_EXIT_CODE=$?
-  echo "❌ Migrations failed with exit code $MIGRATION_EXIT_CODE"
-  echo "⚠️  Continuing anyway - migrations may not be needed or database already up to date"
+  echo "❌ Migrations FAILED with exit code $MIGRATION_EXIT_CODE"
+  echo "⚠️  The application may not work correctly without the required DB columns."
+  echo "⚠️  Continuing anyway - inspect migration output above for details."
 fi
 
 # Start the application
