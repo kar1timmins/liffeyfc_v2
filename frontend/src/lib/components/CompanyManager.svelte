@@ -371,6 +371,17 @@
       return;
     }
 
+    // client-side uniqueness check (case-insensitive) for new companies
+    if (!editingCompany) {
+      const duplicate = companies.some(
+        (c) => c.name.trim().toLowerCase() === name.trim().toLowerCase()
+      );
+      if (duplicate) {
+        errorMessage = 'You already have a company registered with that name';
+        return;
+      }
+    }
+
     isSubmitting = true;
     errorMessage = null;
 
@@ -421,12 +432,19 @@
       const result = await response.json();
 
       if (result.success) {
+        toastStore.add({
+          message: editingCompany
+            ? 'Company saved successfully'
+            : 'Company registered successfully',
+          type: 'success',
+        });
+
         // For newly created companies, capture the company data to show address reveal/status
         if (!editingCompany && result.data) {
           newlyCreatedCompany = result.data;
           revealedAddresses = {}; // Reset reveal state
-          // Show modal and keep form open - closeForm will be called when user dismisses modal
-          console.log('[CompanyCreation] Company created:', result.data.id, 'ETH:', result.data.ethAddress, 'AVAX:', result.data.avaxAddress);
+          // clear form fields so user can register another if desired
+          resetForm();
           // Refresh companies list
           onUpdate();
         } else {
