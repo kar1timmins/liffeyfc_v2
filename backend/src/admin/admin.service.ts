@@ -390,35 +390,66 @@ export class AdminService {
         });
       }
 
-      edges.push({
-        from: actorId,
-        to: itemId,
-        type: row.type,
-        label:
-          row.type === 'contribution'
-            ? row.amountEur != null
-              ? `€${row.amountEur.toFixed(0)}`
-              : row.amountEth != null
-                ? `${row.amountEth.toFixed(4)} ${row.currencySymbol ?? ''}`
-                : ''
-            : `$${(row.amountUsdc ?? 0).toFixed(2)} USDC`,
-        chain: row.chain,
-        status: row.status ?? null,
-        date: row.date,
-      });
-
       if (row.company.id) {
-        // Add edge from wishlist item to company (ownership)
-        const ownershipKey = `owns:${itemId}:${companyId}`;
-        if (!edges.find((e: any) => e._key === ownershipKey)) {
+        if (row.type === 'deployment') {
+          // founder/deployer → company edge
           edges.push({
-            _key: ownershipKey,
-            from: itemId,
+            from: actorId,
             to: companyId,
-            type: 'ownership',
-            label: '',
+            type: 'deployment',
+            label: `$${(row.amountUsdc ?? 0).toFixed(2)} USDC`,
+            chain: row.chain,
+            status: row.status ?? null,
+            date: row.date,
           });
-        }
+
+          // ownership: company → item
+          const ownershipKey = `owns:${companyId}:${itemId}`;
+          if (!edges.find((e: any) => e._key === ownershipKey)) {
+            edges.push({
+              _key: ownershipKey,
+              from: companyId,
+              to: itemId,
+              type: 'ownership',
+              label: '',
+            });
+          }
+        } else {
+          // contribution: actor → item directly
+          edges.push({
+            from: actorId,
+            to: itemId,
+            type: 'contribution',
+            label:
+              row.amountEur != null
+                ? `€${row.amountEur.toFixed(0)}`
+                : row.amountEth != null
+                  ? `${row.amountEth.toFixed(4)} ${row.currencySymbol ?? ''}`
+                  : '',
+            chain: row.chain,
+            status: row.status ?? null,
+            date: row.date,
+          });
+
+          }
+      } else {
+        // no company; fallback actor → item
+        edges.push({
+          from: actorId,
+          to: itemId,
+          type: row.type,
+          label:
+            row.type === 'contribution'
+              ? row.amountEur != null
+                ? `€${row.amountEur.toFixed(0)}`
+                : row.amountEth != null
+                  ? `${row.amountEth.toFixed(4)} ${row.currencySymbol ?? ''}`
+                  : ''
+              : `$${(row.amountUsdc ?? 0).toFixed(2)} USDC`,
+          chain: row.chain,
+          status: row.status ?? null,
+          date: row.date,
+        });
       }
     }
 
