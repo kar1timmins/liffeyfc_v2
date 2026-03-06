@@ -11,6 +11,7 @@ import { EscrowDeployment } from './entities/escrow-deployment.entity';
 import { Contribution } from './entities/contribution.entity';
 import { ContractDeploymentHistory } from './entities/contract-deployment-history.entity';
 import { Payment } from './entities/payment.entity';
+import { CryptoPurchase } from './crypto/crypto-purchase.entity';
 import { CreateCryptoPurchases1680000000000 } from './migrations/1680000000000-create-crypto-purchases';
 import { AddPasswordResetFields1733508000000 } from './migrations/1733508000000-add-password-reset-fields';
 import { AddAmountRaisedToWishlistItems1733508100000 } from './migrations/1733508100000-add-amount-raised-to-wishlist-items';
@@ -84,6 +85,7 @@ const AppDataSource = new DataSource({
     Contribution,
     ContractDeploymentHistory,
     Payment,
+    CryptoPurchase,
   ],
   migrations: [
     CreateCryptoPurchases1680000000000,
