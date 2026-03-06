@@ -40,10 +40,15 @@ else
 fi
 
 # Run migrations using compiled JavaScript from dist/
+# NOTE: set +e is required here. In Alpine's sh (busybox/ash), a command substitution
+# like VAR=$(cmd) with set -e will exit immediately if cmd returns non-zero, before
+# we can capture the exit code. We also stream output directly so it's visible in
+# Railway logs in real-time instead of being swallowed into a variable.
 echo "🚀 Running TypeORM migrations from compiled JavaScript..."
-MIGRATION_OUTPUT=$(node ./node_modules/typeorm/cli.js migration:run -d dist/src/data-source.js 2>&1)
+set +e
+node ./node_modules/typeorm/cli.js migration:run -d dist/src/data-source.js
 MIGRATION_EXIT_CODE=$?
-echo "$MIGRATION_OUTPUT"
+set -e
 if [ $MIGRATION_EXIT_CODE -eq 0 ]; then
   echo "✅ Migrations completed successfully"
 else
