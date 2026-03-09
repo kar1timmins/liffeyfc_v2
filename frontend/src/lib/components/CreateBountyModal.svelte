@@ -27,7 +27,29 @@
   } = $props();
 
   // Form state
-  const ETH_EUR_RATE = 3200;
+  let ethEurRate = $state<number | null>(null);
+  let avaxEurRate = $state<number | null>(null);
+  let pricesLoading = $state(false);
+
+  async function fetchPrices() {
+    pricesLoading = true;
+    try {
+      const res = await fetch(`${PUBLIC_API_URL}/crypto-prices`);
+      const json = await res.json();
+      if (json.success) {
+        ethEurRate = json.data.ethEur;
+        avaxEurRate = json.data.avaxEur;
+      }
+    } catch {
+      // keep null — UI will show fallback label
+    } finally {
+      pricesLoading = false;
+    }
+  }
+
+  $effect(() => {
+    if (isOpen && ethEurRate === null) fetchPrices();
+  });
 
   let targetAmountEur = $state(wishlistItem.value || 10000);
   let durationDays = $state(30);
@@ -37,7 +59,12 @@
   let deployToAvalanche = $state(true);
 
   // Derived
-  const targetAmountEth = $derived(Math.round((targetAmountEur / ETH_EUR_RATE) * 10000) / 10000);
+  const targetAmountEth = $derived(
+    ethEurRate ? Math.round((targetAmountEur / ethEurRate) * 10000) / 10000 : null,
+  );
+  const targetAmountAvax = $derived(
+    avaxEurRate ? Math.round((targetAmountEur / avaxEurRate) * 100) / 100 : null,
+  );
   const campaignDeadline = $derived(
     new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toLocaleDateString('en-IE', {
       day: 'numeric',
@@ -96,6 +123,9 @@
     error = null;
     deploymentResult = null;
     currentStep = 'campaign';
+    // Reset prices so they are re-fetched on next open
+    ethEurRate = null;
+    avaxEurRate = null;
   }
 
   function nextStep() {
@@ -136,7 +166,9 @@
       if (deployToAvalanche) chains.push('avalanche');
 
       const roundedEurAmount = Math.round(targetAmountEur * 100) / 100;
-      const roundedEthAmount = Math.round(targetAmountEth * 10000) / 10000;
+      const roundedEthAmount = targetAmountEth !== null
+        ? Math.round(targetAmountEth * 10000) / 10000
+        : 0;
       const roundedDurationDays = Math.round(durationDays);
 
       // Step 1: Create bounty record
@@ -354,10 +386,31 @@
                 step="100"
               />
             </div>
-            <p class="text-sm opacity-60 mt-2">
-              ≈ <span class="font-semibold text-primary">{targetAmountEth} ETH</span>
-              <span class="opacity-40 ml-1">(1 ETH ≈ €{ETH_EUR_RATE.toLocaleString()})</span>
-            </p>
+            <div class="flex flex-wrap gap-x-5 gap-y-1 mt-2">
+              {#if pricesLoading}
+                <span class="text-sm opacity-50 flex items-center gap-1">
+                  <span class="loading loading-spinner loading-xs"></span>
+                  Fetching live rates…
+                </span>
+              {:else}
+                {#if targetAmountEth !== null}
+                  <p class="text-sm opacity-70">
+                    ≈ <span class="font-semibold text-primary">{targetAmountEth} ETH</span>
+                    <span class="opacity-40 ml-1 text-xs">(1 ETH ≈ €{ethEurRate?.toLocaleString() ?? '…'})</span>
+                  </p>
+                {:else}
+                  <p class="text-sm opacity-40">ETH rate unavailable</p>
+                {/if}
+                {#if targetAmountAvax !== null}
+                  <p class="text-sm opacity-70">
+                    ≈ <span class="font-semibold text-error">{targetAmountAvax} AVAX</span>
+                    <span class="opacity-40 ml-1 text-xs">(1 AVAX ≈ €{avaxEurRate?.toLocaleString() ?? '…'})</span>
+                  </p>
+                {:else}
+                  <p class="text-sm opacity-40">AVAX rate unavailable</p>
+                {/if}
+              {/if}
+            </div>
           </div>
 
           <!-- Duration presets -->
@@ -460,10 +513,19 @@
               <span class="opacity-60 shrink-0">Campaign</span>
               <span class="font-medium truncate text-right">{campaignName}</span>
             </div>
-            <div class="flex justify-between gap-4">
-              <span class="opacity-60 shrink-0">Target</span>
-              <span class="font-medium">€{targetAmountEur.toLocaleString()} <span class="opacity-50 text-xs">≈ {targetAmountEth} ETH</span></span>
+            <div class="flex justify-between gap-4 items-start">
+              <span class="opacity-60 shrink-0">€ Target</span>
+              <span class="font-medium text-right">€{targetAmountEur.toLocaleString()}</span>
             </div>
+            {#if targetAmountEth !== null || targetAmountAvax !== null}
+            <div class="flex justify-between gap-4">
+              <span class="opacity-60 shrink-0">Chain amounts</span>
+              <span class="text-xs text-right space-x-3">
+                {#if targetAmountEth !== null}<span class="text-primary font-mono">{targetAmountEth} ETH</span>{/if}
+                {#if targetAmountAvax !== null}<span class="text-error font-mono">{targetAmountAvax} AVAX</span>{/if}
+              </span>
+            </div>
+            {/if}
             <div class="flex justify-between gap-4">
               <span class="opacity-60 shrink-0">Duration</span>
               <span class="font-medium">{durationDays} days · ends {campaignDeadline}</span>

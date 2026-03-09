@@ -24,7 +24,6 @@ import { GcpStorageService } from '../common/gcp-storage.service';
 import { EmailService } from '../common/email.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { SiweVerifyDto } from './dto/siwe-verify.dto';
 import { RequestPasswordResetDto } from './dto/request-password-reset.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { AuthGuard } from '@nestjs/passport';
@@ -247,57 +246,6 @@ export class AuthController {
         },
         HttpStatus.UNAUTHORIZED,
       );
-    }
-  }
-
-  @Get('siwe/message/:address')
-  @SkipThrottle() // Message generation is cheap, no need to throttle
-  async siweMessage(@Param('address') address: string) {
-    const { message } = await this.authService.getSiweMessage(address);
-    return { success: true, data: { message } };
-  }
-
-  @Post('siwe/verify')
-  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 SIWE attempts per minute
-  async siweVerify(
-    @Body() body: SiweVerifyDto,
-    @Res({ passthrough: true }) res: Response,
-    @Ip() ip: string,
-    @Req() req: Request,
-  ) {
-    try {
-      const result = await this.authService.verifySiwe(
-        body.address,
-        body.signature,
-      );
-
-      // Log successful SIWE login
-      this.securityMonitoring.logEvent({
-        type: SecurityEventType.LOGIN_SUCCESS,
-        userId: result.user.id,
-        ip,
-        userAgent: req.headers['user-agent'],
-        timestamp: new Date(),
-        details: { method: 'SIWE', address: body.address },
-      });
-
-      // SIWE currently returns { user, token } without refresh token
-      // For consistency with other auth methods, we should generate a refresh token
-      // For now, just return the token (JWT access token)
-      return {
-        success: true,
-        data: { user: result.user, accessToken: result.token },
-      };
-    } catch (error: any) {
-      // Log failed SIWE attempt
-      this.securityMonitoring.logEvent({
-        type: SecurityEventType.SIWE_FAILED,
-        ip,
-        userAgent: req.headers['user-agent'],
-        timestamp: new Date(),
-        details: { error: error.message, address: body.address },
-      });
-      throw error;
     }
   }
 

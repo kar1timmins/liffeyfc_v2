@@ -1,7 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
-import { Web3Service } from '../web3/web3.service';
-import { NonceService } from '../web3/nonce.service';
 import {
   SecurityMonitoringService,
   SecurityEventType,
@@ -19,8 +17,6 @@ import crypto from 'crypto';
 export class AuthService {
   constructor(
     private usersService: UsersService,
-    private web3Service: Web3Service,
-    private nonceService: NonceService,
     private securityMonitoring: SecurityMonitoringService,
     @InjectRepository(RefreshToken)
     private refreshRepo: Repository<RefreshToken>,
@@ -259,43 +255,6 @@ export class AuthService {
     const rt = this.refreshRepo.create(tokenData);
     const saved = await this.refreshRepo.save(rt as any);
     return `${saved.id}.${secret}`;
-  }
-
-  async getSiweMessage(address: string) {
-    const message = this.web3Service.generateSignInMessage(address);
-    // store message in nonce cache for later verification
-    this.nonceService.create(address, message);
-    return { message };
-  }
-
-  async verifySiwe(address: string, signature: string) {
-    const stored =
-      (await (this.nonceService as any).consume?.(address)) ||
-      (await this.nonceService.get(address));
-    if (!stored)
-      throw new Error('No active SIWE message found or message expired');
-    const dto = { address, message: stored.message, signature };
-    const result = await this.web3Service.verifySignature(dto as any);
-    const valid = result?.isValid;
-    if (!valid) throw new Error('Invalid signature');
-    // If we used get earlier (fallback), ensure we remove it to prevent replay
-    if ((this.nonceService as any).consume) {
-      // consume already removed it atomically
-    } else {
-      await this.nonceService.use(address);
-    }
-    // find or create user and attach wallet
-    let user = await this.usersService.findByWallet(address);
-    if (!user) {
-      // create a new user record then attach wallet
-      const created = await this.usersService.create({} as any);
-      user = await this.usersService.attachWallet(created.id, address);
-    } else {
-      user = await this.usersService.attachWallet(user.id, address);
-    }
-    if (!user) throw new Error('Failed to create or attach wallet to user');
-    const token = signJwt(user.id, user.role);
-    return { user, token };
   }
 
   /**
