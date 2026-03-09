@@ -96,14 +96,13 @@ export class CryptoService {
     initialStatus = 'initialized',
   ) {
     const { destination_currency, destination_exchange_amount, destination_network } = transactionDetails;
-    const record = this.purchaseRepo.create({
+    await this.purchaseRepo.insert({
       user: { id: userId },
       currency: destination_currency,
       network: destination_network,
       amount: destination_exchange_amount,
       status: initialStatus,
     });
-    await this.purchaseRepo.save(record);
   }
 
   /**
