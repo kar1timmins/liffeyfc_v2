@@ -150,7 +150,7 @@ export class AuthController {
         success: true,
         data: { user: result.user, accessToken: result.accessToken },
       };
-    } catch (error) {
+    } catch (error: any) {
       // Log failed registration
       this.securityMonitoring.logEvent({
         type: SecurityEventType.REGISTRATION_FAILED,
@@ -216,7 +216,7 @@ export class AuthController {
         success: true,
         data: { user: result.user, accessToken: result.accessToken },
       };
-    } catch (error) {
+    } catch (error: any) {
       // Record failed login attempt
       const shouldLock = this.securityMonitoring.recordFailedLogin(body.email);
       this.securityMonitoring.recordFailedLogin(ip);
@@ -288,7 +288,7 @@ export class AuthController {
         success: true,
         data: { user: result.user, accessToken: result.token },
       };
-    } catch (error) {
+    } catch (error: any) {
       // Log failed SIWE attempt
       this.securityMonitoring.logEvent({
         type: SecurityEventType.SIWE_FAILED,
@@ -408,7 +408,7 @@ export class AuthController {
       this.setRefreshTokenCookie(res, result.refreshToken);
       // Return new access token
       return { success: true, data: { accessToken: result.accessToken } };
-    } catch (error) {
+    } catch (error: any) {
       // Log failed refresh attempt (could indicate token reuse)
       this.securityMonitoring.logEvent({
         type: SecurityEventType.REFRESH_TOKEN_INVALID,
@@ -593,7 +593,7 @@ export class AuthController {
         success: true,
         message: result.message,
       };
-    } catch (error) {
+    } catch (error: any) {
       // Log failed attempt
       await this.securityMonitoring.logEvent({
         type: SecurityEventType.PASSWORD_RESET_FAILED,
