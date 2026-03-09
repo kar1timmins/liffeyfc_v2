@@ -80,7 +80,7 @@
   // Delete confirmation modal state
   let showDeleteModal = $state(false);
   let deleteConfirmationText = $state('');
-  let itemToDelete = $state<{ companyId: string; itemId: string; itemTitle: string; hasEscrow: boolean } | null>(null);
+  let itemToDelete = $state<{ companyId: string; itemId: string; itemTitle: string; hasEscrow: boolean; hasPayments: boolean } | null>(null);
   let isDeleting = $state(false);
   
   // Company delete confirmation modal state
@@ -533,8 +533,8 @@
     companyToDelete = null;
   }
 
-  function openDeleteModal(companyId: string, itemId: string, itemTitle: string, hasEscrow: boolean) {
-    itemToDelete = { companyId, itemId, itemTitle, hasEscrow };
+  function openDeleteModal(companyId: string, itemId: string, itemTitle: string, hasEscrow: boolean, hasPayments: boolean) {
+    itemToDelete = { companyId, itemId, itemTitle, hasEscrow, hasPayments };
     deleteConfirmationText = '';
     showDeleteModal = true;
   }
@@ -584,8 +584,8 @@
     itemToDelete = null;
   }
 
-  async function deleteWishlistItem(companyId: string, itemId: string, itemTitle: string, hasEscrow: boolean) {
-    openDeleteModal(companyId, itemId, itemTitle, hasEscrow);
+  async function deleteWishlistItem(companyId: string, itemId: string, itemTitle: string, hasEscrow: boolean, hasPayments: boolean) {
+    openDeleteModal(companyId, itemId, itemTitle, hasEscrow, hasPayments);
   }
 
 </script>
@@ -1514,8 +1514,9 @@
                               </div>
                               <button
                                 class="btn btn-ghost btn-xs btn-square text-error shrink-0"
-                                onclick={() => deleteWishlistItem(company.id, item.id, item.title, item.isEscrowActive)}
-                                title="Delete item"
+                                onclick={() => deleteWishlistItem(company.id, item.id, item.title, item.isEscrowActive, (item.amountRaised || 0) > 0)}
+                                title={(item.amountRaised || 0) > 0 ? 'Cannot delete — this item has received payments' : 'Delete item'}
+                                disabled={(item.amountRaised || 0) > 0}
                               >
                                 <Trash2 class="w-3 h-3" />
                               </button>
@@ -1686,6 +1687,17 @@
 
       <!-- Modal Body -->
       <div class="p-6 space-y-4">
+        {#if itemToDelete.hasPayments}
+          <div class="alert alert-error">
+            <AlertCircle class="w-5 h-5" />
+            <div>
+              <p class="font-semibold">Deletion blocked</p>
+              <p class="text-sm">
+                <strong>"{itemToDelete.itemTitle}"</strong> has already received contributions or payments and cannot be deleted. This protects contributors' records.
+              </p>
+            </div>
+          </div>
+        {:else}
         <div class="alert alert-warning">
           <AlertCircle class="w-5 h-5" />
           <div>
@@ -1718,6 +1730,7 @@
             <p class="text-success text-xs mt-1">✓ Ready to delete</p>
           {/if}
         </div>
+        {/if}
       </div>
 
       <!-- Modal Footer -->
@@ -1727,8 +1740,9 @@
           onclick={cancelDeleteModal}
           disabled={isDeleting}
         >
-          Cancel
+          {itemToDelete.hasPayments ? 'Close' : 'Cancel'}
         </button>
+        {#if !itemToDelete.hasPayments}
         <button
           class="btn btn-error"
           onclick={confirmDeleteWishlistItem}
@@ -1741,6 +1755,7 @@
             Delete Item
           {/if}
         </button>
+        {/if}
       </div>
     </div>
   </div>

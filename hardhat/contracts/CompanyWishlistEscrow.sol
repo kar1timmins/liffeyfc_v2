@@ -25,6 +25,8 @@ contract CompanyWishlistEscrow {
     bool public isSuccessful;
     string public campaignName;
     string public campaignDescription;
+    /// @notice Off-chain wishlist item ID — set once at deployment, never changed.
+    string public wishlistItemId;
     
     // Mapping to track individual contributions
     mapping(address => uint256) public contributions;
@@ -54,6 +56,7 @@ contract CompanyWishlistEscrow {
      * @param _masterWallet Master wallet address for automatic fund forwarding
      * @param _targetAmount Target amount in wei
      * @param _durationInDays Campaign duration in days
+     * @param _wishlistItemId Off-chain wishlist item UUID — recorded immutably for auditability
      */
     constructor(
         address _company,
@@ -61,7 +64,8 @@ contract CompanyWishlistEscrow {
         uint256 _targetAmount,
         uint256 _durationInDays,
         string memory _campaignName,
-        string memory _campaignDescription
+        string memory _campaignDescription,
+        string memory _wishlistItemId
     ) {
         if (_company == address(0)) revert InvalidAddress();
         if (_masterWallet == address(0)) revert InvalidAddress();
@@ -75,6 +79,7 @@ contract CompanyWishlistEscrow {
         deadline = block.timestamp + (_durationInDays * 1 days);
         campaignName = _campaignName;
         campaignDescription = _campaignDescription;
+        wishlistItemId = _wishlistItemId;
     }
     
     /**

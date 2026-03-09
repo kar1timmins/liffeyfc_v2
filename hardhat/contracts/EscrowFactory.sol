@@ -26,7 +26,8 @@ contract EscrowFactory {
         uint256 deadline,
         uint256 timestamp,
         string campaignName,
-        string campaignDescription
+        string campaignDescription,
+        string wishlistItemId
     );
     
     /**
@@ -35,6 +36,7 @@ contract EscrowFactory {
      * @param _masterWallet Master wallet address for automatic fund forwarding
      * @param _targetAmount Target amount in wei
      * @param _durationInDays Campaign duration in days
+     * @param _wishlistItemId Off-chain wishlist item UUID for on-chain auditability
      * @return escrowAddress Address of the newly created escrow contract
      */
     function createEscrow(
@@ -43,7 +45,8 @@ contract EscrowFactory {
         uint256 _targetAmount,
         uint256 _durationInDays,
         string calldata _campaignName,
-        string calldata _campaignDescription
+        string calldata _campaignDescription,
+        string calldata _wishlistItemId
     ) external returns (address escrowAddress) {
         // Deploy new escrow contract
         CompanyWishlistEscrow escrow = new CompanyWishlistEscrow(
@@ -52,7 +55,8 @@ contract EscrowFactory {
             _targetAmount,
             _durationInDays,
             _campaignName,
-            _campaignDescription
+            _campaignDescription,
+            _wishlistItemId
         );
         
         escrowAddress = address(escrow);
@@ -69,7 +73,8 @@ contract EscrowFactory {
             block.timestamp + (_durationInDays * 1 days),
             block.timestamp,
             _campaignName,
-            _campaignDescription
+            _campaignDescription,
+            _wishlistItemId
         );
         
         return escrowAddress;

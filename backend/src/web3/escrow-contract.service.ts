@@ -39,10 +39,10 @@ import { ContractAction } from '../entities/contract-deployment-history.entity';
 
 // ABI for EscrowFactory contract
 const ESCROW_FACTORY_ABI = [
-  'function createEscrow(address _company, address _masterWallet, uint256 _targetAmount, uint256 _durationInDays, string _campaignName, string _campaignDescription) external returns (address)',
+  'function createEscrow(address _company, address _masterWallet, uint256 _targetAmount, uint256 _durationInDays, string _campaignName, string _campaignDescription, string _wishlistItemId) external returns (address)',
   'function getCompanyEscrows(address _company) external view returns (address[])',
   'function getEscrowDetails(address _escrow) external view returns (address company, uint256 totalRaised, uint256 targetAmount, uint256 deadline, bool isFinalized, bool isSuccessful, string campaignName, string campaignDescription)',
-  'event EscrowCreated(address indexed escrowAddress, address indexed company, uint256 targetAmount, uint256 deadline, uint256 timestamp, string campaignName, string campaignDescription)',
+  'event EscrowCreated(address indexed escrowAddress, address indexed company, uint256 targetAmount, uint256 deadline, uint256 timestamp, string campaignName, string campaignDescription, string wishlistItemId)',
 ];
 
 // ABI for CompanyWishlistEscrow contract
@@ -62,6 +62,7 @@ const ESCROW_ABI = [
   'function isSuccessful() external view returns (bool)',
   'function campaignName() external view returns (string)',
   'function campaignDescription() external view returns (string)',
+  'function wishlistItemId() external view returns (string)',
   'function contributors(uint256 index) external view returns (address)',
   'function contributions(address contributor) external view returns (uint256)',
   'event ContributionReceived(address indexed contributor, uint256 amount, uint256 totalRaised)',
@@ -613,6 +614,7 @@ export class EscrowContractService {
               durationInDays,
               campaignName || '',
               campaignDescription || '',
+              wishlistItemId || '',
             );
             this.logger.log(
               `✅ Gas estimation successful: ${gasEstimate.toString()} gas units`,
@@ -687,6 +689,7 @@ export class EscrowContractService {
               durationInDays,
               campaignName || '',
               campaignDescription || '',
+              wishlistItemId || '',
               { gasLimit: 2000000 },
             );
           } else {
@@ -697,6 +700,7 @@ export class EscrowContractService {
               durationInDays,
               campaignName || '',
               campaignDescription || '',
+              wishlistItemId || '',
             );
           }
 
@@ -917,6 +921,7 @@ export class EscrowContractService {
               durationInDays,
               campaignName || '',
               campaignDescription || '',
+              wishlistItemId || '',
             );
             this.logger.log(`⛽ Estimated gas: ${gasEstimate.toString()}`);
           } catch (gasErr: any) {
@@ -960,6 +965,7 @@ export class EscrowContractService {
               durationInDays,
               campaignName || '',
               campaignDescription || '',
+              wishlistItemId || '',
               { gasLimit: 2000000 },
             );
           } else {
@@ -970,6 +976,7 @@ export class EscrowContractService {
               durationInDays,
               campaignName || '',
               campaignDescription || '',
+              wishlistItemId || '',
             );
           }
 
@@ -1236,6 +1243,7 @@ export class EscrowContractService {
           durationInDays,
           campaignName || '',
           campaignDescription || '',
+          wishlistItemId || '',
         ]);
 
         const gasEstimate = await this.platformWalletService.estimateGasCost(
@@ -1271,6 +1279,7 @@ export class EscrowContractService {
           durationInDays,
           campaignName || '',
           campaignDescription || '',
+          wishlistItemId || '',
         );
 
         this.logger.log(
@@ -1373,6 +1382,7 @@ export class EscrowContractService {
           durationInDays,
           campaignName || '',
           campaignDescription || '',
+          wishlistItemId || '',
         ]);
 
         const gasEstimate = await this.platformWalletService.estimateGasCost(
@@ -1408,6 +1418,7 @@ export class EscrowContractService {
           durationInDays,
           campaignName || '',
           campaignDescription || '',
+          wishlistItemId || '',
         );
 
         this.logger.log(

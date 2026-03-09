@@ -146,7 +146,7 @@ export class CompaniesService {
               '[Company Creation] Generated company wallet:',
               walletResult,
             );
-        } catch (walletError) {
+        } catch (walletError: any) {
           if (isDev)
             console.error(
               '[Company Creation] Wallet generation error:',
@@ -161,7 +161,7 @@ export class CompaniesService {
             '[Company Creation] User does not have master wallet, skipping wallet generation',
           );
       }
-    } catch (error) {
+    } catch (error: any) {
       // Log but don't fail company creation if wallet generation fails
       console.error(
         '[Company Creation] Failed to generate company wallet:',
@@ -333,6 +333,14 @@ export class CompaniesService {
 
     if (!item || item.company.ownerId !== userId) {
       return false;
+    }
+
+    // Prevent deletion if the item has received any contributions or payments
+    const raisedAmount = parseFloat(item.amountRaised?.toString() || '0');
+    if (raisedAmount > 0) {
+      throw new Error(
+        'Cannot delete a wishlist item that has already received contributions or payments.',
+      );
     }
 
     // Prevent deletion if escrow contracts are deployed for this wishlist item

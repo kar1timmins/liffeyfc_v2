@@ -70,6 +70,7 @@ export interface EscrowFactoryV2UpgradeableInterface extends Interface {
       BigNumberish,
       BigNumberish,
       string,
+      string,
       string
     ]
   ): string;
@@ -204,7 +205,8 @@ export namespace EscrowCreatedEvent {
     deadline: BigNumberish,
     timestamp: BigNumberish,
     campaignName: string,
-    campaignDescription: string
+    campaignDescription: string,
+    wishlistItemId: string
   ];
   export type OutputTuple = [
     escrowAddress: string,
@@ -213,7 +215,8 @@ export namespace EscrowCreatedEvent {
     deadline: bigint,
     timestamp: bigint,
     campaignName: string,
-    campaignDescription: string
+    campaignDescription: string,
+    wishlistItemId: string
   ];
   export interface OutputObject {
     escrowAddress: string;
@@ -223,6 +226,7 @@ export namespace EscrowCreatedEvent {
     timestamp: bigint;
     campaignName: string;
     campaignDescription: string;
+    wishlistItemId: string;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -325,7 +329,8 @@ export interface EscrowFactoryV2Upgradeable extends BaseContract {
       _targetAmount: BigNumberish,
       _durationInDays: BigNumberish,
       _campaignName: string,
-      _campaignDescription: string
+      _campaignDescription: string,
+      _wishlistItemId: string
     ],
     [string],
     "nonpayable"
@@ -400,7 +405,8 @@ export interface EscrowFactoryV2Upgradeable extends BaseContract {
       _targetAmount: BigNumberish,
       _durationInDays: BigNumberish,
       _campaignName: string,
-      _campaignDescription: string
+      _campaignDescription: string,
+      _wishlistItemId: string
     ],
     [string],
     "nonpayable"
@@ -519,7 +525,7 @@ export interface EscrowFactoryV2Upgradeable extends BaseContract {
       BeaconUpgradedEvent.OutputObject
     >;
 
-    "EscrowCreated(address,address,uint256,uint256,uint256,string,string)": TypedContractEvent<
+    "EscrowCreated(address,address,uint256,uint256,uint256,string,string,string)": TypedContractEvent<
       EscrowCreatedEvent.InputTuple,
       EscrowCreatedEvent.OutputTuple,
       EscrowCreatedEvent.OutputObject

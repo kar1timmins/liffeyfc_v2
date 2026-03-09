@@ -28,7 +28,8 @@ contract EscrowFactoryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
         uint256 deadline,
         uint256 timestamp,
         string campaignName,
-        string campaignDescription
+        string campaignDescription,
+        string wishlistItemId
     );
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -53,7 +54,8 @@ contract EscrowFactoryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
         uint256 _targetAmount,
         uint256 _durationInDays,
         string calldata _campaignName,
-        string calldata _campaignDescription
+        string calldata _campaignDescription,
+        string calldata _wishlistItemId
     ) external returns (address escrowAddress) {
         CompanyWishlistEscrow escrow = new CompanyWishlistEscrow(
             _company,
@@ -61,7 +63,8 @@ contract EscrowFactoryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
             _targetAmount,
             _durationInDays,
             _campaignName,
-            _campaignDescription
+            _campaignDescription,
+            _wishlistItemId
         );
 
         escrowAddress = address(escrow);
@@ -78,7 +81,8 @@ contract EscrowFactoryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
             block.timestamp + (_durationInDays * 1 days),
             block.timestamp,
             _campaignName,
-            _campaignDescription
+            _campaignDescription,
+            _wishlistItemId
         );
 
         return escrowAddress;

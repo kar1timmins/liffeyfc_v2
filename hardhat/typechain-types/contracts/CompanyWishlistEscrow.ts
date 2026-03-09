@@ -46,6 +46,7 @@ export interface CompanyWishlistEscrowInterface extends Interface {
       | "masterWallet"
       | "targetAmount"
       | "totalRaised"
+      | "wishlistItemId"
   ): FunctionFragment;
 
   getEvent(
@@ -121,6 +122,10 @@ export interface CompanyWishlistEscrowInterface extends Interface {
     functionFragment: "totalRaised",
     values?: undefined
   ): string;
+  encodeFunctionData(
+    functionFragment: "wishlistItemId",
+    values?: undefined
+  ): string;
 
   decodeFunctionResult(
     functionFragment: "campaignDescription",
@@ -182,6 +187,10 @@ export interface CompanyWishlistEscrowInterface extends Interface {
   ): Result;
   decodeFunctionResult(
     functionFragment: "totalRaised",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "wishlistItemId",
     data: BytesLike
   ): Result;
 }
@@ -348,6 +357,8 @@ export interface CompanyWishlistEscrow extends BaseContract {
 
   totalRaised: TypedContractMethod<[], [bigint], "view">;
 
+  wishlistItemId: TypedContractMethod<[], [string], "view">;
+
   getFunction<T extends ContractMethod = ContractMethod>(
     key: string | FunctionFragment
   ): T;
@@ -426,6 +437,9 @@ export interface CompanyWishlistEscrow extends BaseContract {
   getFunction(
     nameOrSignature: "totalRaised"
   ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "wishlistItemId"
+  ): TypedContractMethod<[], [string], "view">;
 
   getEvent(
     key: "CampaignFinalized"
