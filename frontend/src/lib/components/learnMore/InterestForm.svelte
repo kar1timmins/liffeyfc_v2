@@ -204,7 +204,11 @@
 			<div class="glass-subtle rounded-xl p-5 max-w-xs mx-auto mb-5">
 				<p class="text-xs text-base-content/40 uppercase tracking-widest mb-2">Next Event</p>
 				<p class="font-bold text-base-content text-lg mb-1">LFC Pitch Night</p>
-				<p class="text-sm text-base-content/60 mb-3">{nextEvent.displayQuarter} {nextEvent.year} · Dublin City Centre</p>
+				<p class="text-sm text-base-content/60 mb-3">
+				<a href="https://www.baseline.community/" target="_blank" rel="noopener noreferrer" class="underline hover:text-accent transition-colors duration-200">
+					{nextEvent.displayQuarter} {nextEvent.year} · Baseline Community & Fund
+				</a>
+			</p>
 				<div class="flex justify-center gap-3 flex-wrap">
 					<span class="badge badge-ghost badge-sm">🎤 Live Pitches</span>
 					<span class="badge badge-ghost badge-sm">🤝 Networking</span>

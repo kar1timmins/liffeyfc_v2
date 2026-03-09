@@ -43,7 +43,9 @@
 			</div>
 			<div class="glass-subtle rounded-xl p-4 flex items-center gap-3 backdrop-blur-sm">
 				<MapPin class="text-accent h-6 w-6 flex-shrink-0" />
-				<div><span class="font-semibold">Location:</span> Dublin, Ireland</div>
+				<a href="https://www.baseline.community/" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center justify-center min-w-[100px] sm:min-w-[120px] md:min-w-[140px] hover:scale-105 transition-transform duration-200">
+					<span class="font-semibold">Location:</span> Baseline Community & Fund
+				</a>
 			</div>
 			<div class="glass-subtle rounded-xl p-4 flex items-center gap-3 backdrop-blur-sm">
 				<BadgeDollarSign class="text-accent h-6 w-6 flex-shrink-0" />
