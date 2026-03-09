@@ -419,6 +419,38 @@
 		if (!addr || addr.length < 12) return addr;
 		return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 	}
+
+	// ---- My Campaigns filters & pagination ----
+	const CAMPAIGN_PAGE_SIZE = 6;
+	let campaignStatusFilter = $state('active');
+	let campaignCompanyFilter = $state('all');
+	let campaignSearch = $state('');
+	let campaignPage = $state(1);
+
+	let filteredCampaigns = $derived(
+		allBounties.filter((b) => {
+			if (campaignStatusFilter !== 'all' && b.status !== campaignStatusFilter) return false;
+			if (campaignCompanyFilter !== 'all' && b.company?.id !== campaignCompanyFilter) return false;
+			if (campaignSearch.trim()) {
+				const q = campaignSearch.toLowerCase();
+				if (!b.title?.toLowerCase().includes(q) && !b.company?.name?.toLowerCase().includes(q)) return false;
+			}
+			return true;
+		})
+	);
+
+	let campaignTotalPages = $derived(Math.max(1, Math.ceil(filteredCampaigns.length / CAMPAIGN_PAGE_SIZE)));
+	let pagedCampaigns = $derived(
+		filteredCampaigns.slice((campaignPage - 1) * CAMPAIGN_PAGE_SIZE, campaignPage * CAMPAIGN_PAGE_SIZE)
+	);
+
+	$effect(() => {
+		// Reset to page 1 whenever filters change
+		void campaignStatusFilter;
+		void campaignCompanyFilter;
+		void campaignSearch;
+		campaignPage = 1;
+	});
 </script>
 
 <!-- Min height ensures footer stays at bottom -->
@@ -605,14 +637,16 @@
 	{/if}
 
 	<!-- ================================================================
-	     BOUNTY PROGRESS BARS
+	     MY CAMPAIGNS (filterable + paginated)
 	     ================================================================ -->
 	{#if allBounties.length > 0}
 		<div class="mb-8">
+			<!-- Header -->
 			<div class="mb-4 flex items-center justify-between">
 				<div class="flex items-center gap-2">
 					<Target size={20} class="text-accent" />
 					<h2 class="text-xl font-bold">My Campaigns</h2>
+					<span class="badge badge-ghost badge-sm">{filteredCampaigns.length}</span>
 				</div>
 				<button
 					class="btn btn-ghost btn-xs gap-1 opacity-60 hover:opacity-100"
@@ -621,60 +655,126 @@
 					View all <ArrowUpRight size={12} />
 				</button>
 			</div>
-			<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-				{#each allBounties as bounty}
-					<div class="card bg-base-100 shadow transition-shadow hover:shadow-md">
-						<div class="card-body p-4">
-							<div class="mb-1 flex items-start justify-between gap-2">
-								<div>
-									<p class="font-semibold leading-tight">{bounty.title}</p>
-									<p class="text-xs opacity-50">{bounty.company?.name}</p>
-								</div>
-								<span class="badge {statusBadgeClass(bounty.status)} badge-sm shrink-0">
-									{bounty.status}
-								</span>
-							</div>
 
-							<!-- Progress bar -->
-							<div class="my-2">
-								<div class="mb-1 flex justify-between text-xs opacity-60">
-									<span>{formatEur(bounty.totalRaisedEur || 0)} raised</span>
-									<span>of {formatEur(bounty.targetAmountEur || 0)}</span>
-								</div>
-								<div class="h-2 w-full overflow-hidden rounded-full bg-base-300">
-									<div
-										class="h-2 rounded-full transition-all duration-500 {bounty.status === 'funded'
-											? 'bg-success'
-											: bounty.status === 'expired'
-												? 'bg-base-content/30'
-												: 'bg-primary'}"
-										style="width: {Math.min(bounty.progressPercentage || 0, 100)}%"
-									></div>
-								</div>
-							</div>
+			<!-- Filters -->
+			<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+				<!-- Status tabs -->
+				<div class="join">
+					{#each ['all', 'active', 'funded', 'expired', 'failed'] as status}
+						<button
+							class="join-item btn btn-xs {campaignStatusFilter === status ? 'btn-primary' : 'btn-ghost border border-base-300'}"
+							onclick={() => (campaignStatusFilter = status)}
+						>
+							{status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}
+						</button>
+					{/each}
+				</div>
 
-							<div class="flex items-center justify-between text-xs opacity-60">
-								<span class="flex items-center gap-1">
-									<Users size={11} />
-									{bounty.contributorCount || 0} contributors
-								</span>
-								{#if bounty.status === 'active'}
-									<span class="flex items-center gap-1">
-										<Clock size={11} />
-										{daysLeft(bounty.deadline)}d left
+				<!-- Company filter -->
+				{#if myCompanies.length > 0}
+					<select
+						class="select select-bordered select-xs w-full sm:w-auto"
+						bind:value={campaignCompanyFilter}
+					>
+						<option value="all">All companies</option>
+						{#each myCompanies as c}
+							<option value={c.id}>{c.name}</option>
+						{/each}
+					</select>
+				{/if}
+
+				<!-- Search -->
+				<input
+					type="search"
+					placeholder="Search campaigns…"
+					class="input input-bordered input-xs w-full sm:w-48"
+					bind:value={campaignSearch}
+				/>
+			</div>
+
+			{#if filteredCampaigns.length === 0}
+				<div class="rounded-box bg-base-100 p-8 text-center opacity-60 shadow">
+					<Target size={32} class="mx-auto mb-2 opacity-40" />
+					<p class="text-sm">No campaigns match your filters.</p>
+				</div>
+			{:else}
+				<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+					{#each pagedCampaigns as bounty}
+						<div class="card bg-base-100 shadow transition-shadow hover:shadow-md">
+							<div class="card-body p-4">
+								<div class="mb-1 flex items-start justify-between gap-2">
+									<div>
+										<p class="font-semibold leading-tight">{bounty.title}</p>
+										<p class="text-xs opacity-50">{bounty.company?.name}</p>
+									</div>
+									<span class="badge {statusBadgeClass(bounty.status)} badge-sm shrink-0">
+										{bounty.status}
 									</span>
-								{/if}
-								<button
-									class="btn btn-ghost btn-xs"
-									onclick={() => goto(`/companies/${bounty.company?.id}`)}
-								>
-									View <ArrowUpRight size={10} />
-								</button>
+								</div>
+
+								<!-- Progress bar -->
+								<div class="my-2">
+									<div class="mb-1 flex justify-between text-xs opacity-60">
+										<span>{formatEur(bounty.totalRaisedEur || 0)} raised</span>
+										<span>of {formatEur(bounty.targetAmountEur || 0)}</span>
+									</div>
+									<div class="h-2 w-full overflow-hidden rounded-full bg-base-300">
+										<div
+											class="h-2 rounded-full transition-all duration-500 {bounty.status === 'funded'
+												? 'bg-success'
+												: bounty.status === 'expired'
+													? 'bg-base-content/30'
+													: 'bg-primary'}"
+											style="width: {Math.min(bounty.progressPercentage || 0, 100)}%"
+										></div>
+									</div>
+								</div>
+
+								<div class="flex items-center justify-between text-xs opacity-60">
+									<span class="flex items-center gap-1">
+										<Users size={11} />
+										{bounty.contributorCount || 0} contributors
+									</span>
+									{#if bounty.status === 'active'}
+										<span class="flex items-center gap-1">
+											<Clock size={11} />
+											{daysLeft(bounty.deadline)}d left
+										</span>
+									{/if}
+									<button
+										class="btn btn-ghost btn-xs"
+										onclick={() => goto(`/companies/${bounty.company?.id}`)}
+									>
+										View <ArrowUpRight size={10} />
+									</button>
+								</div>
 							</div>
 						</div>
+					{/each}
+				</div>
+
+				<!-- Pagination -->
+				{#if campaignTotalPages > 1}
+					<div class="mt-4 flex items-center justify-center gap-1">
+						<button
+							class="btn btn-ghost btn-xs"
+							disabled={campaignPage === 1}
+							onclick={() => campaignPage--}
+						>‹</button>
+						{#each Array.from({ length: campaignTotalPages }, (_, i) => i + 1) as pg}
+							<button
+								class="btn btn-xs {campaignPage === pg ? 'btn-primary' : 'btn-ghost'}"
+								onclick={() => (campaignPage = pg)}
+							>{pg}</button>
+						{/each}
+						<button
+							class="btn btn-ghost btn-xs"
+							disabled={campaignPage === campaignTotalPages}
+							onclick={() => campaignPage++}
+						>›</button>
 					</div>
-				{/each}
-			</div>
+				{/if}
+			{/if}
 		</div>
 	{/if}
 
