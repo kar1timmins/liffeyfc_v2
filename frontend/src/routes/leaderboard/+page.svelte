@@ -19,6 +19,8 @@
     ChevronUp,
     ChevronDown,
     ChevronsUpDown,
+    ChevronLeft,
+    ChevronRight,
     Clock,
     Zap,
     Users,
@@ -157,6 +159,18 @@
 
   const topThree = $derived(filteredEntries.slice(0, 3));
   const rest = $derived(filteredEntries.slice(3));
+
+  // ── Pagination ───────────────────────────────────────────────────────────
+  const PAGE_SIZE = 20;
+  let currentPage = $state(1);
+  const totalPages = $derived(Math.max(1, Math.ceil(filteredEntries.length / PAGE_SIZE)));
+  const pagedEntries = $derived(filteredEntries.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE));
+
+  // Reset to page 1 whenever the filtered list changes (search / filter / sort)
+  $effect(() => {
+    filteredEntries; // track dependency
+    currentPage = 1;
+  });
 
   const REFRESH_INTERVAL_MS = 30_000;
 
@@ -682,6 +696,7 @@
           <h2 class="text-sm font-semibold uppercase tracking-widest text-base-content/40 mb-4 flex items-center gap-2">
             <TrendingUp class="w-4 h-4" /> Full Rankings
             <span class="badge badge-sm badge-outline normal-case font-normal">{filteredEntries.length} compan{filteredEntries.length === 1 ? 'y' : 'ies'}</span>
+            {#if totalPages > 1}<span class="text-xs font-normal opacity-50 ml-1">page {currentPage} / {totalPages}</span>{/if}
           </h2>
 
           <!-- Desktop table -->
@@ -718,7 +733,7 @@
                 </tr>
               </thead>
               <tbody>
-                {#each filteredEntries as entry (entry.id)}
+                {#each pagedEntries as entry (entry.id)}
                   {@const medal = medalFor(entry.rank)}
                   {@const delta = rankDelta(entry)}
                   {@const isMyCompany = myCompanyIds.has(entry.id)}
@@ -887,9 +902,43 @@
             </table>
           </div>
 
+          <!-- Pagination bar -->
+          {#if totalPages > 1}
+            <div class="flex items-center justify-center gap-2 mt-4">
+              <button
+                class="btn btn-sm btn-ghost btn-circle"
+                disabled={currentPage === 1}
+                onclick={() => (currentPage -= 1)}
+                aria-label="Previous page"
+              >
+                <ChevronLeft class="w-4 h-4" />
+              </button>
+
+              {#each Array.from({ length: totalPages }, (_, i) => i + 1) as page}
+                {#if page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1}
+                  <button
+                    class="btn btn-sm btn-circle {page === currentPage ? 'btn-primary' : 'btn-ghost'}"
+                    onclick={() => (currentPage = page)}
+                  >{page}</button>
+                {:else if Math.abs(page - currentPage) === 2}
+                  <span class="text-base-content/30 select-none px-0.5">&hellip;</span>
+                {/if}
+              {/each}
+
+              <button
+                class="btn btn-sm btn-ghost btn-circle"
+                disabled={currentPage === totalPages}
+                onclick={() => (currentPage += 1)}
+                aria-label="Next page"
+              >
+                <ChevronRight class="w-4 h-4" />
+              </button>
+            </div>
+          {/if}
+
           <!-- Mobile card list -->
           <div class="md:hidden space-y-2">
-            {#each filteredEntries as entry (entry.id)}
+            {#each pagedEntries as entry (entry.id)}
               {@const medal = medalFor(entry.rank)}
               {@const delta = rankDelta(entry)}
               {@const isMyCompany = myCompanyIds.has(entry.id)}
