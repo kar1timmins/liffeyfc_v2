@@ -14,6 +14,8 @@ import { UserWallet } from '../entities/user-wallet.entity';
 import { USDCValidatorService } from './usdc-validator.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { PlatformWalletService } from '../web3/platform-wallet.service';
+import { WalletGenerationService } from '../web3/wallet-generation.service';
+import { ethers } from 'ethers';
 
 @Injectable()
 export class PaymentsService {
@@ -30,6 +32,7 @@ export class PaymentsService {
     private userWalletRepo: Repository<UserWallet>,
     private usdcValidator: USDCValidatorService,
     private platformWalletService: PlatformWalletService,
+    private walletGenerationService: WalletGenerationService,
   ) {}
 
   /**
@@ -190,13 +193,39 @@ export class PaymentsService {
       dto.chain,
     );
 
+    // --- Execute on-chain USDC transfer from user's master wallet ---
+    const evmChain = dto.chain as 'ethereum' | 'avalanche';
+    const privateKey = await this.walletGenerationService.decryptUserPrivateKey(userId);
+    const provider = this.usdcValidator.getProvider(evmChain);
+    const userSigner = new ethers.Wallet(privateKey, provider as ethers.Provider);
+    const usdcAddress = this.usdcValidator.getUSDCAddress(evmChain);
+    const USDC_ABI = [
+      'function transfer(address to, uint256 amount) returns (bool)',
+      'function balanceOf(address account) view returns (uint256)',
+    ];
+    const usdc = new ethers.Contract(usdcAddress, USDC_ABI, userSigner);
+    const requiredAmount = BigInt(Math.round(dto.usdcAmount * 1_000_000));
+    const balance: bigint = await usdc.balanceOf(userSigner.address);
+    if (balance < requiredAmount) {
+      throw new BadRequestException(
+        `Insufficient USDC balance. Required: ${dto.usdcAmount} USDC, ` +
+          `available: ${(Number(balance) / 1_000_000).toFixed(6)} USDC on ${evmChain}. ` +
+          `Get testnet USDC from a faucet and try again.`,
+      );
+    }
+    const transferTx = await usdc.transfer(platformAddress, requiredAmount);
+    const receipt = await transferTx.wait(1);
+    const usdcTxHash: string = receipt.hash;
+    this.logger.log(`✅ USDC transfer confirmed: ${usdcTxHash} (${dto.usdcAmount} USDC on ${evmChain})`);
+    // ------------------------------------------------------------------
+
     const payment = this.paymentRepo.create({
       userId,
       wishlistItemId: dto.wishlistItemId,
-      usdcTxHash: null,
+      usdcTxHash,
       usdcAmount: dto.usdcAmount,
       chain: dto.chain as any,
-      fromAddress: null,
+      fromAddress: userSigner.address,
       toAddress: platformAddress,
       status: PaymentStatus.CONFIRMED,
       confirmedAt: new Date(),

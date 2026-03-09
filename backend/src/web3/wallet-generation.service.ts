@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Wallet, HDNodeWallet, Mnemonic } from 'ethers';
@@ -151,6 +151,21 @@ export class WalletGenerationService {
       devLog.error('Decryption error:', errorMessage);
       throw new Error(`Failed to decrypt data: ${errorMessage}`);
     }
+  }
+
+  /**
+   * Return the decrypted EVM private key for a user's master wallet.
+   * Intended for backend-only operations that need to sign on behalf of the
+   * user (e.g. automatic USDC fee collection before contract deployment).
+   */
+  async decryptUserPrivateKey(userId: string): Promise<string> {
+    const userWallet = await this.userWalletRepo.findOne({ where: { userId } });
+    if (!userWallet?.encryptedPrivateKey) {
+      throw new BadRequestException(
+        'No master wallet found for your account. Please generate a master wallet first.',
+      );
+    }
+    return this.decrypt(userWallet.encryptedPrivateKey);
   }
 
   // ---------------------------------------------------------------------------

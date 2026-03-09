@@ -225,7 +225,7 @@ export class USDCValidatorService {
         blockNumber: receipt.blockNumber,
         timestamp,
       };
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`❌ USDC validation failed: ${error.message}`);
       if (error instanceof BadRequestException) {
         throw error;
@@ -251,6 +251,14 @@ export class USDCValidatorService {
    */
   getUSDCAddress(chain: 'ethereum' | 'avalanche'): string {
     return chain === 'ethereum' ? this.USDC_SEPOLIA : this.USDC_FUJI;
+  }
+
+  /**
+   * Expose the configured FallbackProvider for a chain so other services
+   * can build signers without duplicating RPC configuration.
+   */
+  getProvider(chain: 'ethereum' | 'avalanche'): ethers.AbstractProvider {
+    return chain === 'ethereum' ? this.ethereumProvider : this.avalancheProvider;
   }
 
   /**
