@@ -134,9 +134,9 @@ export class BountiesService {
         .createQueryBuilder('wishlist')
         .leftJoinAndSelect('wishlist.company', 'company')
         .where(
-          'wishlist.isEscrowActive = :isActive OR EXISTS (' +
+          '(wishlist.isEscrowActive = :isActive OR EXISTS (' +
             'SELECT 1 FROM escrow_deployments ed WHERE ed."wishlistItemId" = wishlist.id' +
-            ')',
+            '))',
           { isActive: true },
         );
 
@@ -230,9 +230,9 @@ export class BountiesService {
         .leftJoinAndSelect('wishlist.company', 'company')
         .where('company.id = :companyId', { companyId })
         .andWhere(
-          'wishlist.isEscrowActive = true OR EXISTS (' +
+          '(wishlist.isEscrowActive = true OR EXISTS (' +
             'SELECT 1 FROM escrow_deployments ed WHERE ed."wishlistItemId" = wishlist.id' +
-            ')',
+            '))',
         )
         .getMany();
 

@@ -225,7 +225,14 @@
 						.catch(() => ({ data: [] }))
 				)
 			);
-			allBounties = bountyResults.flatMap((r) => r.data || []);
+			const seen = new Set<string>();
+			allBounties = bountyResults
+				.flatMap((r) => r.data || [])
+				.filter((b: any) => {
+					if (seen.has(b.id)) return false;
+					seen.add(b.id);
+					return true;
+				});
 		} catch (e) {
 			console.error('Failed to fetch portfolio:', e);
 		} finally {
