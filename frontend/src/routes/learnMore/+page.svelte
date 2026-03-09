@@ -42,7 +42,7 @@
 
 	function handleFormSuccess() {
 		formSubmitted = true;
-		view = 'register';
+		// Stay on 'interest' tab — InterestForm shows its own full success screen
 	}
 
 	onMount(() => {

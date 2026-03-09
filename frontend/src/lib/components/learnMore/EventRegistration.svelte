@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { fade } from 'svelte/transition';
 	import {
-		CheckCircle2,
 		CalendarDays,
 		Clock,
 		MapPin,
@@ -10,36 +9,12 @@
 	} from 'lucide-svelte';
 	import { getNextEvent } from '$lib/animations';
 
-	let {
-		submitted = false,
-	}: {
-		submitted?: boolean;
-	} = $props();
+	let {}: {} = $props();
 
 	const nextEvent = getNextEvent();
 </script>
 
 <div in:fade={{ duration: 200 }}>
-	{#if submitted}
-		<div
-			class="alert alert-success mb-6 shadow-lg glass-subtle backdrop-blur-md rounded-2xl border-0"
-			in:fade={{ duration: 250 }}
-		>
-			<CheckCircle2 class="h-6 w-6 shrink-0 stroke-current text-success" />
-			<div class="flex-1">
-				<h3 class="font-bold text-success-content text-lg mb-2">Welcome to Liffey Founders Club!</h3>
-				<div class="text-sm text-success-content/90 space-y-2">
-					<p class="font-medium">Registration confirmed for {nextEvent.displayQuarter} {nextEvent.year}</p>
-					<div class="text-xs space-y-1">
-						<p>Your information has been submitted successfully</p>
-						<p>Welcome details have been sent</p>
-						<p>Welcome to Dublin's premier startup community!</p>
-					</div>
-				</div>
-			</div>
-		</div>
-	{/if}
-
 	<div class="text-center mb-6">
 		<div class="glass-subtle rounded-full px-6 py-3 inline-block mb-4">
 			<h3 class="text-base-content text-xl font-bold md:text-2xl bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
