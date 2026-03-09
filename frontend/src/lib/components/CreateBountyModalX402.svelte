@@ -150,6 +150,16 @@
   let paymentTxHash = $state<string | null>(null);
   let pollingStatus = $state<string>('Queuing deployment…');
 
+  // Dialog ref for top-layer rendering (bypasses backdrop-filter stacking context)
+  let dialogEl: HTMLDialogElement | null = $state(null);
+  $effect(() => {
+    if (isOpen) {
+      if (dialogEl && !dialogEl.open) dialogEl.showModal();
+    } else {
+      if (dialogEl?.open) dialogEl.close();
+    }
+  });
+
   const STEP_DISPLAY = ['Review', 'Pay', 'Processing', 'Done'];
   const STEP_KEYS: Step[] = ['review', 'payment', 'processing', 'success'];
   let stepIndex = $derived(STEP_KEYS.indexOf(currentStep) + 1);
@@ -370,8 +380,11 @@
   }
 </script>
 
-{#if isOpen}
-  <div class="modal modal-open overflow-y-auto" role="dialog">
+{#if isOpen}<dialog
+  class="modal overflow-y-auto"
+  bind:this={dialogEl}
+  onclose={() => { if (isOpen) { isOpen = false; setTimeout(reset, 300); } }}
+>
     <div class="modal-box max-w-lg p-0 overflow-y-auto max-h-[90vh]">
 
       <!-- Header -->
@@ -820,14 +833,6 @@
       </div>
     </div>
 
-    <div
-      class="modal-backdrop"
-      role="button"
-      tabindex="0"
-      onclick={close}
-      onkeydown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') close();
-      }}
-    ></div>
-  </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
 {/if}

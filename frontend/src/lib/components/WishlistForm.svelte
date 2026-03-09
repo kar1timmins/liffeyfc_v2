@@ -109,6 +109,15 @@
   let showPaymentMethodChoice = $state(false);
   let x402ModalOpen           = $state(false);
   let pendingWishlistItem     = $state<any>(null);
+  let paymentMethodDialog: HTMLDialogElement | null = $state(null);
+
+  $effect(() => {
+    if (showPaymentMethodChoice && pendingWishlistItem) {
+      if (paymentMethodDialog && !paymentMethodDialog.open) paymentMethodDialog.showModal();
+    } else {
+      if (paymentMethodDialog?.open) paymentMethodDialog.close();
+    }
+  });
   let selectedPaymentMethod   = $state<'traditional' | 'usdc'>('traditional');
   let userUsdcWallet          = $state<string | null>(null);
   let isLoadingUserWallet     = $state(false);
@@ -837,9 +846,13 @@
   {/if}
 
   <!-- ── Payment Method Choice Modal ─────────────────────────── -->
-  {#if showPaymentMethodChoice && pendingWishlistItem}
-    <div class="fixed inset-0 bg-black/50 flex items-start justify-center z-50 overflow-y-auto py-8">
-      <div class="bg-base-100 rounded-lg shadow-2xl max-w-md w-full mx-4 border border-base-300 overflow-y-auto max-h-[90vh]">
+  <dialog
+    bind:this={paymentMethodDialog}
+    class="modal"
+    onclose={() => { showPaymentMethodChoice = false; pendingWishlistItem = null; }}
+  >
+    {#if pendingWishlistItem}
+    <div class="modal-box max-w-md p-0">
         <div class="border-b border-base-300 p-6">
           <h2 class="text-xl font-bold">Choose Deployment Method</h2>
           <p class="text-sm opacity-70 mt-1">How would you like to pay for contract deployment?</p>
@@ -884,9 +897,10 @@
             onclick={() => { showPaymentMethodChoice = false; pendingWishlistItem = null; isFormOpen = false; resetForm(); }}
             disabled={isSubmitting}>Cancel</button>
         </div>
-      </div>
     </div>
-  {/if}
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    {/if}
+  </dialog>
 
   <!-- ── X402 Modal ───────────────────────────────────────────── -->
   {#if pendingWishlistItem && selectedPaymentMethod === 'usdc'}

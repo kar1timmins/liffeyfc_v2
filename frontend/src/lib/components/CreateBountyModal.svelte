@@ -44,6 +44,16 @@
   // Step tracking
   let currentStep = $state<'form' | 'deploying' | 'success'>('form');
 
+  // Dialog ref for top-layer rendering (bypasses backdrop-filter stacking context)
+  let dialogEl: HTMLDialogElement | null = $state(null);
+  $effect(() => {
+    if (isOpen) {
+      if (dialogEl && !dialogEl.open) dialogEl.showModal();
+    } else {
+      if (dialogEl?.open) dialogEl.close();
+    }
+  });
+
   const DURATION_PRESETS = [
     { days: 7, label: '1 Week' },
     { days: 14, label: '2 Weeks' },
@@ -218,8 +228,11 @@
   }
 </script>
 
-{#if isOpen}
-  <div class="modal modal-open" role="dialog">
+{#if isOpen}<dialog
+  class="modal"
+  bind:this={dialogEl}
+  onclose={() => { if (isOpen) { isOpen = false; setTimeout(reset, 300); } }}
+>
     <div class="modal-box max-w-2xl">
       <!-- Header -->
       <div class="flex justify-between items-start mb-6">
@@ -563,12 +576,6 @@
         </div>
       {/if}
     </div>
-    <div 
-      class="modal-backdrop" 
-      role="button"
-      tabindex="0"
-      onclick={close}
-      onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') close(); }}
-    ></div>
-  </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
 {/if}
