@@ -5,9 +5,14 @@ import { Resend } from 'resend';
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
   private resend: Resend | null = null;
+  private emailServiceUrl: string | null = null;
 
   constructor() {
     this.initializeResend();
+    this.emailServiceUrl = process.env.EMAIL_SERVICE_URL || null;
+    if (this.emailServiceUrl) {
+      this.logger.log(`Email service URL configured: ${this.emailServiceUrl}`);
+    }
   }
 
   private initializeResend() {
@@ -15,7 +20,7 @@ export class EmailService {
 
     if (!apiKey) {
       this.logger.warn(
-        'RESEND_API_KEY not configured - email sending disabled',
+        'RESEND_API_KEY not configured - Resend email sending disabled',
       );
       return;
     }
@@ -25,6 +30,33 @@ export class EmailService {
       this.logger.log('Email service configured with Resend');
     } catch (error) {
       this.logger.error('Failed to initialize Resend:', error);
+    }
+  }
+
+  /**
+   * Call the standalone email server service via HTTP
+   */
+  private async callEmailServer(
+    endpoint: string,
+    payload: Record<string, unknown>,
+  ): Promise<boolean> {
+    if (!this.emailServiceUrl) return false;
+    try {
+      const response = await fetch(`${this.emailServiceUrl}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!response.ok) {
+        const body = await response.text();
+        this.logger.error(`Email server ${endpoint} returned ${response.status}: ${body}`);
+        return false;
+      }
+      return true;
+    } catch (error) {
+      this.logger.error(`Failed to reach email server ${endpoint}:`, error);
+      return false;
     }
   }
 
@@ -62,11 +94,23 @@ export class EmailService {
   }
 
   /**
-   * Send welcome email via Resend
+   * Send welcome email after account registration.
+   * Tries the standalone email server (Zoho SMTP) first, falls back to Resend.
    */
   async sendWelcomeEmail(to: string, name: string): Promise<boolean> {
+    // Primary: SMTP email server
+    if (this.emailServiceUrl) {
+      const sent = await this.callEmailServer('/send-registration-welcome', { email: to, name });
+      if (sent) {
+        this.logger.log(`Registration welcome email sent to ${to} via email server`);
+        return true;
+      }
+      this.logger.warn(`Email server failed for ${to}, falling back to Resend`);
+    }
+
+    // Fallback: Resend
     if (!this.resend) {
-      this.logger.error('Cannot send email: Resend not initialized');
+      this.logger.error('Cannot send welcome email: neither email server nor Resend is configured');
       return false;
     }
 
@@ -77,7 +121,7 @@ export class EmailService {
       const { data, error } = await this.resend.emails.send({
         from: `Liffey Founders Club <${fromEmail}>`,
         to: [to],
-        subject: '🎉 Welcome to Liffey Founders Club!',
+        subject: '🎉 Welcome to Liffey Founders Club — You\'re In!',
         text: this.getWelcomeEmailTemplate(name),
       });
 
@@ -86,7 +130,7 @@ export class EmailService {
         return false;
       }
 
-      this.logger.log(`Welcome email sent to ${to} (ID: ${data?.id})`);
+      this.logger.log(`Welcome email sent to ${to} via Resend (ID: ${data?.id})`);
       return true;
     } catch (error) {
       this.logger.error(`Failed to send welcome email to ${to}:`, error);

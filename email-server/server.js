@@ -210,13 +210,65 @@ if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
     });
 }
 
+// ---------------------------------------------------------------------------
+// Unified email sender: Resend HTTP API (preferred) → nodemailer SMTP fallback
+// Resend uses port 443 (HTTPS) so it is never blocked on Railway or any host.
+// Set RESEND_API_KEY env var to enable. SMTP is used only if the key is absent.
+// ---------------------------------------------------------------------------
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+
+function isEmailConfigured() {
+    return !!(RESEND_API_KEY || transporter);
+}
+
+async function sendEmail({ from, to, subject, html, text, replyTo }) {
+    if (RESEND_API_KEY) {
+        const body = {
+            from,
+            to: Array.isArray(to) ? to : [to],
+            subject,
+            html,
+            text
+        };
+        if (replyTo) body.reply_to = replyTo;
+
+        const response = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${RESEND_API_KEY}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+        });
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(`Resend API error ${response.status}: ${err.message || response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log(`📧 Resend: email sent — id ${data.id}`);
+        return { messageId: data.id };
+    }
+
+    if (transporter) {
+        const info = await transporter.sendMail({ from, to, subject, html, text, replyTo });
+        return { messageId: info.messageId };
+    }
+
+    throw new Error('No email transport configured (set RESEND_API_KEY or SMTP_HOST/USER/PASS)');
+}
+
+console.log(`📧 Email transport: ${RESEND_API_KEY ? 'Resend HTTP API ✅' : transporter ? 'SMTP nodemailer' : 'none ⚠️'}`);
+
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.json({ 
         status: 'ok', 
         timestamp: new Date().toISOString(),
         message: 'Email server running - Web3Forms integration active',
-        smtp_configured: !!transporter,
+        email_transport: RESEND_API_KEY ? 'resend' : transporter ? 'smtp' : 'none',
+        email_configured: isEmailConfigured(),
         allowed_origins: allowedOrigins,
         request_origin: req.get('Origin') || 'none'
     });
@@ -280,11 +332,11 @@ app.post('/send-welcome', [
             });
         }
 
-        // Check if SMTP is configured
-        if (!transporter) {
+        // Check if email sending is configured
+        if (!isEmailConfigured()) {
             return res.status(503).json({
                 success: false,
-                message: 'SMTP not configured - welcome emails disabled'
+                message: 'Email not configured - set RESEND_API_KEY or SMTP credentials'
             });
         }
 
@@ -414,39 +466,16 @@ Event: ${eventQuarter || 'Upcoming'} ${eventYear || '2025'} | Location: Dublin, 
         };
 
         console.log(`📧 Attempting to send welcome email to: ${email}`);
-        
-        // Retry logic for SMTP timeouts
-        let retries = 3;
-        let lastError;
-        
-        for (let attempt = 1; attempt <= retries; attempt++) {
-            try {
-                const info = await transporter.sendMail(mailOptions);
-                console.log(`✅ Welcome email sent successfully to: ${email} (${name})`);
-                console.log('📧 Message ID:', info.messageId);
-                
-                res.json({
-                    success: true,
-                    message: 'Welcome email sent successfully',
-                    recipient: email,
-                    messageId: info.messageId
-                });
-                return; // Success, exit the function
-                
-            } catch (attemptError) {
-                lastError = attemptError;
-                console.log(`❌ Attempt ${attempt}/${retries} failed:`, attemptError.message);
-                
-                if (attempt < retries) {
-                    const waitTime = attempt * 1000; // 1s, 2s, 3s delay
-                    console.log(`⏳ Retrying in ${waitTime}ms...`);
-                    await new Promise(resolve => setTimeout(resolve, waitTime));
-                }
-            }
-        }
-        
-        // All retries failed
-        throw lastError;
+
+        const info = await sendEmail(mailOptions);
+        console.log(`✅ Welcome email sent successfully to: ${email} (${name}) — ${info.messageId}`);
+
+        res.json({
+            success: true,
+            message: 'Welcome email sent successfully',
+            recipient: email,
+            messageId: info.messageId
+        });
 
     } catch (error) {
         console.error('❌ Error sending welcome email:', error);
@@ -479,6 +508,182 @@ app.get('/', (req, res) => {
     });
 });
 
+// Registration welcome email endpoint
+// Called by backend after a new user account is created
+app.post('/send-registration-welcome', [
+    body('email').isEmail().normalizeEmail(),
+    body('name').trim().isLength({ min: 1, max: 100 })
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        if (!isEmailConfigured()) {
+            return res.status(503).json({
+                success: false,
+                message: 'Email not configured - set RESEND_API_KEY or SMTP credentials'
+            });
+        }
+
+        const { email, name } = req.body;
+        const dashboardUrl = `${process.env.FRONTEND_URL || 'https://liffeyfoundersclub.com'}/dashboard`;
+        const companiesUrl = `${process.env.FRONTEND_URL || 'https://liffeyfoundersclub.com'}/companies`;
+
+        const html = `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                * { box-sizing: border-box; margin: 0; padding: 0; }
+                body { font-family: 'Segoe UI', Arial, sans-serif; background: #0f0f1a; color: #e0e0e0; }
+                .wrapper { max-width: 620px; margin: 0 auto; padding: 24px 16px; }
+                .card { background: #1a1a2e; border-radius: 16px; overflow: hidden; border: 1px solid #2a2a4a; }
+                .header { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); padding: 40px 32px 32px; text-align: center; }
+                .header h1 { color: #fff; font-size: 26px; font-weight: 700; margin-bottom: 8px; }
+                .header p { color: #c4b5fd; font-size: 15px; }
+                .body { padding: 32px; }
+                .greeting { font-size: 17px; color: #e0e0e0; margin-bottom: 20px; line-height: 1.6; }
+                .section { background: #0f0f1a; border-radius: 12px; padding: 20px; margin: 20px 0; border-left: 4px solid #4f46e5; }
+                .section h3 { color: #a78bfa; font-size: 14px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; }
+                .section ul { list-style: none; padding: 0; }
+                .section ul li { color: #c4b5fd; font-size: 14px; padding: 6px 0; padding-left: 20px; position: relative; line-height: 1.5; }
+                .section ul li::before { content: "→"; position: absolute; left: 0; color: #4f46e5; }
+                .event-box { background: linear-gradient(135deg, #1e1b4b 0%, #2e1065 100%); border-radius: 12px; padding: 24px; margin: 20px 0; border: 1px solid #4f46e5; text-align: center; }
+                .event-box .label { color: #a78bfa; font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+                .event-box .event-name { color: #fff; font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+                .event-box .event-sub { color: #c4b5fd; font-size: 14px; margin-bottom: 16px; }
+                .event-detail { display: inline-block; background: #0f0f1a; border-radius: 8px; padding: 8px 16px; margin: 4px; font-size: 13px; color: #e0e0e0; }
+                .btn { display: inline-block; background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: #fff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 15px; margin: 24px auto 8px; display: block; text-align: center; }
+                .footer { background: #0a0a12; padding: 20px 32px; text-align: center; font-size: 12px; color: #555; border-top: 1px solid #2a2a4a; }
+                .footer a { color: #7c3aed; text-decoration: none; }
+            </style>
+        </head>
+        <body>
+            <div class="wrapper">
+                <div class="card">
+                    <div class="header">
+                        <h1>Welcome to Liffey Founders Club!</h1>
+                        <p>Dublin's Premier Startup & Founders Community</p>
+                    </div>
+
+                    <div class="body">
+                        <p class="greeting">Hi <strong>${name}</strong>,<br><br>
+                        Your account is ready. You're now part of Liffey Founders Club — a community built for founders, investors, and builders across Dublin and beyond. We're thrilled to have you on board.</p>
+
+                        <div class="event-box">
+                            <div class="label">Next LFC Event</div>
+                            <div class="event-name">Liffey Founders Club — Pitch Night</div>
+                            <div class="event-sub">Quarterly founders pitch event &amp; networking evening</div>
+                            <span class="event-detail">📅 Q2 2026</span>
+                            <span class="event-detail">📍 Dublin City Centre</span>
+                            <span class="event-detail">🎤 Live Pitches</span>
+                            <span class="event-detail">🤝 Investor Networking</span>
+                        </div>
+
+                        <div class="section">
+                            <h3>What to Expect at Events</h3>
+                            <ul>
+                                <li>Founder pitches — 5 minutes on stage with live Q&amp;A from investors</li>
+                                <li>Investor introductions — meet active angels and VCs</li>
+                                <li>Open networking — connect with founders, builders, and mentors</li>
+                                <li>Panel discussions — insights from successful Irish founders</li>
+                                <li>Startup showcase — demo tables and product displays</li>
+                            </ul>
+                        </div>
+
+                        <div class="section">
+                            <h3>Get Started on the Platform</h3>
+                            <ul>
+                                <li>Create or claim your company profile</li>
+                                <li>Add wishlist items and crowdfund via blockchain bounties</li>
+                                <li>Browse other companies and connect with the community</li>
+                                <li>Connect your Web3 wallet for full platform access</li>
+                            </ul>
+                        </div>
+
+                        <a href="${dashboardUrl}" class="btn">Go to Your Dashboard →</a>
+
+                        <p style="text-align:center; color:#555; font-size:13px; margin-top:12px;">
+                            Or browse the <a href="${companiesUrl}" style="color:#7c3aed; text-decoration:none;">companies directory</a>
+                        </p>
+
+                        <p style="margin-top:28px; font-size:14px; color:#888; line-height:1.6;">
+                            Questions? Reply to this email and we'll get back to you.<br><br>
+                            See you at the next event,<br>
+                            <strong style="color:#c4b5fd;">The Liffey Founders Club Team</strong>
+                        </p>
+                    </div>
+
+                    <div class="footer">
+                        <p>You received this because you registered at <a href="https://liffeyfoundersclub.com">liffeyfoundersclub.com</a></p>
+                        <p style="margin-top:6px;">Liffey Founders Club · Dublin, Ireland</p>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>`;
+
+        const text = `Welcome to Liffey Founders Club!
+
+Hi ${name},
+
+Your account is ready. You're now part of Liffey Founders Club — a community built for founders, investors, and builders across Dublin and beyond.
+
+--- NEXT EVENT ---
+Liffey Founders Club — Pitch Night
+Quarterly founders pitch event & networking evening
+Date: Q2 2026 | Location: Dublin City Centre
+
+What to Expect:
+→ Founder pitches (5 min on stage + live Q&A from investors)
+→ Investor introductions — meet active angels and VCs
+→ Open networking with founders, builders, and mentors
+→ Panel discussions from successful Irish founders
+→ Startup showcase and demo tables
+
+Get Started on the Platform:
+→ Create or claim your company profile
+→ Add wishlist items and crowdfund via blockchain bounties
+→ Browse companies and connect with the community
+→ Connect your Web3 wallet for full platform access
+
+Go to your dashboard: ${dashboardUrl}
+
+Questions? Reply to this email.
+See you at the next event,
+The Liffey Founders Club Team
+
+---
+Liffey Founders Club · Dublin, Ireland · liffeyfoundersclub.com`;
+
+        const fromAddress = process.env.FROM_EMAIL || process.env.SMTP_USER;
+        const fromName = process.env.FROM_NAME || 'Liffey Founders Club';
+
+        const mailOptions = {
+            from: `"${fromName}" <${fromAddress}>`,
+            to: email,
+            subject: '🎉 Welcome to Liffey Founders Club — You\'re In!',
+            text,
+            html,
+            replyTo: process.env.REPLY_TO_EMAIL || fromAddress
+        };
+
+        console.log(`📧 Sending registration welcome email to: ${email}`);
+
+        const info = await sendEmail(mailOptions);
+        console.log(`✅ Registration welcome sent to ${email} (${name}) — ${info.messageId}`);
+        return res.json({ success: true, message: 'Welcome email sent', messageId: info.messageId });
+
+    } catch (error) {
+        console.error('❌ Error sending registration welcome:', error);
+        res.status(500).json({ success: false, message: 'Failed to send welcome email', error: error.message });
+    }
+});
+
 // Password reset email endpoint
 app.post('/send-password-reset', [
     body('to').isEmail().normalizeEmail(),
@@ -494,11 +699,11 @@ app.post('/send-password-reset', [
             });
         }
 
-        // Check if SMTP is configured
-        if (!transporter) {
+        // Check if email sending is configured
+        if (!isEmailConfigured()) {
             return res.status(503).json({
                 success: false,
-                message: 'SMTP not configured - password reset emails disabled'
+                message: 'Email not configured - set RESEND_API_KEY or SMTP credentials'
             });
         }
 
@@ -600,7 +805,7 @@ liffeyfoundersclub.com | Dublin, Ireland`;
             html: resetEmailHTML
         };
 
-        const info = await transporter.sendMail(mailOptions);
+        const info = await sendEmail(mailOptions);
 
         console.log('✅ Password reset email sent:', {
             messageId: info.messageId,
@@ -658,7 +863,7 @@ app.listen(PORT, () => {
     console.log('🚀 Server starting...');
     console.log(`📧 Email server running on port ${PORT}`);
     console.log(`� Health check: http://localhost:${PORT}/health`);
-    console.log(`✉️  SMTP configured: ${!!transporter}`);
+    console.log(`✉️  Email transport: ${RESEND_API_KEY ? 'Resend HTTP API' : transporter ? 'SMTP' : 'none (unconfigured)'}`);
     console.log(`🌐 CORS origins: ${allowedOrigins.join(', ')}`);
     console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log('✅ Server ready to accept connections');

@@ -152,7 +152,7 @@ Multiple RPC fallbacks per chain for reliability.
 | POST | `/companies/:id/wishlist` | JWT (owner) | Add wishlist item |
 | GET | `/companies/:id/wishlist` | none | List wishlist items |
 | PATCH | `/companies/:companyId/wishlist/:itemId` | JWT (owner) | Update wishlist item |
-| DELETE | `/companies/:companyId/wishlist/:itemId` | JWT (owner) | Delete wishlist item |
+| DELETE | `/companies/:companyId/wishlist/:itemId` | JWT (owner) | Delete wishlist item (blocked if `amountRaised > 0`) |
 | POST | `/companies/:companyId/wishlist/:itemId/donate` | JWT | Record a donation to wishlist item |
 
 ---
@@ -274,6 +274,9 @@ function getCampaignStatus() view returns (...)  // Full campaign state
 function isActive() view returns (bool)          // Whether campaign accepts contributions
 ```
 
+**Key fields:**
+- `string public wishlistItemId` — immutably records which off-chain wishlist item ID this escrow was deployed for
+
 **Gas fee on refund:** 0.1% of `totalRaised` split proportionally among contributors (`min 0.001 ETH, max 0.1 ETH`).
 
 **Events:**
@@ -286,9 +289,21 @@ function isActive() view returns (bool)          // Whether campaign accepts con
 Deploys new `CompanyWishlistEscrow` instances.
 
 ```solidity
-function createEscrow(address _owner, uint256 _goalAmount, uint256 _deadline) external returns (address)
+function createEscrow(
+    address _owner,
+    address _masterWallet,
+    uint256 _targetAmount,
+    uint256 _durationInDays,
+    string _campaignName,
+    string _campaignDescription,
+    string _wishlistItemId
+) external returns (address)
 function getCompanyEscrows(address _owner) view returns (address[])
 ```
+
+**`EscrowCreated` event** includes `string wishlistItemId` — each deployed contract records which off-chain wishlist item it belongs to, enabling audit trails even if DB records change.
+
+**ABI note**: If the factory contract ABI changes (`createEscrow` signature updated), the factory must be redeployed on all chains and `ESCROW_FACTORY_ADDRESS_ETHEREUM` / `ESCROW_FACTORY_ADDRESS_AVALANCHE` env vars updated before new bounties can be created.
 
 ### Deployment
 

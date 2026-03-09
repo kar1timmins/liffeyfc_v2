@@ -118,38 +118,19 @@
 			if (result.success) {
 				submitted = 'success';
 
-				// Try welcome email, then fall back to welcome page
-				let welcomeEmailSent = false;
-				try {
-					if (emailServerUrl && !emailServerUrl.includes('liffeyfcform-production')) {
-						const welcomeResponse = await fetch(`${emailServerUrl}/send-welcome`, {
-							method: 'POST',
-							headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-							body: JSON.stringify({
-								email: emailClean,
-								name: nameClean,
-								interest: interest || '',
-								pitchedBefore: pitchedBefore || '',
-								eventQuarter: nextEvent.displayQuarter,
-								eventYear: nextEvent.year
-							})
-						});
-						if (welcomeResponse.ok) welcomeEmailSent = true;
-					}
-				} catch {
-					// Silently continue
-				}
-
-				if (!welcomeEmailSent) {
-					const welcomeParams = new URLSearchParams({
-						name: nameClean, email: emailClean,
-						interest: interest || '',
+				// Fire-and-forget: send confirmation email to the submitter via the email server
+				fetch(`${emailServerUrl}/send-welcome`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+					body: JSON.stringify({
+						email: emailClean,
+						name: nameClean,
+						interest: interest ?? '',
+						pitchedBefore: pitchedBefore ?? '',
 						eventQuarter: nextEvent.displayQuarter,
-						eventYear: nextEvent.year.toString()
-					});
-					window.location.replace(`/welcome?${welcomeParams.toString()}`);
-					return;
-				}
+						eventYear: nextEvent.year
+					})
+				}).catch(() => { /* silently ignore — admin already notified via Web3Forms */ });
 
 				onSuccess();
 			} else {

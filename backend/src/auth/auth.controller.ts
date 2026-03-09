@@ -144,6 +144,16 @@ export class AuthController {
         timestamp: new Date(),
       });
 
+      // Send welcome email (fire-and-forget — never block the registration response)
+      const displayName = body.name || body.email.split('@')[0];
+      this.emailService
+        .sendWelcomeEmail(body.email, displayName)
+        .catch((err) =>
+          this.securityMonitoring['logger']?.error(
+            `Welcome email failed for ${body.email}: ${err?.message}`,
+          ),
+        );
+
       // Return user and access token (not refresh token)
       return {
         success: true,

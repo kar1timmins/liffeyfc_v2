@@ -177,6 +177,9 @@ See [backend/README.md](backend/README.md) for environment variables and migrati
 
 Contracts live in `/hardhat/`. Deployed on Ethereum Sepolia and Avalanche Fuji (testnets).
 
+- **`CompanyWishlistEscrow.sol`**: Time-bound crowdfunding escrow. Stores `string public wishlistItemId` on-chain (set at construction) to permanently record which wishlist item each contract belongs to.
+- **`EscrowFactory.sol`**: Factory for deploying escrow instances. `createEscrow` takes 7 arguments including `_wishlistItemId`. `EscrowCreated` event includes `wishlistItemId`. **Must be redeployed if ABI changes.**
+
 ```bash
 cd hardhat
 npx hardhat compile
@@ -185,7 +188,7 @@ npx hardhat run scripts/deploy-factory.ts --network sepolia
 npx hardhat run scripts/deploy-factory.ts --network fuji
 ```
 
-See [backend/README.md](backend/README.md#smart-contracts) for contract ABI and escrow architecture.
+After redeployment update `ESCROW_FACTORY_ADDRESS_ETHEREUM` and `ESCROW_FACTORY_ADDRESS_AVALANCHE` in the backend environment. See [backend/README.md](backend/README.md#smart-contracts) for full contract ABI and escrow architecture.
 
 ---
 
@@ -199,4 +202,4 @@ Detailed variable lists are in each component README. Summary of required variab
 
 ---
 
-*Updated: 2026-03-08*
+*Updated: 2026-03-09*
