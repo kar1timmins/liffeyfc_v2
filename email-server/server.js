@@ -351,7 +351,8 @@ app.post('/send-welcome', [
             <style>
                 body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
                 .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px 20px; text-align: center; border-radius: 10px 10px 0 0; }
+                .header { background: linear-gradient(135deg, #1e1b4b 0%, #2e1065 100%); color: white; padding: 30px 20px; text-align: center; border-radius: 10px 10px 0 0; border-bottom: 3px solid #4f46e5; }
+                .header img { width: 120px; height: auto; margin-bottom: 14px; display: block; margin-left: auto; margin-right: auto; }
                 .content { background: #f9f9f9; padding: 30px 20px; }
                 .highlight { background: #fff; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #667eea; }
                 .footer { background: #333; color: #ccc; padding: 20px; text-align: center; border-radius: 0 0 10px 10px; font-size: 12px; }
@@ -361,8 +362,9 @@ app.post('/send-welcome', [
         <body>
             <div class="container">
                 <div class="header">
-                    <h1>🚀 Welcome to Liffey Founders Club!</h1>
-                    <p>Dublin's Premier Startup Community</p>
+                    <img src="https://liffeyfoundersclub.com/img/logo/Liffey_Founders_Club_Logo.png" alt="Liffey Founders Club" />
+                    <h1 style="font-size:22px;font-weight:700;margin:0 0 6px;">Welcome to Liffey Founders Club!</h1>
+                    <p style="color:#c4b5fd;font-size:14px;margin:0;">Dublin's Premier Startup Community</p>
                 </div>
                 
                 <div class="content">
@@ -542,9 +544,10 @@ app.post('/send-registration-welcome', [
                 body { font-family: 'Segoe UI', Arial, sans-serif; background: #0f0f1a; color: #e0e0e0; }
                 .wrapper { max-width: 620px; margin: 0 auto; padding: 24px 16px; }
                 .card { background: #1a1a2e; border-radius: 16px; overflow: hidden; border: 1px solid #2a2a4a; }
-                .header { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); padding: 40px 32px 32px; text-align: center; }
-                .header h1 { color: #fff; font-size: 26px; font-weight: 700; margin-bottom: 8px; }
-                .header p { color: #c4b5fd; font-size: 15px; }
+                .header { background: linear-gradient(135deg, #1e1b4b 0%, #2e1065 100%); padding: 36px 32px 28px; text-align: center; border-bottom: 3px solid #4f46e5; }
+                .header img { width: 130px; height: auto; margin: 0 auto 16px; display: block; }
+                .header h1 { color: #fff; font-size: 24px; font-weight: 700; margin: 0 0 6px; }
+                .header p { color: #c4b5fd; font-size: 14px; margin: 0; }
                 .body { padding: 32px; }
                 .greeting { font-size: 17px; color: #e0e0e0; margin-bottom: 20px; line-height: 1.6; }
                 .section { background: #0f0f1a; border-radius: 12px; padding: 20px; margin: 20px 0; border-left: 4px solid #4f46e5; }
@@ -566,8 +569,9 @@ app.post('/send-registration-welcome', [
             <div class="wrapper">
                 <div class="card">
                     <div class="header">
+                        <img src="https://liffeyfoundersclub.com/img/logo/Liffey_Founders_Club_Logo.png" alt="Liffey Founders Club" />
                         <h1>Welcome to Liffey Founders Club!</h1>
-                        <p>Dublin's Premier Startup & Founders Community</p>
+                        <p>Dublin's Premier Startup &amp; Founders Community</p>
                     </div>
 
                     <div class="body">
@@ -718,11 +722,12 @@ app.post('/send-password-reset', [
             <style>
                 body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
                 .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px 20px; text-align: center; border-radius: 10px 10px 0 0; }
+                .header { background: linear-gradient(135deg, #1e1b4b 0%, #2e1065 100%); color: white; padding: 30px 20px; text-align: center; border-radius: 10px 10px 0 0; border-bottom: 3px solid #4f46e5; }
+                .header img { width: 110px; height: auto; margin: 0 auto 14px; display: block; }
                 .content { background: #f9f9f9; padding: 30px 20px; }
                 .highlight { background: #fff; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #667eea; }
-                .button { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold; }
-                .footer { background: #333; color: #ccc; padding: 20px; text-align: center; border-radius: 0 0 10px 10px; font-size: 12px; }
+                .button { display: inline-block; background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold; }
+                .footer { background: #0a0a12; color: #555; padding: 20px; text-align: center; border-radius: 0 0 10px 10px; font-size: 12px; }
                 .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; border-radius: 8px; margin: 15px 0; }
                 .code { font-family: 'Courier New', monospace; background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-size: 14px; }
             </style>
@@ -730,8 +735,9 @@ app.post('/send-password-reset', [
         <body>
             <div class="container">
                 <div class="header">
-                    <h1>🔐 Password Reset Request</h1>
-                    <p>Liffey Founders Club</p>
+                    <img src="https://liffeyfoundersclub.com/img/logo/Liffey_Founders_Club_Logo.png" alt="Liffey Founders Club" />
+                    <h1 style="font-size:22px;font-weight:700;margin:0 0 6px;">🔐 Password Reset Request</h1>
+                    <p style="color:#c4b5fd;font-size:14px;margin:0;">Liffey Founders Club</p>
                 </div>
                 
                 <div class="content">

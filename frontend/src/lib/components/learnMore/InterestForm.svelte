@@ -161,31 +161,62 @@
 </script>
 
 <div class="space-y-4" in:fade={{ duration: 200 }}>
-	<!-- Progress bar -->
-	<div class="glass-subtle rounded-full p-1">
-		<div class="flex items-center gap-2 px-3 py-1.5">
-			<span class="text-xs font-medium text-base-content/70 whitespace-nowrap">
-				{progress}/5 completed
-			</span>
-			<div class="flex-1 bg-base-300/30 rounded-full h-2 overflow-hidden">
-				<div
-					class="h-full bg-gradient-to-r from-primary to-accent rounded-full transition-all duration-500 ease-out"
-					style="width: {(progress / 5) * 100}%"
-				></div>
+	<!-- Progress bar — hidden on success -->
+	{#if submitted !== 'success'}
+		<div class="glass-subtle rounded-full p-1">
+			<div class="flex items-center gap-2 px-3 py-1.5">
+				<span class="text-xs font-medium text-base-content/70 whitespace-nowrap">
+					{progress}/5 completed
+				</span>
+				<div class="flex-1 bg-base-300/30 rounded-full h-2 overflow-hidden">
+					<div
+						class="h-full bg-gradient-to-r from-primary to-accent rounded-full transition-all duration-500 ease-out"
+						style="width: {(progress / 5) * 100}%"
+					></div>
+				</div>
+				{#if progress === 5}
+					<CheckCircle2 class="w-4 h-4 text-success flex-shrink-0" />
+				{/if}
 			</div>
-			{#if progress === 5}
-				<CheckCircle2 class="w-4 h-4 text-success flex-shrink-0" />
-			{/if}
 		</div>
-	</div>
+	{/if}
 
 	{#if submitted === 'success'}
-		<div class="glass-subtle rounded-2xl p-6 text-center" in:fly={{ y: 10, duration: 300 }}>
-			<CheckCircle2 class="w-12 h-12 text-success mx-auto mb-3" />
-			<h3 class="text-lg font-bold text-base-content mb-2">Welcome to Liffey Founders Club!</h3>
-			<p class="text-sm text-base-content/70">
-				Registration confirmed for {nextEvent.displayQuarter} {nextEvent.year}
+		<div
+			class="glass-subtle rounded-2xl p-10 text-center"
+			in:fly={{ y: 24, duration: 450, easing: quintOut }}
+		>
+			<!-- Animated check circle -->
+			<div class="w-24 h-24 rounded-full bg-success/15 flex items-center justify-center mx-auto mb-6 ring-4 ring-success/20">
+				<CheckCircle2 class="w-12 h-12 text-success" />
+			</div>
+
+			<h2 class="text-3xl font-bold text-base-content mb-2">You're In!</h2>
+			<p class="text-primary font-semibold text-lg mb-5">Welcome to Liffey Founders Club</p>
+
+			<p class="text-base-content/70 leading-relaxed mb-6 max-w-sm mx-auto">
+				Your interest has been registered for our
+				<strong class="text-base-content">{nextEvent.displayQuarter} {nextEvent.year}</strong> event.
+				A confirmation email is on its way to you.
 			</p>
+
+			<!-- Event details card -->
+			<div class="glass-subtle rounded-xl p-5 max-w-xs mx-auto mb-5">
+				<p class="text-xs text-base-content/40 uppercase tracking-widest mb-2">Next Event</p>
+				<p class="font-bold text-base-content text-lg mb-1">LFC Pitch Night</p>
+				<p class="text-sm text-base-content/60 mb-3">{nextEvent.displayQuarter} {nextEvent.year} · Dublin City Centre</p>
+				<div class="flex justify-center gap-3 flex-wrap">
+					<span class="badge badge-ghost badge-sm">🎤 Live Pitches</span>
+					<span class="badge badge-ghost badge-sm">🤝 Networking</span>
+					<span class="badge badge-ghost badge-sm">💡 Investors</span>
+				</div>
+			</div>
+
+			{#if interest}
+				<p class="text-sm text-base-content/50">
+					Registered as: <span class="text-primary font-medium">{interest}</span>
+				</p>
+			{/if}
 		</div>
 	{:else}
 		<form onsubmit={(e) => { e.preventDefault(); submitForm(); }} class="space-y-3">
