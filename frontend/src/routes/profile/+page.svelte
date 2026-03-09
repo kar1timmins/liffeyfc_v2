@@ -96,10 +96,12 @@
                   const payments = map[item.id] || [];
                   // mark if a confirmed payment exists (pending deployment)
                   item.hasConfirmedPayment = payments.some((p) => p.status === 'confirmed');
-                  // also flag escrow active if deployed contracts exist
-                  item.isEscrowActive = payments.some(
-                    (p) => p.status === 'deployed' && p.deployedContracts,
-                  );
+                  // Merge payment-based escrow flag using OR so we never override
+                  // an isEscrowActive=true that came directly from the server
+                  // (the regular deployment path saves it to DB without creating a payment).
+                  item.isEscrowActive =
+                    item.isEscrowActive ||
+                    payments.some((p) => p.status === 'deployed' && p.deployedContracts);
                 }
               }
             }

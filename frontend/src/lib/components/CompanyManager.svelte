@@ -317,17 +317,28 @@
             item.isEscrowActive = true;
             // push a deployment history entry for immediate visibility
             item.deployments = item.deployments || [];
-            // Push per-chain deployments where txHash is available
-            deployed.addresses.forEach((a: { chain: string; txHash?: string }) => {
+            // Build history from transactionHashes (API shape: { ethereumAddress, avalancheAddress, transactionHashes })
+            const txHashes = deployed.transactionHashes || {};
+            if (deployed.ethereumAddress) {
               item.deployments.unshift({
-                chain: a.chain,
-                network: a.chain === 'ethereum' ? 'sepolia' : 'fuji',
-                deploymentTxHash: a.txHash || null,
+                chain: 'ethereum',
+                network: 'sepolia',
+                deploymentTxHash: txHashes.ethereum || null,
                 deployedAt: new Date().toISOString(),
                 campaignName: deployed.campaignName || selectedWishlistItem?.title || null,
                 campaignDescription: deployed.campaignDescription || selectedWishlistItem?.description || null,
               });
-            });
+            }
+            if (deployed.avalancheAddress) {
+              item.deployments.unshift({
+                chain: 'avalanche',
+                network: 'fuji',
+                deploymentTxHash: txHashes.avalanche || null,
+                deployedAt: new Date().toISOString(),
+                campaignName: deployed.campaignName || selectedWishlistItem?.title || null,
+                campaignDescription: deployed.campaignDescription || selectedWishlistItem?.description || null,
+              });
+            }
             // force Svelte reactivity
             companies = [...companies];
           }
