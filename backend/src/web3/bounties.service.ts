@@ -1096,14 +1096,17 @@ export class BountiesService {
       .addSelect('company.industry', 'industry')
       .addSelect('company.logoUrl', 'logoUrl')
       .addSelect(
-        `COUNT(DISTINCT CASE WHEN ed.status = 'funded' THEN ed.id END)`,
+        `COUNT(DISTINCT CASE WHEN ed.status = 'funded' THEN wi.id END)`,
         'completedBounties',
       )
       .addSelect(
-        `COUNT(DISTINCT CASE WHEN ed.status = 'active' THEN ed.id END)`,
+        `COUNT(DISTINCT CASE WHEN ed.status = 'active' THEN wi.id END)`,
         'activeBounties',
       )
-      .addSelect('COUNT(DISTINCT ed.id)', 'totalBounties')
+      .addSelect(
+        `COUNT(DISTINCT CASE WHEN ed.id IS NOT NULL THEN wi.id END)`,
+        'totalBounties',
+      )
       .addSelect(
         `COALESCE(SUM(CASE WHEN con.chain = 'ethereum' THEN con."amountEth" ELSE 0 END), 0)`,
         'totalRaisedEth',
