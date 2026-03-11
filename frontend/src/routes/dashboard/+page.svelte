@@ -854,7 +854,7 @@
 						onclick={() => goto('/')}
 					>
 						<span
-							class=" bg-base-100 text-gray-800 dark:text-white dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
+							class=" bg-base-100 text-black dark:text-white dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
 						>
 							Go to Home
 						</span>
@@ -883,7 +883,7 @@
 						onclick={() => goto('/companies')}
 					>
 						<span
-							class=" bg-base-100 text-gray-800 dark:text-white dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
+							class=" bg-base-100 text-black dark:text-white dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
 						>
 							View Companies
 						</span>
@@ -913,7 +913,7 @@
 							onclick={() => goto('/bounties')}
 						>
 							<span
-								class=" bg-base-100 text-gray-800 dark:text-white dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
+								class=" bg-base-100 text-black dark:text-white dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
 							>
 								View Bounties
 							</span>
@@ -944,7 +944,7 @@
 						onclick={() => goto('/profile')}
 					>
 						<span
-							class=" bg-base-100 text-gray-800 dark:text-white dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
+							class=" bg-base-100 text-black dark:text-white dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
 						>
 							View Profile
 						</span>
@@ -973,7 +973,7 @@
 						onclick={() => goto('/settings')}
 					>
 						<span
-							class=" bg-base-100 text-gray-800 dark:text-white dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
+							class=" bg-base-100 text-black dark:text-white dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
 						>
 							View Settings
 						</span>
@@ -1003,7 +1003,7 @@
 							onclick={() => goto('/send')}
 						>
 							<span
-								class=" bg-base-100 text-gray-800 dark:text-white dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
+								class=" bg-base-100 text-black dark:text-white dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
 							>
 								Send Funds
 							</span>
@@ -1035,7 +1035,7 @@
 								onclick={() => goto('/buy-crypto')}
 							>
 								<span
-									class=" bg-base-100 text-gray-800 dark:text-white dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
+									class=" bg-base-100 text-black dark:text-white dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
 								>
 									Buy Crypto
 								</span>
@@ -1064,7 +1064,7 @@
 								onclick={() => goto('/leaderboard')}
 							>
 								<span
-									class=" bg-base-100 text-gray-800 dark:text-white dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
+									class=" bg-base-100 text-black dark:text-white dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
 								>
 									View Leaderboard
 								</span>
