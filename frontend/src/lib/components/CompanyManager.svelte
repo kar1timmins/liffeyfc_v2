@@ -1505,8 +1505,10 @@
                                   <h5 class="font-semibold text-sm">{item.title}</h5>
                                   <span class="badge badge-sm badge-outline">{item.category}</span>
                                   <span class="badge badge-sm badge-{item.priority === 'critical' ? 'error' : item.priority === 'high' ? 'warning' : 'ghost'}">{item.priority}</span>
-                                  {#if item.isEscrowActive}
+                                  {#if item.isEscrowActive && !isWishlistItemClosed(item)}
                                     <span class="badge badge-success badge-sm">🎯 Active Bounty</span>
+                                  {:else if item.isEscrowActive && isWishlistItemClosed(item)}
+                                    <span class="badge badge-ghost badge-sm">⏰ Expired Bounty</span>
                                   {/if}
                                 </div>
                                 {#if item.description}
