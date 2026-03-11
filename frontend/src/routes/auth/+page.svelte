@@ -3,7 +3,7 @@
   import { authStore } from '$lib/stores/auth';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
-  import { Check, X } from 'lucide-svelte';
+  import { Check, X, AlertCircle } from 'lucide-svelte';
   import { PUBLIC_API_URL } from '$env/static/public';
 
   let mode: 'login' | 'register' = 'login';
@@ -54,7 +54,7 @@
       }
       goto('/dashboard');
     } catch (e: any) {
-      error = e?.message || 'Failed';
+      error = e?.message || 'Something went wrong. Please try again.';
     } finally {
       loading = false;
     }
@@ -80,7 +80,10 @@
     </div>
 
     {#if error}
-      <div class="alert alert-error mb-4">{error}</div>
+      <div class="alert alert-error mb-4 items-start">
+        <AlertCircle class="w-4 h-4 shrink-0 mt-0.5" />
+        <span class="break-words min-w-0">{error}</span>
+      </div>
     {/if}
 
     <form on:submit|preventDefault={submit}>

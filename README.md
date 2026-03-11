@@ -1,53 +1,50 @@
 # Liffey Founders Club — Platform Overview
 
-A full-stack web platform for the Liffey Founders Club community. It connects founders through company profiles, wishlist-based crowdfunding (bounties), and Web3-enabled authentication and payments.
+A full-stack web platform for the Liffey Founders Club community. It connects founders through company profiles, wishlist-based crowdfunding (bounties), and Web3-enabled payments using Avalanche, Ethereum, Solana, Stellar, Bitcoin and the x402 standard.
 
 ---
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                         Browser                             │
-│              SvelteKit (Static, Svelte 5 + Tailwind)        │
-│          liffeyfoundersclub.com  (Blacknight / FTP)          │
-└──────────────────────────┬──────────────────────────────────┘
-                           │ REST API (HTTPS)
-                           │ SSE /notifications/stream
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│                     NestJS Backend API                      │
-│               api.liffeyfoundersclub.com (Railway)          │
-│                                                             │
-│  auth │ users │ companies │ bounties │ web3 │ payments      │
-└──────┬───────────────────────────────────────┬─────────────┘
-       │                                       │ Redis Pub/Sub
-       ▼                                       ▼
-┌─────────────────┐               ┌────────────────────────┐
-│   PostgreSQL    │               │        Redis           │
-│  (TypeORM ORM)  │               │  nonce / BullMQ queue  │
-│   Railway       │               │   Railway              │
-└─────────────────┘               └───────────┬────────────┘
-                                              │ subscribe
-                                              ▼
-                                 ┌────────────────────────┐
-                                 │   Sentinel (Go 1.24)   │
-                                 │  Watches 5 blockchains │
-                                 │  ETH Sepolia · AVAX    │
-                                 │  Solana · BTC · XLM    │
-                                 └────────────────────────┘
-       │
-       ▼
-┌──────────────────────────────────────────────────────────┐
-│              Blockchain (Hardhat contracts)               │
-│  Ethereum Sepolia  │  Avalanche Fuji (testnet)            │
-│  CompanyWishlistEscrow.sol  │  EscrowFactory.sol          │
-└──────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Browser["🌐 **Browser**<br/>SvelteKit 2 · Svelte 5 · Tailwind CSS v4<br/>liffeyfoundersclub.com · Blacknight / FTP"]
+
+    Backend["⚙️ **NestJS Backend API**<br/>api.liffeyfoundersclub.com · Railway<br/>auth · users · companies · bounties · web3 · payments"]
+
+    PG[("🐘 **PostgreSQL 15**<br/>TypeORM 0.3 · Railway")]
+
+    Redis[("⚡ **Redis 7**<br/>nonce · BullMQ queue · Pub/Sub<br/>Railway")]
+
+    Sentinel["👁️ **Sentinel** — Go 1.24<br/>Watches 5 blockchains<br/>ETH Sepolia · AVAX Fuji · Solana · BTC · XLM"]
+
+    Chain["⛓️ **Blockchain** — Hardhat Contracts<br/>Ethereum Sepolia · Avalanche Fuji<br/>CompanyWishlistEscrow.sol · EscrowFactory.sol"]
+
+    Browser -->|"REST API (HTTPS) + SSE /notifications/stream"| Backend
+    Backend -->|"ORM queries"| PG
+    Backend -->|"Pub/Sub events"| Redis
+    Redis -->|"subscribe"| Sentinel
+    Sentinel -->|"WebSocket / HTTP"| Chain
+    Backend -.->|"contract deployment"| Chain
+
+    classDef browser  fill:#0d2137,stroke:#4a9eff,stroke-width:2px,color:#cce8ff
+    classDef backend  fill:#0d2318,stroke:#3ddc84,stroke-width:2px,color:#c8ffe0
+    classDef db       fill:#181830,stroke:#8080ff,stroke-width:2px,color:#d8d8ff
+    classDef cache    fill:#2a0e0e,stroke:#ff5555,stroke-width:2px,color:#ffd0d0
+    classDef sentinel fill:#23230d,stroke:#ffd700,stroke-width:2px,color:#fffff0
+    classDef chain    fill:#230d23,stroke:#cc66ff,stroke-width:2px,color:#f0d0ff
+
+    class Browser browser
+    class Backend backend
+    class PG db
+    class Redis cache
+    class Sentinel sentinel
+    class Chain chain
 ```
 
 ---
 
-## Monorepo Structure
+## Project Structure
 
 ```
 liffeyfc_v2/

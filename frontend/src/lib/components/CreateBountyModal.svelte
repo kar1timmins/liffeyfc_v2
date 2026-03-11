@@ -445,9 +445,9 @@
           </div>
 
           {#if error}
-            <div class="alert alert-error mt-5">
-              <AlertCircle class="w-4 h-4 shrink-0" />
-              <span class="text-sm">{error}</span>
+            <div class="alert alert-error mt-5 items-start">
+              <AlertCircle class="w-4 h-4 shrink-0 mt-0.5" />
+              <span class="text-sm break-words min-w-0">{error}</span>
             </div>
           {/if}
 
@@ -546,9 +546,9 @@
           </div>
 
           {#if error}
-            <div class="alert alert-error mb-4">
-              <AlertCircle class="w-4 h-4 shrink-0" />
-              <span class="text-sm">{error}</span>
+            <div class="alert alert-error mb-4 items-start">
+              <AlertCircle class="w-4 h-4 shrink-0 mt-0.5" />
+              <span class="text-sm break-words min-w-0">{error}</span>
             </div>
           {/if}
 

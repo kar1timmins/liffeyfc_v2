@@ -21,13 +21,31 @@ export interface DeploymentJobData {
 }
 
 /**
+ * Strip raw ethers.js transaction data from BullMQ failedReason strings so that
+ * the API surface never leaks internal calldata or wallet addresses.
+ */
+function sanitizeJobFailedReason(reason: string): string {
+  let msg = reason;
+  // ethers appends serialised tx from "(action=" onwards — cut it off
+  const cutMarkers = ['(action=', ' transaction=', '(transaction='];
+  for (const marker of cutMarkers) {
+    const idx = msg.indexOf(marker);
+    if (idx > 0) {
+      msg = msg.slice(0, idx).replace(/[,;]+$/, '').trim();
+      break;
+    }
+  }
+  return msg.length > 300 ? msg.slice(0, 297) + '…' : msg;
+}
+
+/**
  * Service to manage the deployment queue using BullMQ
  * Uses existing Railway Redis instance as the backing store
  */
 @Injectable()
 export class DeploymentQueueService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(DeploymentQueueService.name);
-  private queue: Queue<DeploymentJobData>;
+  private queue!: Queue<DeploymentJobData>;
   private redisConnection: any;
 
   constructor(private configService: ConfigService) {}
@@ -126,7 +144,7 @@ export class DeploymentQueueService implements OnModuleInit, OnModuleDestroy {
 
       this.logger.log(`✅ Job queued successfully: ${job.id}`);
       return job.id!;
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`❌ Failed to queue deployment: ${error.message}`);
       throw error;
     }
@@ -156,9 +174,9 @@ export class DeploymentQueueService implements OnModuleInit, OnModuleDestroy {
         status: state,
         progress: typeof progress === 'number' ? progress : undefined,
         data: job.returnvalue,
-        error: failedReason || undefined,
+        error: failedReason ? sanitizeJobFailedReason(failedReason) : undefined,
       };
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`❌ Failed to get job status: ${error.message}`);
       return { status: 'error', error: error.message };
     }

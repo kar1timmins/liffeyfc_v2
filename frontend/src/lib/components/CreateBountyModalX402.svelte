@@ -165,6 +165,25 @@
   let stepIndex = $derived(STEP_KEYS.indexOf(currentStep) + 1);
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
+
+  /**
+   * Strip raw ethers.js / BullMQ technical data from error strings so the UI
+   * only ever shows a short, human-readable message.
+   */
+  function sanitizeError(msg: string): string {
+    // Cut everything from "(action=" onwards (ethers appends serialised tx here)
+    const cutMarkers = ['(action=', ' transaction=', '(transaction='];
+    for (const marker of cutMarkers) {
+      const idx = msg.indexOf(marker);
+      if (idx > 0) {
+        msg = msg.slice(0, idx).replace(/[,;]+$/, '').trim();
+        break;
+      }
+    }
+    // Hard cap so the message never overflows the modal
+    return msg.length > 200 ? msg.slice(0, 197) + '…' : msg;
+  }
+
   function close() {
     if (!isSubmitting) {
       isOpen = false;
@@ -280,7 +299,7 @@
         close();
       }, 4000);
     } catch (e: any) {
-      error = e.message ?? 'Submission failed. Please try again.';
+      error = sanitizeError(e.message ?? 'Submission failed. Please try again.');
       currentStep = 'payment';
     } finally {
       isSubmitting = false;
@@ -321,10 +340,9 @@
       }
 
       if (status === 'failed') {
-        throw new Error(
-          jobData.data?.error ||
-            'Contract deployment failed. Please contact support.',
-        );
+        const rawMsg: string =
+          jobData.data?.error || 'Contract deployment failed. Please contact support.';
+        throw new Error(sanitizeError(rawMsg));
       }
       // Any other status (waiting, active, delayed) → keep polling
     }
@@ -374,7 +392,7 @@
         close();
       }, 4000);
     } catch (e: any) {
-      error = e.message ?? 'Submission failed. Please try again.';
+      error = sanitizeError(e.message ?? 'Submission failed. Please try again.');
       currentStep = 'payment';
     }
   }
@@ -681,9 +699,9 @@
               </div>
 
               {#if error}
-                <div class="alert alert-error py-2">
-                  <AlertCircle class="w-4 h-4 shrink-0" />
-                  <span class="text-xs">{error}</span>
+                <div class="alert alert-error py-2 items-start">
+                  <AlertCircle class="w-4 h-4 shrink-0 mt-0.5" />
+                  <span class="text-xs break-words min-w-0">{error}</span>
                 </div>
               {/if}
 
@@ -824,9 +842,9 @@
 
         <!-- Global error outside payment step -->
         {#if error && currentStep !== 'payment'}
-          <div class="alert alert-error mt-4 py-2">
-            <AlertCircle class="w-4 h-4 shrink-0" />
-            <span class="text-xs">{error}</span>
+          <div class="alert alert-error mt-4 py-2 items-start">
+            <AlertCircle class="w-4 h-4 shrink-0 mt-0.5" />
+            <span class="text-xs break-words min-w-0">{error}</span>
           </div>
         {/if}
 

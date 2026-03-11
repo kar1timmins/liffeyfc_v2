@@ -18,6 +18,48 @@ import { NotificationsService } from '../web3/notifications.service';
 import { DeploymentJobData } from './deployment-queue.service';
 
 /**
+ * Convert a raw ethers.js / BullMQ error into a short, readable message.
+ * ethers v6 embeds the full serialised transaction (including large hex calldata)
+ * inside the error message string — we strip everything from `(action=` onwards
+ * and fall back to standard error codes.
+ */
+function sanitizeDeploymentError(error: any): string {
+  // ethers v6 provides a concise shortMessage property
+  if (error?.shortMessage) return error.shortMessage;
+  // ethers v4/v5 reason field
+  if (error?.reason) return String(error.reason);
+
+  // Map well-known ethers error codes to readable strings
+  const codeMessages: Record<string, string> = {
+    CALL_EXCEPTION:
+      'Contract call failed — the factory contract may be outdated or misconfigured. Please contact support.',
+    INSUFFICIENT_FUNDS: 'Insufficient funds for gas fees in the platform wallet.',
+    NONCE_EXPIRED: 'Transaction nonce conflict. Please try again shortly.',
+    REPLACEMENT_UNDERPRICED: 'Transaction replacement rejected by the network. Please try again.',
+    NETWORK_ERROR: 'Network connection failure. Please check RPC configuration.',
+    TIMEOUT: 'Request timed out. The network may be congested — please try again.',
+    UNKNOWN_ERROR: 'An unknown blockchain error occurred. Please contact support.',
+  };
+  if (error?.code && codeMessages[error.code]) {
+    return codeMessages[error.code];
+  }
+
+  // Trim the serialised transaction blob that ethers appends after "(action="
+  let msg: string = error?.message || String(error) || 'Deployment failed.';
+  const cutMarkers = ['(action=', ' transaction=', '(transaction='];
+  for (const marker of cutMarkers) {
+    const idx = msg.indexOf(marker);
+    if (idx > 0) {
+      msg = msg.slice(0, idx).trim();
+      // Remove trailing punctuation left by the cut
+      msg = msg.replace(/[,;]+$/, '').trim();
+      break;
+    }
+  }
+  return msg.length > 300 ? msg.slice(0, 297) + '…' : msg;
+}
+
+/**
  * Worker service that processes deployment jobs from the queue
  * Uses platform wallet to deploy contracts (not user's wallet)
  */
@@ -341,15 +383,16 @@ export class DeploymentWorkerService implements OnModuleInit, OnModuleDestroy {
         transactionHashes: result.transactionHashes,
       };
     } catch (error: any) {
+      const readableError = sanitizeDeploymentError(error);
       this.logger.error(`❌ Deployment failed: ${error.message}`);
 
       // Update payment status to failed
       await this.paymentRepo.update(paymentId, {
         status: PaymentStatus.FAILED,
-        errorMessage: error.message,
+        errorMessage: readableError,
       });
 
-      throw error; // Re-throw to mark job as failed (will trigger retry)
+      throw new Error(readableError); // Re-throw readable message; BullMQ stores as failedReason
     }
   }
 

@@ -628,8 +628,9 @@
       </div>
 
       {#if errorMessage}
-        <div class="alert alert-error mb-6">
-          <span>{errorMessage}</span>
+        <div class="alert alert-error mb-6 items-start">
+          <AlertCircle class="w-4 h-4 shrink-0 mt-0.5" />
+          <span class="break-words min-w-0">{errorMessage}</span>
         </div>
       {/if}
 
