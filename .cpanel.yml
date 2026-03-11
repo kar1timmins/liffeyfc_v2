@@ -1,5 +1,0 @@
----
-deployment:
-  tasks:
-    - /bin/mkdir -p ~/public_html
-    - /bin/cp -rf frontend/build/. ~/public_html/
