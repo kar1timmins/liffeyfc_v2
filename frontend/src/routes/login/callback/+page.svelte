@@ -38,12 +38,8 @@
 				// Verify will fetch /api/auth/me and populate user
 				const ok = await authStore.verify();
 				
-				// Show success toast
+				// Show inline success message (no toast — avoids covering FAB)
 				success = true;
-				import('$lib/stores/toast').then(({ toastStore }) => {
-					toastStore.add({ message: 'Signed in successfully', type: 'success', ttl: 2000 });
-				});
-				
 				setTimeout(() => {
 					goto(ok ? '/profile' : '/dashboard');
 				}, 700);
