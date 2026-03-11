@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Body,
   Param,
   UseGuards,
@@ -353,6 +354,26 @@ export class BountiesController {
       const message =
         error instanceof Error ? error.message : 'Failed to fetch contributions';
       throw new HttpException(message, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
+   * Reset a stuck/failed deployment (no contracts saved) so the owner can retry.
+   */
+  @Delete('wishlist/:wishlistItemId/failed-deployment')
+  @UseGuards(AuthGuard('jwt'))
+  async resetFailedDeployment(
+    @Param('wishlistItemId') wishlistItemId: string,
+    @CurrentUser() user: any,
+  ) {
+    try {
+      await this.bountiesService.resetFailedDeployment(wishlistItemId, user.userId);
+      return { success: true, message: 'Deployment reset — you can now retry.' };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to reset deployment';
+      const status =
+        error instanceof HttpException ? error.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
+      throw new HttpException(message, status);
     }
   }
 

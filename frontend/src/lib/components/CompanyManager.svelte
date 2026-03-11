@@ -588,6 +588,35 @@
     openDeleteModal(companyId, itemId, itemTitle, hasEscrow, hasPayments);
   }
 
+  let resettingItemId = $state<string | null>(null);
+
+  async function resetFailedDeployment(companyId: string, item: any) {
+    resettingItemId = item.id;
+    try {
+      const token = $authStore.accessToken;
+      const res = await fetch(`${PUBLIC_API_URL}/bounties/wishlist/${item.id}/failed-deployment`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Reset failed');
+      // Update local state so the UI reverts to "Create Bounty" without a full reload
+      const compIdx = companies.findIndex((c) => c.id === companyId);
+      if (compIdx !== -1) {
+        const itemIdx = companies[compIdx].wishlistItems?.findIndex((w) => w.id === item.id) ?? -1;
+        if (itemIdx !== -1) {
+          companies[compIdx].wishlistItems[itemIdx].isEscrowActive = false;
+          companies[compIdx].wishlistItems[itemIdx].campaignDeadline = null;
+        }
+      }
+      toastStore.add({ message: 'Failed deployment reset — you can now retry.', type: 'success' });
+    } catch (err: any) {
+      toastStore.add({ message: err.message || 'Failed to reset deployment', type: 'error' });
+    } finally {
+      resettingItemId = null;
+    }
+  }
+
 </script>
 
 <div class="glass-subtle rounded-3xl p-6 md:p-8">
@@ -1632,7 +1661,21 @@
                                     Investors can contribute via <a href="/companies/{company.id}" class="link">company page</a> or <a href="/bounties" class="link">bounties page</a>
                                   </p>
                                 {:else}
-                                  <p class="text-xs opacity-60">⏳ Contracts deploying… refresh in a moment.</p>
+                                  <div class="space-y-2">
+                                    <p class="text-xs opacity-60">⏳ Contracts deploying… refresh in a moment.</p>
+                                    <button
+                                      class="btn btn-xs btn-ghost text-error gap-1"
+                                      onclick={() => resetFailedDeployment(company.id, item)}
+                                      disabled={resettingItemId === item.id}
+                                      title="If deployment failed and no contracts were saved, click to reset and retry"
+                                    >
+                                      {#if resettingItemId === item.id}
+                                        <span class="loading loading-spinner loading-xs"></span> Resetting…
+                                      {:else}
+                                        ✕ Reset failed deployment
+                                      {/if}
+                                    </button>
+                                  </div>
                                 {/if}
                               </div>
                             {/if}

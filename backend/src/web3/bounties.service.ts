@@ -1162,6 +1162,51 @@ export class BountiesService {
   /**
    * Map blockchain status to bounty status
    */
+  /**
+   * Reset isEscrowActive on a wishlist item whose deployment failed before any
+   * contract address was saved.  Only the company owner can call this, and only
+   * when no escrow-deployment rows nor contract addresses exist (i.e. the
+   * deployment never completed).
+   */
+  async resetFailedDeployment(
+    wishlistItemId: string,
+    userId: string,
+  ): Promise<void> {
+    const item = await this.wishlistRepository.findOne({
+      where: { id: wishlistItemId },
+      relations: ['company', 'escrowDeployments'],
+    });
+
+    if (!item) {
+      throw new HttpException('Wishlist item not found', HttpStatus.NOT_FOUND);
+    }
+
+    if (item.company.ownerId !== userId) {
+      throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
+    }
+
+    // Only allow reset when no contract addresses are saved and no deployment rows exist
+    const hasAddresses =
+      item.ethereumEscrowAddress || item.avalancheEscrowAddress;
+    const hasDeploymentRows =
+      item.escrowDeployments && item.escrowDeployments.length > 0;
+
+    if (hasAddresses || hasDeploymentRows) {
+      throw new HttpException(
+        'Cannot reset: contracts were already deployed for this item',
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    item.isEscrowActive = false;
+    item.campaignDeadline = null as any;
+    item.campaignDurationDays = null as any;
+    await this.wishlistRepository.save(item);
+    this.logger.log(
+      `🔄 Reset failed deployment for wishlist item ${wishlistItemId} (owner: ${userId})`,
+    );
+  }
+
   private mapBlockchainStatus(
     deadline: Date,
     raisedAmount: number,
