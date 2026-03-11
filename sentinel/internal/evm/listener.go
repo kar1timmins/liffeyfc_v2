@@ -27,8 +27,8 @@ const contributionABIJSON = `[{"anonymous":false,"inputs":[{"indexed":true,"name
 const escrowCreatedABIJSON = `[{"anonymous":false,"inputs":[{"indexed":true,"name":"escrowAddress","type":"address"},{"indexed":true,"name":"company","type":"address"},{"indexed":false,"name":"targetAmount","type":"uint256"},{"indexed":false,"name":"deadline","type":"uint256"},{"indexed":false,"name":"timestamp","type":"uint256"},{"indexed":false,"name":"campaignName","type":"string"},{"indexed":false,"name":"campaignDescription","type":"string"},{"indexed":false,"name":"wishlistItemId","type":"string"}],"name":"EscrowCreated","type":"event"}]`
 
 var (
-	transferSig     = crypto.Keccak256Hash([]byte("Transfer(address,address,uint256)"))
-	contributionSig = crypto.Keccak256Hash([]byte("ContributionReceived(address,uint256,uint256)"))
+	transferSig      = crypto.Keccak256Hash([]byte("Transfer(address,address,uint256)"))
+	contributionSig  = crypto.Keccak256Hash([]byte("ContributionReceived(address,uint256,uint256)"))
 	escrowCreatedSig = crypto.Keccak256Hash([]byte("EscrowCreated(address,address,uint256,uint256,uint256,string,string,string)"))
 )
 
@@ -42,8 +42,8 @@ type Listener struct {
 	knownEscrows    []common.Address // accumulates from EscrowCreated events; persists across reconnects
 	pub             *publisher.Publisher
 
-	transferABI     abi.ABI
-	contributionABI abi.ABI
+	transferABI      abi.ABI
+	contributionABI  abi.ABI
 	escrowCreatedABI abi.ABI
 }
 

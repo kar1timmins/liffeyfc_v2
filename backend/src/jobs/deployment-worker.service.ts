@@ -14,6 +14,7 @@ import { EscrowDeployment } from '../entities/escrow-deployment.entity';
 import { EscrowContractService } from '../web3/escrow-contract.service';
 import { BountiesService } from '../web3/bounties.service';
 import { CryptoPricesService } from '../web3/crypto-prices.service';
+import { NotificationsService } from '../web3/notifications.service';
 import { DeploymentJobData } from './deployment-queue.service';
 
 /**
@@ -37,6 +38,7 @@ export class DeploymentWorkerService implements OnModuleInit, OnModuleDestroy {
     private escrowDeploymentRepo: Repository<EscrowDeployment>,
     private bountiesService: BountiesService,
     private cryptoPrices: CryptoPricesService,
+    private notifications: NotificationsService,
   ) {}
 
   async onModuleInit() {
@@ -311,6 +313,24 @@ export class DeploymentWorkerService implements OnModuleInit, OnModuleDestroy {
           this.logger.debug('Bounty creation skipped or failed:', e.message || e);
         }
       }
+
+      // Notify frontend that escrow contracts are live
+      const contracts: { chain: string; address: string }[] = [];
+      if (result.ethereumAddress)
+        contracts.push({ chain: 'ethereum_sepolia', address: result.ethereumAddress });
+      if (result.avalancheAddress)
+        contracts.push({ chain: 'avalanche_fuji', address: result.avalancheAddress });
+
+      this.notifications.emit({
+        userId: deploymentData.userId,
+        type: 'DEPLOYMENT_COMPLETE',
+        payload: {
+          wishlistItemId: deploymentData.wishlistItemId,
+          campaignName: deploymentData.campaignName || wl?.title || '',
+          contracts,
+          message: `Escrow contracts deployed on ${contracts.map((c) => c.chain).join(', ')}`,
+        },
+      });
 
       return {
         success: true,

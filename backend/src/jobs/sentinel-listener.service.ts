@@ -416,6 +416,7 @@ export class SentinelListenerService implements OnModuleInit, OnModuleDestroy {
           amountNative: event.amountNative,
           amountEur: amountEur.toFixed(2),
           totalRaisedEur: totalRaisedEur.toFixed(2),
+          isTargetMet: event.isTargetMet,
           transactionHash: event.transactionHash,
         },
       });

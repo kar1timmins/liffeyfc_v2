@@ -8,6 +8,7 @@
   import Web3Modal from '$lib/components/Web3Modal.svelte';
   import { walletStore, formattedAddress } from '$lib/stores/walletStore';
   import { authStore } from '$lib/stores/auth';
+  import { notificationsStore } from '$lib/stores/notifications';
   import Toast from '$lib/components/Toast.svelte';
   import type { Snippet } from 'svelte';
   import { PUBLIC_API_URL } from '$env/static/public';
@@ -173,6 +174,15 @@
       // Reset companies when logged out
       userCompanies = [];
       companiesFetched = false;
+    }
+  });
+
+  // Connect / disconnect SSE notification stream based on auth state
+  $effect(() => {
+    if ($authStore.isAuthenticated && $authStore.accessToken) {
+      notificationsStore.connect($authStore.accessToken);
+    } else {
+      notificationsStore.disconnect();
     }
   });
 </script>
