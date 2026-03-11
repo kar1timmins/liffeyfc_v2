@@ -605,8 +605,8 @@
       if (compIdx !== -1) {
         const itemIdx = companies[compIdx].wishlistItems?.findIndex((w) => w.id === item.id) ?? -1;
         if (itemIdx !== -1) {
-          companies[compIdx].wishlistItems[itemIdx].isEscrowActive = false;
-          companies[compIdx].wishlistItems[itemIdx].campaignDeadline = null;
+          companies[compIdx].wishlistItems![itemIdx].isEscrowActive = false;
+          companies[compIdx].wishlistItems![itemIdx].campaignDeadline = null;
         }
       }
       toastStore.add({ message: 'Failed deployment reset — you can now retry.', type: 'success' });
