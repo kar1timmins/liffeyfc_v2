@@ -7,6 +7,8 @@ import { EscrowController } from './escrow.controller';
 import { BountiesController } from './bounties.controller';
 import { WalletBalanceController } from './wallet-balance.controller';
 import { CryptoPricesController } from './crypto-prices.controller';
+import { NotificationsController } from './notifications.controller';
+import { NotificationsService } from './notifications.service';
 import { Web3Service } from './web3.service';
 import { WalletGenerationService } from './wallet-generation.service';
 import { EscrowContractService } from './escrow-contract.service';
@@ -61,6 +63,7 @@ const nonceProvider: Provider = {
     BountiesController,
     WalletBalanceController,
     CryptoPricesController,
+    NotificationsController,
   ],
   providers: [
     Web3Service,
@@ -70,6 +73,7 @@ const nonceProvider: Provider = {
     CryptoPricesService,
     PlatformWalletService,
     ContractHistoryService,
+    NotificationsService,
     nonceProvider,
   ],
   exports: [
@@ -81,6 +85,7 @@ const nonceProvider: Provider = {
     PlatformWalletService,
     ContractHistoryService,
     NonceService,
+    NotificationsService,
   ],
 })
 export class Web3Module {}

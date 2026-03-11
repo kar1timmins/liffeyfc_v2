@@ -1,0 +1,12 @@
+# binaries
+sentinel
+
+# env
+.env
+
+# Go test cache
+*.test
+*.out
+
+# vendor (use go mod instead)
+vendor/
