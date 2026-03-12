@@ -850,11 +850,11 @@
 				</p>
 				<div class="card-actions">
 					<button
-						class="rounded-lg group relative inline-flex items-center justify-center overflow-hidden bg-gradient-to-br from-purple-600 to-blue-500 p-0.5 text-sm font-medium group-hover:from-purple-600 group-hover:to-blue-500 hover:text-white focus:ring-4 focus:ring-blue-300 focus:outline-none dark:text-white dark:focus:ring-blue-800"
+						class="rounded-lg group relative inline-flex items-center justify-center overflow-hidden bg-gradient-to-br from-purple-600 to-blue-500 p-0.5 text-sm font-medium group-hover:from-purple-600 group-hover:to-blue-500 hover:text-white focus:ring-4 focus:ring-blue-300 focus:outline-none dark:focus:ring-blue-800"
 						onclick={() => goto('/')}
 					>
 						<span
-							class=" bg-base-100 text-black dark:text-white dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
+							class=" bg-base-100 text-base-content dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
 						>
 							Go to Home
 						</span>
@@ -879,11 +879,11 @@
 				</p>
 				<div class="card-actions">
 					<button
-						class="rounded-lg group relative inline-flex items-center justify-center overflow-hidden bg-gradient-to-br from-cyan-500 to-blue-500 p-0.5 text-sm font-medium group-hover:from-cyan-500 group-hover:to-blue-500 hover:text-white focus:ring-4 focus:ring-cyan-200 focus:outline-none dark:text-white dark:focus:ring-cyan-800"
+						class="rounded-lg group relative inline-flex items-center justify-center overflow-hidden bg-gradient-to-br from-cyan-500 to-blue-500 p-0.5 text-sm font-medium group-hover:from-cyan-500 group-hover:to-blue-500 hover:text-white focus:ring-4 focus:ring-cyan-200 focus:outline-none dark:focus:ring-cyan-800"
 						onclick={() => goto('/companies')}
 					>
 						<span
-							class=" bg-base-100 text-black dark:text-white dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
+							class=" bg-base-100 text-base-content dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
 						>
 							View Companies
 						</span>
@@ -909,11 +909,11 @@
 					</p>
 					<div class="card-actions">
 						<button
-							class="rounded-lg group relative inline-flex items-center justify-center overflow-hidden bg-gradient-to-br from-green-400 to-blue-600 p-0.5 text-sm font-medium group-hover:from-green-400 group-hover:to-blue-600 hover:text-white focus:ring-4 focus:ring-green-200 focus:outline-none dark:text-white dark:focus:ring-green-800"
+							class="rounded-lg group relative inline-flex items-center justify-center overflow-hidden bg-gradient-to-br from-green-400 to-blue-600 p-0.5 text-sm font-medium group-hover:from-green-400 group-hover:to-blue-600 hover:text-white focus:ring-4 focus:ring-green-200 focus:outline-none dark:focus:ring-green-800"
 							onclick={() => goto('/bounties')}
 						>
 							<span
-								class=" bg-base-100 text-black dark:text-white dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
+								class=" bg-base-100 text-base-content dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
 							>
 								View Bounties
 							</span>
@@ -940,11 +940,11 @@
 				</p>
 				<div class="card-actions">
 					<button
-						class="rounded-lg group relative inline-flex items-center justify-center overflow-hidden bg-gradient-to-br from-pink-500 to-orange-400 p-0.5 text-sm font-medium group-hover:from-pink-500 group-hover:to-orange-400 hover:text-white focus:ring-4 focus:ring-pink-200 focus:outline-none dark:text-white dark:focus:ring-pink-800"
+						class="rounded-lg group relative inline-flex items-center justify-center overflow-hidden bg-gradient-to-br from-pink-500 to-orange-400 p-0.5 text-sm font-medium group-hover:from-pink-500 group-hover:to-orange-400 hover:text-white focus:ring-4 focus:ring-pink-200 focus:outline-none dark:focus:ring-pink-800"
 						onclick={() => goto('/profile')}
 					>
 						<span
-							class=" bg-base-100 text-black dark:text-white dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
+							class=" bg-base-100 text-base-content dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
 						>
 							View Profile
 						</span>
@@ -969,11 +969,11 @@
 				</p>
 				<div class="card-actions">
 					<button
-						class="rounded-lg group relative inline-flex items-center justify-center overflow-hidden bg-gradient-to-br from-teal-300 to-lime-300 p-0.5 text-sm font-medium group-hover:from-teal-300 group-hover:to-lime-300 focus:ring-4 focus:ring-lime-200 focus:outline-none hover:text-white dark:text-white dark:focus:ring-lime-800"
+						class="rounded-lg group relative inline-flex items-center justify-center overflow-hidden bg-gradient-to-br from-teal-300 to-lime-300 p-0.5 text-sm font-medium group-hover:from-teal-300 group-hover:to-lime-300 focus:ring-4 focus:ring-lime-200 focus:outline-none hover:text-white dark:focus:ring-lime-800"
 						onclick={() => goto('/settings')}
 					>
 						<span
-							class=" bg-base-100 text-black dark:text-white dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
+							class=" bg-base-100 text-base-content dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
 						>
 							View Settings
 						</span>
@@ -999,11 +999,11 @@
 				<div class="card-actions">
 					{#if $authStore.isAuthenticated}
 						<button
-							class="rounded-lg group relative inline-flex items-center justify-center overflow-hidden bg-gradient-to-br from-red-200 via-red-300 to-yellow-200 p-0.5 text-sm font-medium group-hover:from-red-200 group-hover:via-red-300 group-hover:to-yellow-200 focus:ring-4 focus:ring-red-100 focus:outline-none hover:text-white dark:text-white dark:focus:ring-red-400"
+							class="rounded-lg group relative inline-flex items-center justify-center overflow-hidden bg-gradient-to-br from-red-200 via-red-300 to-yellow-200 p-0.5 text-sm font-medium group-hover:from-red-200 group-hover:via-red-300 group-hover:to-yellow-200 focus:ring-4 focus:ring-red-100 focus:outline-none hover:text-white dark:focus:ring-red-400"
 							onclick={() => goto('/send')}
 						>
 							<span
-								class=" bg-base-100 text-black dark:text-white dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
+								class=" bg-base-100 text-base-content dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
 							>
 								Send Funds
 							</span>
@@ -1031,11 +1031,11 @@
 						</p>
 						<div class="card-actions">
 							<button
-								class="rounded-lg group relative inline-flex items-center justify-center overflow-hidden bg-gradient-to-br from-indigo-400 to-blue-500 p-0.5 text-sm font-medium group-hover:from-indigo-400 group-hover:to-blue-500 focus:ring-4 focus:ring-indigo-200 focus:outline-none hover:text-white dark:text-white dark:focus:ring-indigo-800"
+								class="rounded-lg group relative inline-flex items-center justify-center overflow-hidden bg-gradient-to-br from-indigo-400 to-blue-500 p-0.5 text-sm font-medium group-hover:from-indigo-400 group-hover:to-blue-500 focus:ring-4 focus:ring-indigo-200 focus:outline-none hover:text-white dark:focus:ring-indigo-800"
 								onclick={() => goto('/buy-crypto')}
 							>
 								<span
-									class=" bg-base-100 text-black dark:text-white dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
+									class=" bg-base-100 text-base-content dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
 								>
 									Buy Crypto
 								</span>
@@ -1060,11 +1060,11 @@
 						</p>
 						<div class="card-actions">
 							<button
-								class="rounded-lg group relative inline-flex items-center justify-center overflow-hidden bg-gradient-to-br from-yellow-400 to-orange-400 p-0.5 text-sm font-medium group-hover:from-yellow-400 group-hover:to-orange-400 focus:ring-4 focus:ring-yellow-200 focus:outline-none hover:text-white dark:text-white dark:focus:ring-yellow-800"
+								class="rounded-lg group relative inline-flex items-center justify-center overflow-hidden bg-gradient-to-br from-yellow-400 to-orange-400 p-0.5 text-sm font-medium group-hover:from-yellow-400 group-hover:to-orange-400 focus:ring-4 focus:ring-yellow-200 focus:outline-none hover:text-white dark:focus:ring-yellow-800"
 								onclick={() => goto('/leaderboard')}
 							>
 								<span
-									class=" bg-base-100 text-black dark:text-white dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
+									class=" bg-base-100 text-base-content dark:bg-base-300 group-hover:text-white rounded-lg relative px-4 py-2.5 leading-5 transition-all duration-75 ease-in group-hover:bg-transparent group-hover:dark:bg-transparent"
 								>
 									View Leaderboard
 								</span>
